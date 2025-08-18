@@ -1,0 +1,30 @@
+﻿{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Login  Presupuestador</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body class="page-auth">
+  <div class="auth-box">
+    <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive" class="logo">
+    <h1 class="title">Bienvenido al presupuestador</h1>
+
+    <form method="post" class="auth-form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="msg error">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <label class="lbl">ingrese su usuario *</label>
+      {{ form.username }}
+      <label class="lbl">contraseña</label>
+      {{ form.password }}
+
+      <button class="btn-primary" type="submit">Continuar</button>
+    </form>
+  </div>
+</body>
+</html>
