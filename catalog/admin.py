@@ -1,3 +1,76 @@
 from django.contrib import admin
+from django.utils.html import format_html
+from django.contrib.admin.sites import NotRegistered
 
-# Register your models here.
+from .models import Unit, Material
+
+# Asegura estado limpio por si hubo un registro previo
+for model in (Unit, Material):
+    try:
+        admin.site.unregister(model)
+    except NotRegistered:
+        pass
+
+
+@admin.register(Unit)
+class UnitAdmin(admin.ModelAdmin):
+    list_display = ("name", "symbol")
+    search_fields = ("name", "symbol")
+    ordering = ("name",)
+
+
+@admin.register(Material)
+class MaterialAdmin(admin.ModelAdmin):
+    # columnas de la lista (ajustadas a tu modelo actual)
+    list_display = (
+        "sku",
+        "name",
+        "category_label",
+        "unit",
+        "presentation_qty",
+        "unit_cost_display",
+        "thumb",
+        "created_at",
+    )
+    list_filter = ("category", "unit")
+    search_fields = ("sku", "name", "category")
+    ordering = ("name",)
+    list_per_page = 25
+    autocomplete_fields = ("unit",)
+
+    readonly_fields = ("image_preview", "created_at", "updated_at")
+    fields = (
+        "sku", "name", "category", "unit",
+        "presentation_qty", "unit_cost",
+        "image", "image_preview",
+        "created_by", "created_at", "updated_at",
+    )
+
+    # helpers para mostrar bonito
+    def category_label(self, obj):
+        return obj.get_category_display()
+    category_label.short_description = "Categoría"
+
+    def unit_cost_display(self, obj):
+        formatted = f"{obj.unit_cost:,.0f}".replace(",", ".")
+        return format_html("${} COP", formatted)
+    unit_cost_display.short_description = "Costo (COP)"
+    unit_cost_display.admin_order_field = "unit_cost"
+
+    def thumb(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;" />',
+                obj.image.url
+            )
+        return "-"
+    thumb.short_description = "Imagen"
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="max-width:240px;max-height:240px;object-fit:cover;border-radius:6px;" />',
+                obj.image.url
+            )
+        return "Sin imagen"
+    image_preview.short_description = "Vista previa"

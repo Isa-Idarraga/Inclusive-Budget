@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <h1 class="h5 fw-bold mb-3">Eliminar proveedor del material</h1>
+          <p class="mb-1"><strong>Material:</strong> {{ material.sku }} — {{ material.name }}</p>
+          <p class="mb-4"><strong>Proveedor:</strong> {{ link.supplier.name }}</p>
+          <p>¿Seguro que deseas eliminar esta relación? No se borrará el proveedor del sistema, solo su vínculo con el material.</p>
+
+          <form method="post" class="d-flex gap-2">
+            {% csrf_token %}
+            <a href="{% url 'material_suppliers_list' material.pk %}" class="btn-primary-custom btn-eq">Volver</a>
+            <button type="submit" class="btn-danger-custom btn-eq">Eliminar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
