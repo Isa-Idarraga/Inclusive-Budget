@@ -16,7 +16,7 @@ class TrimmedNumberInput(forms.NumberInput):
 
 
 class MaterialForm(forms.ModelForm):
-    # Campo de texto para proveedor
+    # Proveedor
     supplier_name = forms.CharField(
         label="Proveedor",
         max_length=120,
@@ -38,7 +38,7 @@ class MaterialForm(forms.ModelForm):
         model = Material
         fields = [
             "sku", "name", "category", "unit",
-            "presentation_qty", "image"  # unit_cost fuera del form
+            "presentation_qty", "image"  # unit_cost 
         ]
         widgets = {
             "sku": forms.TextInput(attrs={
@@ -58,7 +58,7 @@ class MaterialForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         material = kwargs.get("instance")
         super().__init__(*args, **kwargs)
-        # Desactiva localización en numéricos
+        # Desactivar localización en numéricos
         for fname in ("presentation_qty",):
             f = self.fields.get(fname)
             if f:
@@ -104,7 +104,7 @@ class MaterialSupplierForm(forms.ModelForm):
 
     class Meta:
         model = MaterialSupplier
-        fields = ["supplier_name", "price", "preferred"]  # ← sin plazo
+        fields = ["supplier_name", "price", "preferred"]  
         widgets = {
             "price": forms.NumberInput(attrs={
                 "class": "form-control", "min": "0", "step": "1", "inputmode": "numeric"
