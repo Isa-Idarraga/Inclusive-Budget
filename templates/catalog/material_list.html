@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+
+<!-- Fondo suave para diferenciar de la navbar blanca -->
+<div class="p-3 p-md-4 rounded-3 bg-body-tertiary">
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+
+      <!-- Título + botón crear -->
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h4 fw-bold m-0">Materiales</h1>
+        <a class="btn-primary-custom" href="{% url 'material_create' %}">Nuevo material</a>
+      </div>
+
+      <!-- Buscador centrado a la mitad -->
+      <div class="d-flex justify-content-center mb-3">
+        <form method="get" class="w-50">
+          <div class="input-group">
+            <input type="text" name="q" class="form-control"
+                   placeholder="Buscar por nombre o código…"
+                   value="{{ q }}">
+            <button class="btn-primary-custom" type="submit">Buscar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tabla -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width:64px;"></th>
+              <th>Código</th>
+              <th class="text-center">Nombre</th>
+              <th>Categoría</th>
+              <th>Unidad</th>
+              <th class="text-center">Cant./unidad</th>
+              <th class="text-center">Proveedor</th>
+              <th class="text-center">Precio (COP)</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for m in materials %}
+            {% with link=m.supplier_prices.all.0 %}
+            <tr>
+              <td>
+                {% if m.image %}
+                  <img src="{{ m.image.url }}" alt="{{ m.name }}" class="rounded" style="width:48px;height:48px;object-fit:cover;">
+                {% else %}
+                  <div class="rounded bg-light" style="width:48px;height:48px;"></div>
+                {% endif %}
+              </td>
+              <td class="fw-semibold">{{ m.sku }}</td>
+              <td>{{ m.name }}</td>
+              <td>
+                <span class="badge rounded-pill" style="background-color:#fffbcd;color:#000;border:1px solid #fffb00;">
+                  {{ m.get_category_display }}
+                </span>
+              </td>
+              <td>{{ m.unit }}</td>
+              <td class="text-center">{{ m.presentation_qty|floatformat:"-3"|intcomma }} {{ m.unit.symbol }}</td>
+              <td>{% if link %}{{ link.supplier.name }}{% else %}—{% endif %}</td>
+              <td class="text-center">{% if link %}${{ link.price|intcomma }} COP{% else %}—{% endif %}</td>
+              <td class="text-center">
+                <div class="btn-group btn-group-sm" role="group">
+                  <a class="btn-primary-custom" href="{% url 'material_update' m.pk %}">Editar</a>
+                  <a class="btn-danger-custom" href="{% url 'material_delete' m.pk %}">Eliminar</a>
+                  <a class="btn-info-custom" href="{% url 'material_suppliers_list' m.pk %}">Proveedores</a>
+                </div>
+              </td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr>
+              <td colspan="9" class="text-center text-muted py-4">No hay materiales aún.</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}

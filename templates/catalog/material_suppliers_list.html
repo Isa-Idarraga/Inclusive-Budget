@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="p-3 p-md-4 rounded-3 bg-body-tertiary">
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <h1 class="h4 fw-bold m-0">Proveedores de material</h1>
+          <div class="text-muted">
+            {{ material.sku }} — {{ material.name }} · {{ material.presentation_qty|floatformat:"-3"|intcomma }} {{ material.unit.symbol }}
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <a class="btn-primary-custom" href="{% url 'material_supplier_create' material.pk %}">Agregar proveedor</a>
+          <a class="btn btn-outline-secondary" href="{% url 'material_list' %}">Volver a materiales</a>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Proveedor</th>
+              <th class="text-end">Precio (COP)</th>
+              <th class="text-center">Preferido</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for link in links %}
+            <tr>
+              <td>{{ link.supplier.name }}</td>
+              <td class="text-end">${{ link.price|intcomma }}</td>
+              <td class="text-center">
+                {% if link.preferred %}
+                  <span class="badge rounded-pill" style="background-color:#6b8e74;color:#fff;border:1px solid #5a7a63;">Preferido</span>
+                {% else %}
+                  <span class="badge rounded-pill text-bg-secondary">No</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm" role="group">
+                  {% if not link.preferred %}
+                    <form method="post" action="{% url 'material_supplier_set_preferred' material.pk link.pk %}">
+                      {% csrf_token %}
+                    </form>
+                  {% endif %}
+                  <a class="btn-info-custom" href="{% url 'material_supplier_update' material.pk link.pk %}">Editar</a>
+                  <a class="btn-danger-custom" href="{% url 'material_supplier_delete' material.pk link.pk %}">Eliminar</a>
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                No hay proveedores registrados para este material.
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
