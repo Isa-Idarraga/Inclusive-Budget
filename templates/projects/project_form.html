@@ -1,0 +1,680 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="project-detail-bg py-5">
+    <div class="container">
+    <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-inclusive-lg rounded-4 animate-fade-in">
+                    <div class="card-header card-header-inclusive rounded-top-4 border-0">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                <i class="fas fa-calculator text-white fs-4"></i>
+                            </div>
+                            <h2 class="h3 fw-bold mb-0">Cuestionario para Cálculo de Presupuesto</h2>
+                        </div>
+                </div>
+                    <div class="card-body p-5 bg-gray-green-accent">
+                    <form method="post" enctype="multipart/form-data" id="projectForm">
+                        {% csrf_token %}
+                        
+                            <!-- Información Básica -->
+                            <div class="mb-5 animate-fade-in">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-info-circle text-inclusive-primary fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">Información Básica</h4>
+                                </div>
+                                
+                                <div class="alert alert-info mb-4">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Campos obligatorios marcados con</strong> <span class="text-danger">*</span>
+                                    <br><small>Los demás campos son opcionales pero ayudan a calcular un presupuesto más preciso.</small>
+                                </div>
+                                
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-building text-inclusive-primary me-2"></i>
+                                                {{ form.name.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ form.name.errors.0 }}
+                                                </div>
+                                {% endif %}
+                                        </div>
+                            </div>
+
+                                    <div class="col-md-6">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ form.location_address.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-map-marker-alt text-inclusive-primary me-2"></i>
+                                                {{ form.location_address.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.location_address }}
+                                {% if form.location_address.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ form.location_address.errors.0 }}
+                                                </div>
+                                {% endif %}
+                                        </div>
+                            </div>
+
+                                    <div class="col-12">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-file-alt text-inclusive-primary me-2"></i>
+                                    {{ form.description.label }}
+                                </label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ form.description.errors.0 }}
+                                                </div>
+                                {% endif %}
+                                        </div>
+                            </div>
+
+                                    <div class="col-md-6">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ form.estado.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-tasks text-inclusive-primary me-2"></i>
+                                    {{ form.estado.label }}
+                                </label>
+                                {{ form.estado }}
+                                {% if form.estado.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ form.estado.errors.0 }}
+                                                </div>
+                                {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section divider -->
+                            <div class="section-divider"></div>
+
+                            <!-- 1. Datos Generales del Proyecto -->
+                            <div class="mb-5 animate-fade-in animate-delay-1">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-neon bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-home text-inclusive-neon fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">1. Datos Generales del Proyecto</h4>
+                                </div>
+                                
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <div class="metric-card-primary p-4 rounded-4">
+                                            <label for="{{ form.ubicacion_proyecto.id_for_label }}" class="form-label fw-semibold text-inclusive-primary mb-2">
+                                                <i class="fas fa-map text-inclusive-primary me-2"></i>
+                                                {{ form.ubicacion_proyecto.label }} <span class="text-danger">*</span>
+                                            </label>
+                                            {{ form.ubicacion_proyecto }}
+                                            {% if form.ubicacion_proyecto.errors %}
+                                                <div class="text-danger small mt-1">{{ form.ubicacion_proyecto.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="metric-card-primary p-4 rounded-4">
+                                            <label for="{{ form.otra_ubicacion.id_for_label }}" class="form-label fw-semibold text-inclusive-primary mb-2">
+                                                <i class="fas fa-edit text-inclusive-primary me-2"></i>
+                                                {{ form.otra_ubicacion.label }}
+                                            </label>
+                                            {{ form.otra_ubicacion }}
+                                            {% if form.otra_ubicacion.errors %}
+                                                <div class="text-danger small mt-1">{{ form.otra_ubicacion.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="metric-card-success p-4 rounded-4">
+                                            <label for="{{ form.area_construida_total.id_for_label }}" class="form-label fw-semibold text-inclusive-neon mb-2">
+                                                <i class="fas fa-home text-inclusive-neon me-2"></i>
+                                                {{ form.area_construida_total.label }} <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="input-group">
+                                                {{ form.area_construida_total }}
+                                                <span class="input-group-text bg-inclusive-neon text-inclusive-dark fw-semibold">m²</span>
+                                            </div>
+                                            {% if form.area_construida_total.errors %}
+                                                <div class="text-danger small mt-1">{{ form.area_construida_total.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="metric-card-secondary p-4 rounded-4">
+                                            <label for="{{ form.numero_pisos.id_for_label }}" class="form-label fw-semibold text-inclusive-secondary mb-2">
+                                                <i class="fas fa-layer-group text-inclusive-secondary me-2"></i>
+                                                {{ form.numero_pisos.label }} <span class="text-danger">*</span>
+                                </label>
+                                            {{ form.numero_pisos }}
+                                            {% if form.numero_pisos.errors %}
+                                                <div class="text-danger small mt-1">{{ form.numero_pisos.errors.0 }}</div>
+                                {% endif %}
+                                        </div>
+                            </div>
+
+                                    <div class="col-md-4">
+                                        <div class="metric-card-warning p-4 rounded-4">
+                                            <label for="{{ form.area_exterior_intervenir.id_for_label }}" class="form-label fw-semibold text-inclusive-bright mb-2">
+                                                <i class="fas fa-tree text-inclusive-bright me-2"></i>
+                                                {{ form.area_exterior_intervenir.label }}
+                                </label>
+                                            <div class="input-group">
+                                                {{ form.area_exterior_intervenir }}
+                                                <span class="input-group-text text-inclusive-dark fw-semibold" style="background-color: var(--inclusive-yellow-bright);">m²</span>
+                                            </div>
+                                            {% if form.area_exterior_intervenir.errors %}
+                                                <div class="text-danger small mt-1">{{ form.area_exterior_intervenir.errors.0 }}</div>
+                                {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section divider -->
+                            <div class="section-divider"></div>
+
+                            <!-- 2. Terreno y Preliminares -->
+                            <div class="mb-5 animate-fade-in animate-delay-2">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-bright bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-mountain text-inclusive-bright fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">2. Terreno y Preliminares</h4>
+                                </div>
+                                
+                                <div class="row g-4">
+                                    <div class="col-md-4">
+                                        <div class="metric-card-warning p-4 rounded-4">
+                                            <label for="{{ form.tipo_terreno.id_for_label }}" class="form-label fw-semibold text-inclusive-bright mb-2">
+                                                <i class="fas fa-mountain text-inclusive-bright me-2"></i>
+                                                {{ form.tipo_terreno.label }}
+                                            </label>
+                                            {{ form.tipo_terreno }}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="metric-card-secondary p-4 rounded-4">
+                                            <label for="{{ form.acceso_obra.id_for_label }}" class="form-label fw-semibold text-inclusive-secondary mb-2">
+                                                <i class="fas fa-truck text-inclusive-secondary me-2"></i>
+                                                {{ form.acceso_obra.label }}
+                                            </label>
+                                            {{ form.acceso_obra }}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="metric-card-primary p-4 rounded-4">
+                                            <div class="form-check d-flex align-items-center">
+                                                {{ form.requiere_cerramiento }}
+                                                <label for="{{ form.requiere_cerramiento.id_for_label }}" class="form-check-label fw-semibold text-inclusive-primary ms-2">
+                                                    <i class="fas fa-fence text-inclusive-primary me-2"></i>
+                                                    {{ form.requiere_cerramiento.label }}
+                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section divider -->
+                            <div class="section-divider"></div>
+
+                            <!-- 3. Estructura y Cimentación -->
+                            <div class="mb-5 animate-fade-in animate-delay-3">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-secondary bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-hammer text-inclusive-secondary fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">3. Estructura y Cimentación</h4>
+                                </div>
+                                
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <div class="metric-card-secondary p-4 rounded-4">
+                                            <label for="{{ form.sistema_entrepiso.id_for_label }}" class="form-label fw-semibold text-inclusive-secondary mb-2">
+                                                <i class="fas fa-layer-group text-inclusive-secondary me-2"></i>
+                                                {{ form.sistema_entrepiso.label }}
+                                            </label>
+                                            {{ form.sistema_entrepiso }}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="metric-card-secondary p-4 rounded-4">
+                                            <label for="{{ form.exigencia_estructural.id_for_label }}" class="form-label fw-semibold text-inclusive-secondary mb-2">
+                                                <i class="fas fa-shield-alt text-inclusive-secondary me-2"></i>
+                                                {{ form.exigencia_estructural.label }}
+                                </label>
+                                            {{ form.exigencia_estructural }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section divider -->
+                            <div class="section-divider"></div>
+
+                            <!-- 4. Muros y Acabados Básicos -->
+                            <div class="mb-5 animate-fade-in animate-delay-4">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-primary bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-paint-roller text-inclusive-primary fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">4. Muros y Acabados Básicos</h4>
+                                </div>
+                                
+                                <div class="row g-4">
+                                    <div class="col-md-4">
+                                        <div class="metric-card-primary p-4 rounded-4">
+                                            <label for="{{ form.relacion_muros.id_for_label }}" class="form-label fw-semibold text-inclusive-primary mb-2">
+                                                <i class="fas fa-th-large text-inclusive-primary me-2"></i>
+                                                {{ form.relacion_muros.label }}
+                                            </label>
+                                            {{ form.relacion_muros }}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="metric-card-primary p-4 rounded-4">
+                                            <label for="{{ form.acabado_muros.id_for_label }}" class="form-label fw-semibold text-inclusive-primary mb-2">
+                                                <i class="fas fa-paint-brush text-inclusive-primary me-2"></i>
+                                                {{ form.acabado_muros.label }}
+                                            </label>
+                                            {{ form.acabado_muros }}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="metric-card-primary p-4 rounded-4">
+                                            <label for="{{ form.cielorrasos.id_for_label }}" class="form-label fw-semibold text-inclusive-primary mb-2">
+                                                <i class="fas fa-square text-inclusive-primary me-2"></i>
+                                                {{ form.cielorrasos.label }}
+                                </label>
+                                            {{ form.cielorrasos }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section divider -->
+                            <div class="section-divider"></div>
+
+                            <!-- 5. Pisos y Enchapes -->
+                            <div class="mb-5 animate-fade-in animate-delay-1">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-warning bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-th text-inclusive-bright fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">5. Pisos y Enchapes</h4>
+                                </div>
+                                
+                                <div class="row g-4">
+                                    <div class="col-md-3">
+                                        <div class="metric-card-warning p-4 rounded-4">
+                                            <label for="{{ form.piso_zona_social.id_for_label }}" class="form-label fw-semibold text-inclusive-bright mb-2">
+                                                <i class="fas fa-couch text-inclusive-bright me-2"></i>
+                                                {{ form.piso_zona_social.label }}
+                                            </label>
+                                            {{ form.piso_zona_social }}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <div class="metric-card-warning p-4 rounded-4">
+                                            <label for="{{ form.piso_habitaciones.id_for_label }}" class="form-label fw-semibold text-inclusive-bright mb-2">
+                                                <i class="fas fa-bed text-inclusive-bright me-2"></i>
+                                                {{ form.piso_habitaciones.label }}
+                                            </label>
+                                            {{ form.piso_habitaciones }}
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <div class="metric-card-warning p-4 rounded-4">
+                                            <label for="{{ form.numero_banos.id_for_label }}" class="form-label fw-semibold text-inclusive-bright mb-2">
+                                                <i class="fas fa-bath text-inclusive-bright me-2"></i>
+                                                {{ form.numero_banos.label }}
+                                            </label>
+                                            <div class="input-group">
+                                                {{ form.numero_banos }}
+                                                <span class="input-group-text text-inclusive-dark fw-semibold" style="background-color: var(--inclusive-yellow-bright);">baños</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <div class="metric-card-warning p-4 rounded-4">
+                                            <label for="{{ form.nivel_enchape_banos.id_for_label }}" class="form-label fw-semibold text-inclusive-bright mb-2">
+                                                <i class="fas fa-ruler-vertical text-inclusive-bright me-2"></i>
+                                                {{ form.nivel_enchape_banos.label }}
+                                </label>
+                                            {{ form.nivel_enchape_banos }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Botones de acción -->
+                            <div class="text-center mt-5 animate-fade-in animate-delay-4">
+                                <div class="alert alert-info mb-4">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>El presupuesto se calculará automáticamente</strong> al crear el proyecto usando los datos ingresados.
+                                </div>
+                                
+                                <!-- Debug: Mostrar errores del formulario -->
+                                {% if form.non_field_errors %}
+                                <div class="alert alert-danger mb-4">
+                                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Errores del formulario:</h6>
+                                    {% for error in form.non_field_errors %}
+                                        <p class="mb-1">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                
+                                {% if form.errors %}
+                                <div class="alert alert-warning mb-4">
+                                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Campos con errores:</h6>
+                                    {% for field, errors in form.errors.items %}
+                                        <p class="mb-1"><strong>{{ field }}:</strong> {{ errors.0 }}</p>
+                                    {% endfor %}
+                            </div>
+                                {% endif %}
+                                
+                                <div class="d-flex gap-3 justify-content-center flex-wrap mb-4">
+                                    <button type="submit" class="btn btn-inclusive-primary btn-lg px-5 py-3 rounded-4" name="action" value="create">
+                                        <i class="fas fa-plus me-2"></i>
+                                        Crear Proyecto Ahora
+                                    </button>
+                                    <a href="{% url 'projects:project_list' %}" class="btn btn-inclusive-secondary btn-lg px-5 py-3 rounded-4">
+                                        <i class="fas fa-arrow-left me-2"></i>
+                                        Volver a Lista
+                                    </a>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-outline-secondary" id="showAllSections">
+                                        <i class="fas fa-eye me-2"></i>
+                                        Ver Cuestionario Completo
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Secciones adicionales (inicialmente ocultas) -->
+                            <div id="additionalSections" class="d-none">
+                                <!-- 6. Carpinterías -->
+                                <div class="section-divider"></div>
+                                <div class="mb-5">
+                                    <div class="d-flex align-items-center mb-4">
+                                        <div class="bg-inclusive-secondary bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                            <i class="fas fa-door-open text-inclusive-secondary fs-5"></i>
+                                        </div>
+                                        <h4 class="fw-bold text-inclusive-dark mb-0">6. Carpinterías (puertas, ventanas, muebles)</h4>
+                                    </div>
+                                    
+                                    <div class="row g-4">
+                                        <div class="col-md-6">
+                                            <div class="metric-card-secondary p-4 rounded-4">
+                                                <label for="{{ form.puertas_interiores.id_for_label }}" class="form-label fw-semibold text-inclusive-secondary mb-2">
+                                                    <i class="fas fa-door-closed text-inclusive-secondary me-2"></i>
+                                                    {{ form.puertas_interiores.label }}
+                                                </label>
+                                                <div class="input-group">
+                                                    {{ form.puertas_interiores }}
+                                                    <span class="input-group-text bg-inclusive-secondary text-white fw-semibold">puertas</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="metric-card-secondary p-4 rounded-4">
+                                                <div class="form-check d-flex align-items-center">
+                                                    {{ form.puerta_principal_especial }}
+                                                    <label for="{{ form.puerta_principal_especial.id_for_label }}" class="form-check-label fw-semibold text-inclusive-secondary ms-2">
+                                                        <i class="fas fa-shield-alt text-inclusive-secondary me-2"></i>
+                                                        {{ form.puerta_principal_especial.label }}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="metric-card-secondary p-4 rounded-4">
+                                                <label for="{{ form.porcentaje_ventanas.id_for_label }}" class="form-label fw-semibold text-inclusive-secondary mb-2">
+                                                    <i class="fas fa-window-maximize text-inclusive-secondary me-2"></i>
+                                                    {{ form.porcentaje_ventanas.label }}
+                                                </label>
+                                                {{ form.porcentaje_ventanas }}
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="metric-card-secondary p-4 rounded-4">
+                                                <label for="{{ form.metros_mueble_cocina.id_for_label }}" class="form-label fw-semibold text-inclusive-secondary mb-2">
+                                                    <i class="fas fa-utensils text-inclusive-secondary me-2"></i>
+                                                    {{ form.metros_mueble_cocina.label }}
+                                                </label>
+                                                <div class="input-group">
+                                                    {{ form.metros_mueble_cocina }}
+                                                    <span class="input-group-text bg-inclusive-secondary text-white fw-semibold">ml</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="metric-card-secondary p-4 rounded-4">
+                                                <label for="{{ form.vestier_closets.id_for_label }}" class="form-label fw-semibold text-inclusive-secondary mb-2">
+                                                    <i class="fas fa-tshirt text-inclusive-secondary me-2"></i>
+                                                    {{ form.vestier_closets.label }}
+                                                </label>
+                                                {{ form.vestier_closets }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 7. Hidrosanitario -->
+                                <div class="section-divider"></div>
+                                <div class="mb-5">
+                                    <div class="d-flex align-items-center mb-4">
+                                        <div class="bg-info bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                            <i class="fas fa-tint text-info fs-5"></i>
+                                        </div>
+                                        <h4 class="fw-bold text-inclusive-dark mb-0">7. Hidrosanitario</h4>
+                                    </div>
+                                    
+                                    <div class="row g-4">
+                                        <div class="col-md-6">
+                                            <div class="metric-card-primary p-4 rounded-4">
+                                                <div class="form-check d-flex align-items-center mb-3">
+                                                    {{ form.calentador_gas }}
+                                                    <label for="{{ form.calentador_gas.id_for_label }}" class="form-check-label fw-semibold text-inclusive-primary ms-2">
+                                                        <i class="fas fa-fire text-inclusive-primary me-2"></i>
+                                                        {{ form.calentador_gas.label }}
+                                                    </label>
+                                                </div>
+                                                
+                                                <div class="form-check d-flex align-items-center">
+                                                    {{ form.incluye_lavadero }}
+                                                    <label for="{{ form.incluye_lavadero.id_for_label }}" class="form-check-label fw-semibold text-inclusive-primary ms-2">
+                                                        <i class="fas fa-tshirt text-inclusive-primary me-2"></i>
+                                                        {{ form.incluye_lavadero.label }}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="metric-card-primary p-4 rounded-4">
+                                                <p class="fw-semibold text-inclusive-primary mb-3">
+                                                    <i class="fas fa-faucet me-2"></i>
+                                                    Puntos de agua adicionales:
+                                                </p>
+                                                
+                                                <div class="form-check d-flex align-items-center mb-2">
+                                                    {{ form.punto_lavaplatos }}
+                                                    <label for="{{ form.punto_lavaplatos.id_for_label }}" class="form-check-label text-inclusive-primary ms-2">
+                                                        {{ form.punto_lavaplatos.label }}
+                                                    </label>
+                        </div>
+
+                                                <div class="form-check d-flex align-items-center mb-2">
+                                                    {{ form.punto_lavadora }}
+                                                    <label for="{{ form.punto_lavadora.id_for_label }}" class="form-check-label text-inclusive-primary ms-2">
+                                                        {{ form.punto_lavadora.label }}
+                                                    </label>
+                        </div>
+                                                
+                                                <div class="form-check d-flex align-items-center">
+                                                    {{ form.punto_lavadero }}
+                                                    <label for="{{ form.punto_lavadero.id_for_label }}" class="form-check-label text-inclusive-primary ms-2">
+                                                        {{ form.punto_lavadero.label }}
+                                                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                                <!-- Más secciones... -->
+                                <div class="text-center">
+                                    <p class="text-inclusive-secondary">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Y muchas más opciones para un presupuesto más preciso...
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Imagen del proyecto -->
+                            <div class="section-divider"></div>
+                            <div class="mb-5 animate-fade-in animate-delay-3">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-image text-inclusive-primary fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">Imagen del Proyecto</h4>
+                                </div>
+                                
+                                <div class="accent-green-border rounded-4 p-4">
+                                    <label for="{{ form.imagen_proyecto.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-3">
+                                        <i class="fas fa-camera text-inclusive-primary me-2"></i>
+                                        {{ form.imagen_proyecto.label }}
+                                    </label>
+                                    <div class="upload-area border-2 border-dashed rounded-3 p-4 text-center" style="border-color: var(--inclusive-green-primary);">
+                                        {{ form.imagen_proyecto }}
+                                        <div class="mt-3">
+                                            <i class="fas fa-cloud-upload-alt text-inclusive-primary fs-2 mb-2"></i>
+                                            <p class="text-inclusive-secondary mb-1">
+                                                <i class="fas fa-info-circle text-inclusive-bright me-1"></i>
+                                                Formatos permitidos: JPG, PNG, GIF
+                                            </p>
+                                            <p class="text-inclusive-secondary small mb-0">Tamaño máximo: 5MB</p>
+                                        </div>
+                                    </div>
+                                    {% if form.imagen_proyecto.errors %}
+                                        <div class="text-danger small mt-2">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            {{ form.imagen_proyecto.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </form>
+            </div>
+            </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('projectForm');
+    const showAllBtn = document.getElementById('showAllSections');
+    const additionalSections = document.getElementById('additionalSections');
+
+    // Mostrar/ocultar cuestionario completo
+    showAllBtn.addEventListener('click', function() {
+        if (additionalSections.classList.contains('d-none')) {
+            additionalSections.classList.remove('d-none');
+            this.innerHTML = '<i class="fas fa-eye-slash me-2"></i>Ocultar Secciones Adicionales';
+            this.classList.remove('btn-outline-secondary');
+            this.classList.add('btn-inclusive-secondary');
+        } else {
+            additionalSections.classList.add('d-none');
+            this.innerHTML = '<i class="fas fa-eye me-2"></i>Ver Cuestionario Completo';
+            this.classList.remove('btn-inclusive-secondary');
+            this.classList.add('btn-outline-secondary');
+        }
+    });
+
+    // Manejar campo de ubicación "otra"
+    const ubicacionSelect = document.querySelector('#id_ubicacion_proyecto');
+    const otraUbicacionField = document.querySelector('#id_otra_ubicacion').closest('.col-md-6');
+    
+    function toggleOtraUbicacion() {
+        if (ubicacionSelect.value === 'otra') {
+            otraUbicacionField.style.display = 'block';
+        } else {
+            otraUbicacionField.style.display = 'none';
+        }
+    }
+    
+    ubicacionSelect.addEventListener('change', toggleOtraUbicacion);
+    toggleOtraUbicacion(); // Ejecutar al cargar
+
+    // Manejar envío directo del formulario
+    form.addEventListener('submit', function(e) {
+        // Validar formulario antes de enviar
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            form.reportValidity();
+            return;
+        }
+        
+        // Cambiar texto del botón mientras se procesa
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creando proyecto...';
+            submitBtn.disabled = true;
+        }
+    });
+
+    // Mejorar la experiencia de carga de archivos
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const uploadArea = this.closest('.upload-area');
+            
+            if (file) {
+                uploadArea.style.borderColor = 'var(--inclusive-green-neon)';
+                uploadArea.style.backgroundColor = 'rgba(164, 214, 94, 0.1)';
+            } else {
+                uploadArea.style.borderColor = 'var(--inclusive-green-primary)';
+                uploadArea.style.backgroundColor = 'transparent';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

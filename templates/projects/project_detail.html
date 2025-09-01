@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<div class="project-detail-bg py-5">
+    <div class="container">
+        <!-- Header del proyecto -->
+        <div class="mb-5 animate-fade-in">
+            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                <div class="mb-3 mb-md-0">
+                    <h1 class="display-4 fw-bold text-inclusive-dark mb-2">{{ project.name }}</h1>
+                    <p class="fs-5 text-inclusive-secondary d-flex align-items-center">
+                        <i class="fas fa-map-marker-alt text-inclusive-primary me-2"></i>
+                        {{ project.location_address }}
+                    </p>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="d-inline-flex align-items-center px-3 py-2 rounded-pill small fw-semibold shadow-inclusive
+                        {% if project.estado == 'terminado' %}status-badge-complete{% elif project.estado == 'en_proceso' %}status-badge-progress{% else %}status-badge-future{% endif %}">
+                        <i class="fas fa-circle me-2" style="font-size: 0.75rem;"></i>
+                        {{ project.get_estado_display }}
+                    </span>
+                    <!-- Formulario simple para cambiar estado -->
+                    <form method="post" action="{% url 'projects:update_project_status' project.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <select name="status" class="form-select form-select-sm d-inline-block me-2" style="width: auto;" onchange="this.form.submit()">
+                            <option value="futuro" {% if project.estado == 'futuro' %}selected{% endif %}>🕐 Futuro</option>
+                            <option value="en_proceso" {% if project.estado == 'en_proceso' %}selected{% endif %}>⚡ En Proceso</option>
+                            <option value="terminado" {% if project.estado == 'terminado' %}selected{% endif %}>✅ Terminado</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Columna principal - Información del proyecto -->
+            <div class="col-lg-8">
+                <!-- Imagen del proyecto -->
+                {% if project.imagen_proyecto %}
+                <div class="card shadow-inclusive-lg rounded-4 overflow-hidden mb-4 animate-fade-in animate-delay-1">
+                    <div class="position-relative overflow-hidden">
+                        <img src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" class="card-img-top" style="height: 24rem; object-fit: cover; transition: transform 0.3s ease;">
+                        <div class="position-absolute top-0 start-0 w-100 h-100 bg-gradient-to-b from-transparent to-black opacity-0 hover:opacity-30 transition-opacity duration-300"></div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Información General -->
+                <div class="card shadow-inclusive-lg rounded-4 mb-4 animate-fade-in animate-delay-2">
+                    <div class="card-header card-header-inclusive rounded-top-4 border-0">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                <i class="fas fa-info-circle text-white fs-4"></i>
+                            </div>
+                            <h2 class="h3 fw-bold mb-0">Información General</h2>
+                        </div>
+                    </div>
+                    <div class="card-body p-0 bg-gray-green-accent">
+                        <div class="row g-0">
+                            <!-- Ubicación -->
+                            <div class="col-12 p-4 accent-green-border border-bottom">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-map text-inclusive-primary me-3 fs-5"></i>
+                                    <div class="flex-fill">
+                                        <p class="small text-inclusive-secondary fw-medium mb-1">Ubicación</p>
+                                        <p class="text-inclusive-dark fw-semibold mb-0">
+                                            {{ project.get_ubicacion_proyecto_display|default:"Medellín" }}
+                                            {% if project.otra_ubicacion %} - {{ project.otra_ubicacion }}{% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Área y Pisos -->
+                            <div class="col-12 p-4 accent-green-border border-bottom">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-home text-inclusive-neon me-3 fs-5"></i>
+                                    <div class="flex-fill">
+                                        <p class="small text-inclusive-secondary fw-medium mb-1">Área Construida y Pisos</p>
+                                        <p class="text-inclusive-dark fw-semibold mb-0">
+                                            {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m² • 
+                                            {{ project.get_numero_pisos_display|default:"1 piso" }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Detalles de Construcción -->
+                            <div class="col-12 p-4 accent-green-border border-bottom">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-tools text-inclusive-bright me-3 fs-5"></i>
+                                    <div class="flex-fill">
+                                        <p class="small text-inclusive-secondary fw-medium mb-1">Detalles de Construcción</p>
+                                        <p class="text-inclusive-dark fw-semibold mb-0">
+                                            {% if project.numero_banos %}{{ project.numero_banos }} baño{{ project.numero_banos|pluralize }} • {% endif %}
+                                            {{ project.get_acabado_muros_display|default:"Estándar" }} • 
+                                            {{ project.get_tipo_terreno_display|default:"Normal" }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Fecha de Creación -->
+                            <div class="col-12 p-4 accent-green-border rounded-bottom-4">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-calendar-alt text-inclusive-primary me-3 fs-5"></i>
+                                    <div class="flex-fill">
+                                        <p class="small text-inclusive-secondary fw-medium mb-1">Fecha de Creación</p>
+                                        <p class="text-inclusive-dark fw-semibold mb-0">{{ project.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section divider -->
+                <div class="section-divider"></div>
+
+                <!-- Dimensiones del Proyecto -->
+                <div class="card shadow-inclusive-lg rounded-4 animate-fade-in animate-delay-3">
+                    <div class="card-header card-header-inclusive rounded-top-4 border-0">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                <i class="fas fa-ruler-combined text-white fs-4"></i>
+                            </div>
+                            <h2 class="h3 fw-bold mb-0">Dimensiones del Proyecto</h2>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6 col-lg-4">
+                                <div class="metric-card-primary p-4 rounded-4">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <i class="fas fa-home text-inclusive-primary fs-3"></i>
+                                        <span class="h3 fw-bold text-inclusive-primary mb-0">{{ project.area_construida_total|default:project.built_area|floatformat:0 }}</span>
+                                    </div>
+                                    <p class="text-inclusive-primary fw-semibold mb-1">Área Construida</p>
+                                    <p class="text-inclusive-secondary small mb-0">metros cuadrados</p>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 col-lg-4">
+                                <div class="metric-card-success p-4 rounded-4">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <i class="fas fa-tree text-inclusive-neon fs-3"></i>
+                                        <span class="h3 fw-bold text-inclusive-neon mb-0">{{ project.area_exterior_intervenir|default:project.exterior_area|floatformat:0 }}</span>
+                                    </div>
+                                    <p class="text-inclusive-neon fw-semibold mb-1">Área Exterior a Intervenir</p>
+                                    <p class="text-inclusive-secondary small mb-0">metros cuadrados</p>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 col-lg-4">
+                                <div class="metric-card-secondary p-4 rounded-4">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <i class="fas fa-columns text-inclusive-secondary fs-3"></i>
+                                        <span class="h3 fw-bold text-inclusive-secondary mb-0">{{ project.numero_banos|default:"1" }}</span>
+                                    </div>
+                                    <p class="text-inclusive-secondary fw-semibold mb-1">Baños Completos</p>
+                                    <p class="text-inclusive-secondary small mb-0">{{ project.get_nivel_enchape_banos_display|default:"medio" }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 col-lg-4">
+                                <div class="metric-card-warning p-4 rounded-4">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <i class="fas fa-wall text-inclusive-bright fs-3"></i>
+                                        <span class="h3 fw-bold text-inclusive-bright mb-0">{{ project.walls_area }}</span>
+                                    </div>
+                                    <p class="text-inclusive-bright fw-semibold mb-1">Área de Paredes</p>
+                                    <p class="text-inclusive-secondary small mb-0">metros cuadrados</p>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 col-lg-4">
+                                <div class="metric-card-primary p-4 rounded-4">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <i class="fas fa-window-maximize text-inclusive-primary fs-3"></i>
+                                        <span class="h3 fw-bold text-inclusive-primary mb-0">{{ project.windows_area }}</span>
+                                    </div>
+                                    <p class="text-inclusive-primary fw-semibold mb-1">Área de Ventanas</p>
+                                    <p class="text-inclusive-secondary small mb-0">metros cuadrados</p>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 col-lg-4">
+                                <div class="metric-card-secondary p-4 rounded-4">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <i class="fas fa-door-open text-inclusive-secondary fs-3"></i>
+                                        <span class="h3 fw-bold text-inclusive-secondary mb-0">{{ project.doors_count }}</span>
+                                    </div>
+                                    <p class="text-inclusive-secondary fw-semibold mb-1">Puertas</p>
+                                    <p class="text-inclusive-secondary small mb-0">{{ project.doors_height }}m altura</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar - Presupuesto y Acciones -->
+            <div class="col-lg-4">
+                <!-- Presupuesto Estimado -->
+                <div class="card shadow-inclusive-lg rounded-4 mb-4 animate-fade-in animate-delay-2">
+                    <div class="card-header card-header-inclusive rounded-top-4 border-0">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                <i class="fas fa-dollar-sign text-white fs-4"></i>
+                            </div>
+                            <h3 class="h4 fw-bold mb-0">Presupuesto Estimado</h3>
+                        </div>
+                    </div>
+                    <div class="card-body p-4 bg-gray-green-accent">
+                        <div class="text-center mb-4 p-4 rounded-4 border border-3" style="border-color: var(--inclusive-green-primary); background-color: var(--inclusive-gray-medium);">
+                            <div class="display-5 fw-bold text-inclusive-primary mb-2">
+                                {% if project.presupuesto and project.presupuesto > 0 %}
+                                    ${{ project.presupuesto|floatformat:0|default:"0" }}
+                                {% else %}
+                                    ${{ estimated_budget|floatformat:0|default:"0" }}
+                                {% endif %}
+                            </div>
+                            <p class="text-inclusive-secondary small mb-0">Pesos Colombianos</p>
+                        </div>
+                        
+                        <div class="accent-green-border rounded-4 p-4 mb-4">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <span class="text-inclusive-primary fw-semibold">
+                                    <i class="fas fa-hammer me-2"></i>Construcción
+                                </span>
+                                <span class="fw-bold text-inclusive-primary">${{ estimated_budget|floatformat:0|intcomma }}</span>
+                            </div>
+                            <div class="progress rounded-pill" style="height: 12px; background-color: var(--inclusive-gray-light);">
+                                <div class="progress-bar progress-inclusive rounded-pill" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="accent-green-border rounded-4 p-4">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-info-circle text-inclusive-primary mt-1 me-3 fs-5"></i>
+                                <div class="small text-inclusive-secondary">
+                                    <p class="fw-semibold mb-2 text-inclusive-dark">
+                                        <i class="fas fa-exclamation-triangle text-inclusive-bright me-1"></i>
+                                        Nota importante:
+                                    </p>
+                                    <p class="mb-0">Este es un presupuesto estimado basado en las dimensiones proporcionadas. Los precios reales pueden variar según materiales, ubicación y otros factores.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acciones -->
+                <div class="card shadow-inclusive-lg rounded-4 animate-fade-in animate-delay-4">
+                    <div class="card-header card-header-inclusive rounded-top-4 border-0">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                <i class="fas fa-cogs text-white fs-4"></i>
+                            </div>
+                            <h3 class="h4 fw-bold mb-0">Acciones</h3>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="d-grid gap-3">
+                            <a href="{% url 'projects:project_update' project.id %}" class="btn btn-inclusive-primary d-flex align-items-center justify-content-center rounded-3">
+                                <i class="fas fa-edit me-2"></i>
+                                Editar Proyecto
+                            </a>
+                            
+                            <a href="{% url 'projects:project_delete' project.id %}" class="btn btn-inclusive-secondary d-flex align-items-center justify-content-center rounded-3">
+                                <i class="fas fa-trash me-2"></i>
+                                Eliminar Proyecto
+                            </a>
+                            
+                            <a href="{% url 'projects:project_list' %}" class="btn btn-inclusive-secondary d-flex align-items-center justify-content-center rounded-3">
+                                <i class="fas fa-list me-2"></i>
+                                Ver Todos los Proyectos
+                            </a>
+                            
+                            <a href="{% url 'projects:project_create' %}" class="btn btn-inclusive-warning d-flex align-items-center justify-content-center rounded-3">
+                                <i class="fas fa-plus me-2"></i>
+                                Crear Nuevo Proyecto
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

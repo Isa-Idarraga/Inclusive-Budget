@@ -3,7 +3,10 @@
 {% block content %}
 <section class="hero">
   <h1 class="hero-title">Hola Jefe ¿Desea iniciar un nuevo <br>proyecto?</h1>
-  <a class="btn-hero" href="#">Iniciar!! <span class="chev"></span></a>
+  <div class="hero-buttons">
+    <a class="btn-hero" href="{% url 'projects:project_create' %}">Iniciar!! <span class="chev"></span></a>
+    <a class="btn-hero btn-secondary" href="{% url 'projects:project_list' %}">Ver Proyectos</a>
+  </div>
 
   <div class="hero-logo">
     <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive">
