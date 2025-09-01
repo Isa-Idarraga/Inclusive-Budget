@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'projects',
     'catalog',
     'dashboard',
@@ -82,15 +83,21 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Configuración de PostgreSQL - Base de datos principal del proyecto
+# PostgreSQL es ideal para este proyecto porque:
+# - Maneja mejor datos numéricos precisos (presupuestos)
+# - Soporte nativo para JSON (futuras expansiones)
+# - Mejor rendimiento con consultas complejas
+# - Integridad referencial robusta
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-        "OPTIONS": {"sslmode": os.getenv("DB_SSLMODE", "require")},
+        "ENGINE": "django.db.backends.postgresql",  # Driver de PostgreSQL para Django
+        "NAME": os.getenv("DB_NAME"),               # Nombre de la base de datos (desde .env)
+        "USER": os.getenv("DB_USER"),               # Usuario de PostgreSQL (desde .env)
+        "PASSWORD": os.getenv("DB_PASSWORD"),       # Contraseña de PostgreSQL (desde .env)
+        "HOST": os.getenv("DB_HOST"),               # Host de PostgreSQL (desde .env)
+        "PORT": os.getenv("DB_PORT", "5432"),       # Puerto de PostgreSQL (5432 por defecto)
+        "OPTIONS": {"sslmode": os.getenv("DB_SSLMODE", "require")},  # SSL requerido para seguridad
     }
 }
 
@@ -132,6 +139,10 @@ USE_TZ = True
 TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Media files (Uploaded files)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
