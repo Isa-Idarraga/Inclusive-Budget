@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <h1 class="h3 fw-bold mb-4">
+            {% if mode == "create" %}Nuevo material{% else %}Editar material: {{ material.name }}{% endif %}
+          </h1>
+
+          <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <div class="row g-3">
+              <!-- Código -->
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.sku.id_for_label }}">Código</label>
+                {{ form.sku }}
+                {% for e in form.sku.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+                <div class="form-text">3 letras + guion + 1–4 dígitos. Se autoformatea.</div>
+              </div>
+
+              <!-- Nombre -->
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.name.id_for_label }}">Nombre</label>
+                {{ form.name }}
+                {% for e in form.name.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Categoría -->
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.category.id_for_label }}">Categoría</label>
+                {{ form.category }}
+                {% for e in form.category.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Unidad -->
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.unit.id_for_label }}">Unidad de medida</label>
+                {{ form.unit }}
+                {% for e in form.unit.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              </div>
+
+              <!-- Presentación -->
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.presentation_qty.id_for_label }}">Cantidad por unidad</label>
+                {{ form.presentation_qty }}
+                {% for e in form.presentation_qty.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+                <div class="form-text">Ej.: bulto 50 kg → 50 (unidad = kg).</div>
+              </div>
+
+              <!-- Costo unitario -->
+              <!-- Proveedor -->
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.supplier_name.id_for_label }}">Proveedor</label>
+                {{ form.supplier_name }}
+                {% for e in form.supplier_name.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+                <div class="form-text">Escribe el nombre del proveedor (se creará si no existe).</div>
+              </div>
+
+              <!-- Precio con proveedor -->
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.supplier_price.id_for_label }}">Precio con proveedor</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  {{ form.supplier_price }}
+                  <span class="input-group-text">COP</span>
+                </div>
+                {% for e in form.supplier_price.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+                <div class="form-text">Sin decimales (pesos colombianos).</div>
+              </div>
+
+              <!-- Imagen: input + “campo” con enlace al archivo actual + switch alineado -->
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.image.id_for_label }}">Imagen</label>
+
+                <div class="input-group">
+                  <!-- Botón/label para abrir el selector -->
+                  <label class="btn btn-outline-secondary" for="{{ form.image.id_for_label }}">Seleccionar archivo</label>
+                  <!-- File input real (oculto visualmente) -->
+                  <input type="file"
+                         name="{{ form.image.name }}"
+                         id="{{ form.image.id_for_label }}"
+                         class="d-none"
+                         accept="image/*">
+                  <!-- Visualización del archivo “seleccionado” -->
+                  {% if material and material.image %}
+                    <a id="image-selected"
+                       href="{{ material.image.url }}"
+                       target="_blank"
+                       class="form-control text-truncate text-decoration-none">
+                      {{ material.image.name }}
+                    </a>
+                  {% else %}
+                    <div id="image-selected" class="form-control text-truncate text-muted">
+                      Ningún archivo seleccionado
+                    </div>
+                  {% endif %}
+                </div>
+
+                {% for e in form.image.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+
+                {% if not material or not material.image %}
+                  <div class="form-text mt-2">Opcional. PNG/JPG. Se mostrará una miniatura.</div>
+                {% endif %}
+
+                {% if material and material.image %}
+                  <!-- Switch alineado -->
+                  <div class="form-check form-switch d-flex align-items-center gap-2 mt-2">
+                    <input class="form-check-input" type="checkbox" id="id_image_clear" name="image-clear">
+                    <label class="form-check-label mb-0" for="id_image_clear">
+                      Quitar imagen actual al guardar
+                    </label>
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Vista previa -->
+              <div class="col-md-6 d-flex align-items-end">
+                <div>
+                  <div class="form-label">Vista previa actual</div>
+                  {% if material and material.image %}
+                    <img id="material-preview"
+                         src="{{ material.image.url }}"
+                         alt="{{ material.name }}"
+                         class="rounded border"
+                         style="width:110px;height:110px;object-fit:cover;">
+                  {% else %}
+                    <img id="material-preview"
+                         alt="Sin imagen"
+                         class="rounded border d-none"
+                         style="width:110px;height:110px;object-fit:cover;">
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+              <a href="{% url 'material_list' %}" class="btn btn-danger btn-eq">Cancelar</a>
+              <button class="btn-primary-custom btn-eq" type="submit">
+                {% if mode == "create" %}Crear{% else %}Guardar cambios{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Autoformato del SKU
+  (function () {
+    const el = document.getElementById("{{ form.sku.id_for_label }}");
+    if (!el) return;
+    function normalize(value) {
+      value = (value || "").toUpperCase();
+      const letters = (value.match(/[A-Z]/g) || []).join("").slice(0, 3);
+      const digits  = (value.match(/\d/g)   || []).join("").slice(0, 4);
+      if (!letters && !digits) return "";
+      if (letters) return digits ? `${letters}-${digits}` : letters;
+      return `-${digits}`;
+    }
+    el.addEventListener("input", () => {
+      const normalized = normalize(el.value);
+      el.value = normalized;
+      el.setSelectionRange(normalized.length, normalized.length);
+    });
+  })();
+
+  // “Campo” visual del archivo + preview al elegir uno nuevo
+  (function () {
+    const input = document.getElementById("{{ form.image.id_for_label }}");
+    const display = document.getElementById("image-selected");
+    const preview = document.getElementById("material-preview");
+    if (!input || !display || !preview) return;
+
+    input.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      // Cambia el “campo” visual por el nombre del archivo (sin enlace)
+      display.textContent = file.name;
+      if (display.tagName === "A") {
+        display.removeAttribute("href");
+        display.removeAttribute("target");
+        display.classList.add("text-muted"); // estilo similar a readonly
+      }
+
+      // Actualiza la miniatura
+      const url = URL.createObjectURL(file);
+      preview.src = url;
+      preview.classList.remove("d-none");
+    });
+  })();
+</script>
+{% endblock %}

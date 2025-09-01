@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'projects',
     'catalog',
     'dashboard',
+    'django.contrib.humanize',
 ]
 
 AUTH_USER_MODEL = "users.User"  
@@ -152,3 +153,6 @@ LOGOUT_REDIRECT_URL = "login"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

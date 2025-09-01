@@ -9,9 +9,9 @@ urlpatterns = [
     path("", include("dashboard.urls")),
     path("accounts/", include("django.contrib.auth.urls")),
     path("projects/", include("projects.urls")),
+    path("catalog/", include("catalog.urls")), # Catálogo de materiales
 ]
 
 # Configuración para servir archivos media en desarrollo
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

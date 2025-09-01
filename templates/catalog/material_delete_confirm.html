@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <header class="card-header">
+    <h1 class="title">Eliminar material</h1>
+  </header>
+  <p>¿Seguro que quieres eliminar <strong>{{ material.name }}</strong> ({{ material.sku }})?</p>
+  <form method="post">
+    {% csrf_token %}
+    <a class="btn" href="{% url 'material_list' %}">Cancelar</a>
+    <button class="btn danger" type="submit">Eliminar</button>
+  </form>
+</section>
+{% endblock %}
