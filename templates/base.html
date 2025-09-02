@@ -20,6 +20,18 @@
       <a class="nav-link" href="#">Precios unitarios</a>
       <a class="nav-link" href="{% url 'material_list' %}">Materiales</a>
       <a class="nav-link" href="{% url 'projects:project_list' %}">lista de proyectos</a>
+      <div class="nav-item dropdown d-inline-block">
+        <a class="nav-link dropdown-toggle" href="#" id="trabajadoresDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fas fa-users"></i> Trabajadores
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="trabajadoresDropdown">
+          <li><a class="dropdown-item" href="{% url 'projects:worker_list' %}"><i class="fas fa-list"></i> Listar trabajadores</a></li>
+          <li><a class="dropdown-item" href="{% url 'projects:worker_create' %}"><i class="fas fa-user-plus"></i> Crear trabajador</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{% url 'projects:role_list' %}"><i class="fas fa-user-tag"></i> Listar roles</a></li>
+          <li><a class="dropdown-item" href="{% url 'projects:role_create' %}"><i class="fas fa-user-tag"></i> Crear rol</a></li>
+        </ul>
+      </div>
       {% if user.is_authenticated %}
         <form method="post" action="{% url 'logout' %}" style="display:inline">
           {% csrf_token %}

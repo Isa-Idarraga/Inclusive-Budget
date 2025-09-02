@@ -372,6 +372,45 @@
                                 </div>
                             </div>
 
+                            <!-- Selección de trabajadores -->
+                            <div class="mb-5 animate-fade-in">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-users text-inclusive-primary fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">Trabajadores asignados al proyecto</h4>
+                                </div>
+                                {% if no_workers %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-circle me-2"></i>
+                                        No hay trabajadores registrados. <a href="{% url 'projects:worker_create' %}" class="btn btn-sm btn-success ms-2">Crear trabajador</a>
+                                        <a href="{% url 'projects:role_create' %}" class="btn btn-sm btn-secondary ms-2">Crear rol</a>
+                                    </div>
+                                {% else %}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold text-inclusive-dark mb-2">
+                                            <i class="fas fa-user-plus text-inclusive-primary me-2"></i>
+                                            Selecciona los trabajadores que participarán en este proyecto:
+                                        </label>
+                                        <div class="row">
+                                            {% for worker in workers %}
+                                            <div class="col-md-4 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="workers" id="worker_{{ worker.id }}" value="{{ worker.id }}" style="width: 1rem; height: 1rem; margin-right: 0.5rem;" {% if project and worker in project.workers.all %}checked{% endif %}>
+                                                    <label class="form-check-label" for="worker_{{ worker.id }}">
+                                                        {{ worker.name }} <span class="text-muted">({{ worker.role.name }})</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        <small class="text-muted">Marca los trabajadores que participarán en este proyecto.</small>
+                                    </div>
+                                    <a href="{% url 'projects:worker_create' %}" class="btn btn-outline-success btn-sm me-2"><i class="fas fa-user-plus"></i> Añadir nuevo trabajador</a>
+                                    <a href="{% url 'projects:role_create' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-user-tag"></i> Añadir nuevo rol</a>
+                                {% endif %}
+                            </div>
+
                             <!-- Botones de acción -->
                             <div class="text-center mt-5 animate-fade-in animate-delay-4">
                                 <div class="alert alert-info mb-4">

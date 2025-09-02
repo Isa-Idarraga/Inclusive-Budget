@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     'projects',
     'catalog',
     'dashboard',
-    'django.contrib.humanize',
 ]
 
 AUTH_USER_MODEL = "users.User"  
