@@ -18,12 +18,12 @@
     align-items:center
 }
 
-.nav-brand{
-    font-weight:800;
-    text-decoration:none;
-    color:#3f3b8b;
-    border-bottom:3px solid #b9a7ff;
-    padding-bottom:6px
+
+/* estado activo compartido para nav-link y nav-brand */
+.nav-link.active {
+  border-bottom:3px solid #276631;
+  color:#4ab468;
+  font-weight:700;
 }
 .nav-link{
     color:#111;
