@@ -8,7 +8,7 @@
             {% for project in projects %}
             <div class="col-sm-6 col-lg-4 col-xl-3">
                 <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
-                    <a href="{% url 'projects:project_detail' project.id %}" class="text-decoration-none">
+                    <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
                         <div class="position-relative overflow-hidden rounded-top-4">
                             {% if project.imagen_proyecto %}
                                 <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 12rem; object-fit: cover;" />
@@ -33,7 +33,7 @@
                         </div>
                     </a>
                     <div class="card-body card-body-inclusive p-4">
-                        <a href="{% url 'projects:project_detail' project.id %}" class="text-decoration-none">
+                        <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
                             <h5 class="card-title h6 fw-bold text-inclusive-dark mb-3">{{ project.name }}</h5>
                         </a>
                         
