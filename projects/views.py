@@ -7,6 +7,8 @@ from django.db.models import Q
 from .models import Project
 from .forms import ProjectForm
 import json
+from django.urls import reverse
+
 
 @login_required
 def project_list(request):
@@ -49,6 +51,22 @@ def project_list(request):
     }
     
     return render(request, 'projects/project_list.html', context)
+
+@login_required
+def project_board(request, project_id):
+    """
+    Vista tablero del proyecto: nombre, presupuesto, calendario, botones.
+    """
+    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+
+    context = {
+        "project": project,
+        # tú decides adónde llevan:
+        "details_url": reverse("projects:project_detail", kwargs={"project_id": project.id}),
+        "add_purchases_url": f"/compras/nueva/{project.id}/",  # cámbialo a tu ruta real
+        "charts_url": f"/proyectos/{project.id}/graficos/",    # cámbialo a tu ruta real
+    }
+    return render(request, "projects/project_board.html", context)
 
 @login_required
 def project_create(request):
