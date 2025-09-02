@@ -1,5 +1,17 @@
 from django import forms
-from .models import Project
+from .models import Project, Role, Worker
+
+# Formulario para Role
+class RoleForm(forms.ModelForm):
+    class Meta:
+        model = Role
+        fields = ['name', 'description', 'salario_base_dia']
+
+# Formulario para Worker
+class WorkerForm(forms.ModelForm):
+    class Meta:
+        model = Worker
+        fields = ['name', 'phone', 'cedula', 'direccion', 'role']
 
 class ProjectForm(forms.ModelForm):
     """

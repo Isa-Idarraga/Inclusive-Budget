@@ -4,8 +4,8 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q
-from .models import Project
-from .forms import ProjectForm
+from .models import Project, Worker, Role
+from .forms import ProjectForm, WorkerForm, RoleForm
 import json
 from django.urls import reverse
 
@@ -74,9 +74,10 @@ def project_create(request):
     Vista para crear un nuevo proyecto
     PostgreSQL: INSERT INTO projects_project (...) VALUES (...)
     """
+    workers = Worker.objects.all()
     if request.method == 'POST':
-        # Procesar formulario enviado
         form = ProjectForm(request.POST, request.FILES)
+        selected_workers = request.POST.getlist('workers')
         if form.is_valid():
             try:
                 # Crear proyecto pero no guardar aún
@@ -101,7 +102,9 @@ def project_create(request):
                 project.presupuesto = project.calculate_detailed_budget()
                 # Guardar nuevamente con el presupuesto
                 project.save()
-                
+                # Asignar trabajadores seleccionados
+                if selected_workers:
+                    project.workers.set(selected_workers)
                 messages.success(request, f'✅ Proyecto "{project.name}" creado exitosamente! Presupuesto estimado: ${project.presupuesto:,.0f}')
                 return redirect('projects:project_detail', project_id=project.id)
             except Exception as e:
@@ -109,10 +112,12 @@ def project_create(request):
         else:
             messages.error(request, '❌ Por favor corrige los errores en el formulario')
     else:
-        # Mostrar formulario vacío
         form = ProjectForm()
-    
-    return render(request, 'projects/project_form.html', {'form': form})
+    return render(request, 'projects/project_form.html', {
+        'form': form,
+        'workers': workers,
+        'no_workers': not workers.exists(),
+    })
 
 @login_required
 def project_detail(request, project_id):
@@ -142,12 +147,19 @@ def project_update(request, project_id):
     # Obtener proyecto específico del usuario actual
     project = get_object_or_404(Project, id=project_id, creado_por=request.user)
     
+    workers = Worker.objects.all()
     if request.method == 'POST':
         # Procesar formulario con datos existentes
         form = ProjectForm(request.POST, request.FILES, instance=project)
+        selected_workers = request.POST.getlist('workers')
         if form.is_valid():
             # Actualizar en PostgreSQL
             form.save()
+            # Actualizar trabajadores asignados
+            if selected_workers:
+                project.workers.set(selected_workers)
+            else:
+                project.workers.clear()
             messages.success(request, 'Proyecto actualizado exitosamente!')
             return redirect('projects:project_detail', project_id=project.id)
     else:
@@ -157,7 +169,9 @@ def project_update(request, project_id):
     return render(request, 'projects/project_form.html', {
         'form': form, 
         'project': project,
-        'is_update': True
+        'is_update': True,
+        'workers': workers,
+        'no_workers': not workers.exists(),
     })
 
 @login_required
@@ -258,3 +272,103 @@ def project_view(request):
     }
     
     return render(request, 'projects/project_view.html', context)
+
+@login_required
+def worker_create(request):
+    """
+    Vista para crear un nuevo trabajador
+    PostgreSQL: INSERT INTO projects_worker (...) VALUES (...)
+    """
+    if request.method == 'POST':
+        form = WorkerForm(request.POST)
+        if form.is_valid():
+            try:
+                # Crear trabajador pero no guardar aún
+                worker = form.save(commit=False)
+                
+                # Guardar en PostgreSQL
+                worker.save()
+                
+                messages.success(request, f'✅ Trabajador "{worker.name}" creado exitosamente!')
+                return redirect('projects:worker_list')
+            except Exception as e:
+                messages.error(request, f'❌ Error al crear el trabajador: {str(e)}')
+        else:
+            messages.error(request, '❌ Por favor corrige los errores en el formulario')
+    else:
+        form = WorkerForm()
+    return render(request, 'projects/worker_form.html', {'form': form})
+
+@login_required
+def role_create(request):
+    """
+    Vista para crear un nuevo rol
+    PostgreSQL: INSERT INTO projects_role (...) VALUES (...)
+    """
+    if request.method == 'POST':
+        form = RoleForm(request.POST)
+        if form.is_valid():
+            try:
+                # Crear rol pero no guardar aún
+                role = form.save(commit=False)
+                
+                # Guardar en PostgreSQL
+                role.save()
+                
+                messages.success(request, f'✅ Rol "{role.name}" creado exitosamente!')
+                return redirect('projects:role_list')
+            except Exception as e:
+                messages.error(request, f'❌ Error al crear el rol: {str(e)}')
+        else:
+            messages.error(request, '❌ Por favor corrige los errores en el formulario')
+    else:
+        form = RoleForm()
+    return render(request, 'projects/role_form.html', {'form': form})
+
+@login_required
+def role_update(request, role_id):
+    """
+    Vista para actualizar un rol
+    PostgreSQL: UPDATE projects_role SET ... WHERE id = [role_id]
+    """
+    role = get_object_or_404(Role, id=role_id)
+    if request.method == 'POST':
+        form = RoleForm(request.POST, instance=role)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Rol "{role.name}" actualizado exitosamente!')
+            return redirect('projects:role_list')
+    else:
+        form = RoleForm(instance=role)
+    return render(request, 'projects/role_form.html', {'form': form, 'role': role, 'is_update': True})
+
+@login_required
+def worker_list(request):
+    """
+    Vista para listar todos los trabajadores
+    PostgreSQL: SELECT * FROM projects_worker
+    """
+    workers = Worker.objects.all()
+    return render(request, 'projects/worker_list.html', {'workers': workers})
+
+@login_required
+def role_list(request):
+    """
+    Vista para listar todos los roles
+    PostgreSQL: SELECT * FROM projects_role
+    """
+    roles = Role.objects.all()
+    return render(request, 'projects/role_list.html', {'roles': roles})
+
+@login_required
+def worker_delete(request, worker_id):
+    """
+    Vista para eliminar un trabajador
+    PostgreSQL: DELETE FROM projects_worker WHERE id = [worker_id]
+    """
+    worker = get_object_or_404(Worker, id=worker_id)
+    if request.method == 'POST':
+        worker.delete()
+        messages.success(request, f'Trabajador "{worker.name}" eliminado exitosamente!')
+        return redirect('projects:worker_list')
+    return render(request, 'projects/worker_confirm_delete.html', {'worker': worker})

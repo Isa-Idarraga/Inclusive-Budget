@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-secondary text-white rounded-top-4">
+                    <h3 class="mb-0"><i class="fas fa-user-tag me-2"></i>Lista de Roles</h3>
+                </div>
+                <div class="card-body p-4">
+                    <a href="{% url 'projects:role_create' %}" class="btn btn-secondary mb-3"><i class="fas fa-user-tag"></i> Añadir rol</a>
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Salario base por día (COP)</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for role in roles %}
+                            <tr>
+                                <td>{{ role.name }}</td>
+                                <td>{{ role.description }}</td>
+                                <td>${{ role.salario_base_dia|floatformat:0 }}</td>
+                                <td>
+                                    <a href="{% url 'projects:role_update' role.id %}" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i> Editar</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center">No hay roles registrados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

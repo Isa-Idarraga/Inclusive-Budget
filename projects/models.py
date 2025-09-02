@@ -2,6 +2,34 @@ from django.db import models
 from django.conf import settings  # Para usar el modelo de usuario personalizado
 from django.core.validators import MinValueValidator
 
+# MODELOS DE ROLES Y TRABAJADORES
+
+class Role(models.Model):
+    name = models.CharField(max_length=100, unique=True, verbose_name="Nombre del rol")
+    description = models.TextField(blank=True, verbose_name="Descripción")
+    salario_base_dia = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario base por día (COP)", default=0)
+
+    class Meta:
+        verbose_name = "Rol"
+        verbose_name_plural = "Roles"
+
+    def __str__(self):
+        return f"{self.name} (${self.salario_base_dia:,.0f}/día)"
+
+class Worker(models.Model):
+    name = models.CharField(max_length=200, verbose_name="Nombre del trabajador")
+    phone = models.CharField(max_length=20, verbose_name="Teléfono")
+    cedula = models.CharField(max_length=20, verbose_name="Cédula")
+    direccion = models.CharField(max_length=200, verbose_name="Dirección")
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, verbose_name="Rol")
+
+    class Meta:
+        verbose_name = "Trabajador"
+        verbose_name_plural = "Trabajadores"
+
+    def __str__(self):
+        return self.name
+
 class UnitPrice(models.Model):
     """
     Modelo para manejar precios unitarios desde el admin
@@ -158,6 +186,7 @@ class Project(models.Model):
         max_length=200, 
         verbose_name="Nombre del proyecto"
     )
+    workers = models.ManyToManyField(Worker, blank=True, related_name="projects", verbose_name="Trabajadores asignados")
     
     # PostgreSQL: TEXT - Campo de texto sin límite para direcciones largas
     location_address = models.TextField(
