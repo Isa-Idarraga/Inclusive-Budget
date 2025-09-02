@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block content %}
+<div class="project-detail-bg py-5">
+  <div class="container">
+
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="display-5 fw-bold m-0">{{ project.name }}</h1>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-dark" href="{{ charts_url|default:'#' }}">ver gráficos</a>
+        <a class="btn btn-outline-secondary" href="{{ add_purchases_url|default:'#' }}">Agregar compras</a>
+        <a class="btn btn-dark" href="{{ details_url|default:'#' }}">Ver detalles</a>
+      </div>
+    </div>
+
+    <!-- Presupuestos -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <div class="p-4 bg-white rounded-4 shadow-sm d-flex justify-content-between align-items-center">
+          <div>
+            <div class="text-muted">Presupuesto</div>
+            <div class="fs-3 fw-semibold">
+              ${{ project.presupuesto|default:0|floatformat:0|intcomma }}
+            </div>
+          </div>
+          <span class="btn btn-success px-4 disabled">Presupuesto</span>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-4 bg-white rounded-4 shadow-sm d-flex justify-content-between align-items-center">
+          <div>
+            <div class="text-muted">presupuesto gastado</div>
+            <div class="fs-3 fw-semibold">
+              ${{ project.presupuesto_gastado|default:0|floatformat:0|intcomma }}
+            </div>
+          </div>
+          <span class="btn btn-success px-4 disabled">presupuesto gastado</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dos columnas -->
+    <div class="row g-4">
+      <div class="col-12 col-lg-6">
+        <div class="p-5 bg-white rounded-4 shadow-sm text-center text-muted">
+          Listado de compras (lo hace Deossa)
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="p-4 bg-white rounded-4 shadow-sm">
+          <div id="calendar" class="calendar">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <button class="btn btn-outline-secondary btn-sm" data-cal-prev>&larr;</button>
+              <div class="fw-semibold" data-cal-title>Mes Año</div>
+              <button class="btn btn-outline-secondary btn-sm" data-cal-next>&rarr;</button>
+            </div>
+            <div class="cal-grid"></div>
+            <input type="hidden" id="selected_date" name="selected_date">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<link rel="stylesheet" href="{% static 'css/board.css' %}">
+<script src="{% static 'js/calendar.js' %}"></script>
+{% endblock %}

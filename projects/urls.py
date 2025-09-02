@@ -18,4 +18,5 @@ urlpatterns = [
     path('roles/', views.role_list, name='role_list'),
     path('roles/<int:role_id>/update/', views.role_update, name='role_update'),
     path('workers/<int:worker_id>/delete/', views.worker_delete, name='worker_delete'),
+    path('<int:project_id>/tablero/', views.project_board, name='project_board'),
 ]
