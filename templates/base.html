@@ -15,11 +15,31 @@
 <body>
   <header class="navbar">
     <nav class="nav-inner">
-      <a class="nav-brand" href="/">inicio</a>
-      <a class="nav-link" href="#">chatbot</a>
-      <a class="nav-link" href="#">Precios unitarios</a>
-      <a class="nav-link" href="{% url 'material_list' %}">Materiales</a>
-      <a class="nav-link" href="{% url 'projects:project_list' %}">lista de proyectos</a>
+      {% with current=request.resolver_match.url_name %}
+        <a class="nav-link {% if current == 'home_jefe' %}active{% endif %}"
+           href="{% url 'home' %}">inicio</a>
+
+        <a class="nav-link" href="#">chatbot</a>
+        <a class="nav-link" href="#">Precios unitarios</a>
+
+        <a class="nav-link {% if current == 'material_list' %}active{% endif %}"
+           href="{% url 'material_list' %}">Materiales</a>
+
+        <a class="nav-link {% if current == 'project_list' %}active{% endif %}"
+           href="{% url 'projects:project_list' %}">lista de proyectos</a>
+
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'logout' %}" style="display:inline">
+            {% csrf_token %}
+            <button type="submit" class="nav-link" style="background:none;border:0;cursor:pointer;">
+              Salir
+            </button>
+          </form>
+        {% else %}
+          <a class="nav-link right {% if current == 'login' %}active{% endif %}"
+             href="{% url 'login' %}">Ingresar</a>
+        {% endif %}
+      {% endwith %}
       <div class="nav-item dropdown d-inline-block">
         <a class="nav-link dropdown-toggle" href="#" id="trabajadoresDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           <i class="fas fa-users"></i> Trabajadores
@@ -32,16 +52,6 @@
           <li><a class="dropdown-item" href="{% url 'projects:role_create' %}"><i class="fas fa-user-tag"></i> Crear rol</a></li>
         </ul>
       </div>
-      {% if user.is_authenticated %}
-        <form method="post" action="{% url 'logout' %}" style="display:inline">
-          {% csrf_token %}
-          <button type="submit" class="nav-link" style="background:none;border:0;cursor:pointer;">
-            Salir
-          </button>
-        </form>
-      {% else %}
-        <a class="nav-link right" href="{% url 'login' %}">Ingresar</a>
-      {% endif %}
     </nav>
   </header>
 
