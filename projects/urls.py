@@ -11,4 +11,5 @@ urlpatterns = [
     path('<int:project_id>/delete/', views.project_delete, name='project_delete'),
     path('<int:project_id>/update-status/', views.update_project_status, name='update_project_status'),
     path('view/', views.project_view, name='project_view'),
+    path('<int:project_id>/tablero/', views.project_board, name='project_board'),
 ]
