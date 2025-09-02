@@ -46,7 +46,7 @@
 
 /* HERO */
 .hero{
-    background:#eae8ea;
+    background:#ffffff;
     min-height:70vh;
     border-radius:4px;
     padding:60px 20px;
@@ -99,7 +99,7 @@
 
 /* LOGIN PAGE */
 .page-auth{
-    background:#eae8ea;
+    background:#ffffff;
     min-height:100vh;
     display:grid;
     place-items:center
@@ -288,7 +288,7 @@ input{
   --ib-green: #6FA98E;
   --ib-neon: #A4D65E;
   --ib-gray-dark: #555F66;
-  --ib-gray-med: #E1E1E6;
+  --ib-gray-med: #ffffff;
   --ib-gray-light: #F2F2F5;
   --ib-gray-darker:#D1D1D6;
   --ib-black: #1C1E21;
@@ -585,7 +585,7 @@ input{
 .fa-4x{font-size:4em}
 
 /* --------- Proyecto: detalles --------- */
-.project-detail-bg{background-color:var(--ib-gray-darker);min-height:100vh}
+.project-detail-bg{min-height:100vh}
 
 /* --------- Animación --------- */
 @keyframes fadeInUp{
@@ -605,3 +605,29 @@ input{
   .floating-action-btn{bottom:20px;right:20px}
   .floating-action-btn .btn{width:50px;height:50px;font-size:18px}
 }
+
+/* --------- project board --------- */
+
+/* static/css/board.css */
+.calendar .cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: .5rem;
+}
+.calendar .dow {
+  font-size: .9rem;
+  color: #6c757d;
+  text-align: center;
+}
+.calendar .day {
+  padding: .75rem 0;
+  text-align: center;
+  border-radius: .75rem;
+  background: #f1f3f5;
+  cursor: pointer;
+  user-select: none;
+}
+.calendar .day:hover { filter: brightness(0.95); }
+.calendar .day.muted { opacity: .35; }
+.calendar .day.today { outline: 2px solid #212529; }
+.calendar .day.selected { background: #212529; color: #fff; }
