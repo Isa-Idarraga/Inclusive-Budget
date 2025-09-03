@@ -3,6 +3,7 @@
 {% load humanize %}
 
 {% block content %}
+{% csrf_token %}
 <div class="project-detail-bg py-5">
     <div class="container">
         <!-- Header del proyecto -->
@@ -168,7 +169,13 @@
                                 <div class="metric-card-warning p-4 rounded-4">
                                     <div class="d-flex align-items-center justify-content-between mb-3">
                                         <i class="fas fa-wall text-inclusive-bright fs-3"></i>
-                                        <span class="h3 fw-bold text-inclusive-bright mb-0">{{ project.walls_area }}</span>
+                                        <span class="h3 fw-bold text-inclusive-bright mb-0">
+                                            {% if project.walls_area and project.walls_area > 0 %}
+                                                {{ project.walls_area|floatformat:1 }}
+                                            {% else %}
+                                                <span class="text-muted">Calculando...</span>
+                                            {% endif %}
+                                        </span>
                                     </div>
                                     <p class="text-inclusive-bright fw-semibold mb-1">Área de Paredes</p>
                                     <p class="text-inclusive-secondary small mb-0">metros cuadrados</p>
@@ -179,7 +186,13 @@
                                 <div class="metric-card-primary p-4 rounded-4">
                                     <div class="d-flex align-items-center justify-content-between mb-3">
                                         <i class="fas fa-window-maximize text-inclusive-primary fs-3"></i>
-                                        <span class="h3 fw-bold text-inclusive-primary mb-0">{{ project.windows_area }}</span>
+                                        <span class="h3 fw-bold text-inclusive-primary mb-0">
+                                            {% if project.windows_area and project.windows_area > 0 %}
+                                                {{ project.windows_area|floatformat:1 }}
+                                            {% else %}
+                                                <span class="text-muted">Calculando...</span>
+                                            {% endif %}
+                                        </span>
                                     </div>
                                     <p class="text-inclusive-primary fw-semibold mb-1">Área de Ventanas</p>
                                     <p class="text-inclusive-secondary small mb-0">metros cuadrados</p>
@@ -190,10 +203,16 @@
                                 <div class="metric-card-secondary p-4 rounded-4">
                                     <div class="d-flex align-items-center justify-content-between mb-3">
                                         <i class="fas fa-door-open text-inclusive-secondary fs-3"></i>
-                                        <span class="h3 fw-bold text-inclusive-secondary mb-0">{{ project.doors_count }}</span>
+                                        <span class="h3 fw-bold text-inclusive-secondary mb-0">
+                                            {% if project.doors_count and project.doors_count > 0 %}
+                                                {{ project.doors_count }}
+                                            {% else %}
+                                                <span class="text-muted">Calculando...</span>
+                                            {% endif %}
+                                        </span>
                                     </div>
                                     <p class="text-inclusive-secondary fw-semibold mb-1">Puertas</p>
-                                    <p class="text-inclusive-secondary small mb-0">{{ project.doors_height }}m altura</p>
+                                    <p class="text-inclusive-secondary small mb-0">{{ project.doors_height|default:"2.10" }}m altura</p>
                                 </div>
                             </div>
                         </div>
@@ -206,11 +225,16 @@
                 <!-- Presupuesto Estimado -->
                 <div class="card shadow-inclusive-lg rounded-4 mb-4 animate-fade-in animate-delay-2">
                     <div class="card-header card-header-inclusive rounded-top-4 border-0">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
-                                <i class="fas fa-dollar-sign text-white fs-4"></i>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                    <i class="fas fa-dollar-sign text-white fs-4"></i>
+                                </div>
+                                <h3 class="h4 fw-bold mb-0">Presupuesto Estimado</h3>
                             </div>
-                            <h3 class="h4 fw-bold mb-0">Presupuesto Estimado</h3>
+                            <button type="button" class="btn btn-outline-light btn-sm" onclick="recalculateFields()" title="Recalcular campos">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="card-body p-4 bg-gray-green-accent">
@@ -291,5 +315,42 @@
     </div>
 </div>
 
-
+<script>
+function recalculateFields() {
+    const button = event.target.closest('button');
+    const icon = button.querySelector('i');
+    
+    // Cambiar icono a loading
+    icon.className = 'fas fa-spinner fa-spin';
+    button.disabled = true;
+    
+    // Hacer petición AJAX para recalcular
+    fetch(`{% url 'projects:recalculate_legacy_fields' project.id %}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Recargar la página para mostrar los nuevos valores
+            location.reload();
+        } else {
+            alert('Error al recalcular: ' + data.error);
+            // Restaurar botón
+            icon.className = 'fas fa-sync-alt';
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al recalcular los campos');
+        // Restaurar botón
+        icon.className = 'fas fa-sync-alt';
+        button.disabled = false;
+    });
+}
+</script>
 {% endblock %}

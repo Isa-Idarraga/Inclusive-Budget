@@ -10,6 +10,7 @@ urlpatterns = [
     path('<int:project_id>/update/', views.project_update, name='project_update'),
     path('<int:project_id>/delete/', views.project_delete, name='project_delete'),
     path('<int:project_id>/update-status/', views.update_project_status, name='update_project_status'),
+    path('<int:project_id>/recalculate-fields/', views.recalculate_legacy_fields, name='recalculate_legacy_fields'),
     path('view/', views.project_view, name='project_view'),
     # Nuevas URLs para trabajadores y roles
     path('workers/create/', views.worker_create, name='worker_create'),

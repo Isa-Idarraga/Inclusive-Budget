@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from projects.models import UnitPrice
+from projects.models import UnitPrice, Project
 
 class Command(BaseCommand):
     help = 'Crea precios unitarios por defecto para el sistema'
