@@ -40,6 +40,24 @@ class Material(models.Model):
     ]
     category = models.CharField("Categoría", max_length=20, choices=CATEGORIES, default="OTROS")
 
+    stock = models.DecimalField(
+        "Stock global disponible",
+        max_digits=12,
+        decimal_places=3,
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+    
+    def stock_en_proyecto(self, proyecto):
+        """
+        Devuelve el stock de este material asignado a un proyecto específico.
+        """
+        pm = self.proyectos.filter(pk=proyecto.pk).first()
+        if pm:
+            pm_rel = self.proyectomaterial_set.filter(proyecto=proyecto).first()
+            return pm_rel.stock_proyecto if pm_rel else 0
+        return 0
+
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="materials")
 
     # 4) Cantidad de esa unidad para el material (presentación). Ej: bulto de 50 kg => 50

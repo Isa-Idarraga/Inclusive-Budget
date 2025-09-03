@@ -8,7 +8,24 @@ from .models import Project, Worker, Role
 from .forms import ProjectForm, WorkerForm, RoleForm
 import json
 from django.urls import reverse
+from .models import Project, EntradaMaterial
+from .forms import EntradaMaterialForm
 
+@login_required
+def registrar_entrada_material(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+
+    if request.method == "POST":
+        form = EntradaMaterialForm(request.POST)
+        if form.is_valid():
+            entrada = form.save(commit=False)
+            entrada.proyecto = project
+            entrada.save()
+            return redirect("projects:project_board", project_id=project.id)  # vuelve al detalle del proyecto
+    else:
+        form = EntradaMaterialForm()
+
+    return render(request, "projects/registrar_entrada_material.html", {"form": form, "project": project})
 
 @login_required
 def project_list(request):
@@ -53,20 +70,40 @@ def project_list(request):
     return render(request, 'projects/project_list.html', context)
 
 @login_required
+@login_required
 def project_board(request, project_id):
     """
-    Vista tablero del proyecto: nombre, presupuesto, calendario, botones.
+    Vista tablero del proyecto: nombre, presupuesto, calendario, botones y listado de compras.
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    # Obtener proyecto con sus entradas relacionadas a material y proveedor
+    project = get_object_or_404(
+        Project.objects.prefetch_related(
+            'entradas__material', 
+            'entradas__proveedor'
+        ),
+        id=project_id,
+        creado_por=request.user
+    )
+
+    # Entradas de materiales del proyecto
+    compras = project.entradas.all()
+
+    # Agregar stock por proyecto a cada entrada
+    for compra in compras:
+        # Suponiendo que Material tiene un método stock_en_proyecto(project)
+        pm = compra.material.proyectos.filter(proyecto=project).first()
+        compra.stock_proyecto = pm.stock_proyecto if pm else 0
 
     context = {
         "project": project,
-        # tú decides adónde llevan:
+        "compras": compras,
         "details_url": reverse("projects:project_detail", kwargs={"project_id": project.id}),
-        "add_purchases_url": f"/compras/nueva/{project.id}/",  # cámbialo a tu ruta real
-        "charts_url": f"/proyectos/{project.id}/graficos/",    # cámbialo a tu ruta real
+        "add_purchases_url": reverse("projects:registrar_entrada_material", kwargs={"project_id": project.id}),
+        "charts_url": f"/proyectos/{project.id}/graficos/",  # cámbialo si tienes URL real
     }
+
     return render(request, "projects/project_board.html", context)
+
 
 @login_required
 def project_create(request):
@@ -119,6 +156,9 @@ def project_create(request):
         'no_workers': not workers.exists(),
     })
 
+
+
+
 @login_required
 def project_detail(request, project_id):
     """
@@ -127,16 +167,28 @@ def project_detail(request, project_id):
     """
     # Obtener proyecto específico del usuario actual
     project = get_object_or_404(Project, id=project_id, creado_por=request.user)
-    
+
+    # Entradas de materiales del proyecto
+    compras = project.entradas.select_related("material", "proveedor").all()
+    print("DEBUG compras:", compras)
+
+
+    # Agregar stock por proyecto a cada entrada
+    for compra in compras:
+        # Suponiendo que Material tiene un método stock_en_proyecto(project)
+        pm = compra.material.proyectos.filter(proyecto=project).first()
+        compra.stock_proyecto = pm.stock_proyecto if pm else 0
+
     # Calcular presupuesto estimado usando los datos del proyecto
-    estimated_budget = calculate_estimated_budget(project)
     
     context = {
         'project': project,
-        'estimated_budget': estimated_budget,
+        'compras': compras,
     }
     
     return render(request, 'projects/project_detail.html', context)
+
+
 
 @login_required
 def project_update(request, project_id):
@@ -372,3 +424,49 @@ def worker_delete(request, worker_id):
         messages.success(request, f'Trabajador "{worker.name}" eliminado exitosamente!')
         return redirect('projects:worker_list')
     return render(request, 'projects/worker_confirm_delete.html', {'worker': worker})
+
+@login_required
+def role_delete(request, role_id):
+    """
+    Vista para eliminar un rol
+    PostgreSQL: DELETE FROM projects_role WHERE id = [role_id]
+    """
+    role = get_object_or_404(Role, id=role_id)
+    if request.method == 'POST':
+        role.delete()
+        messages.success(request, f'Rol "{role.name}" eliminado exitosamente!')
+        return redirect('projects:role_list')
+    return render(request, 'projects/role_confirm_delete.html', {'role': role})
+
+@login_required
+def editar_entrada_material(request, entrada_id):
+    entrada = get_object_or_404(EntradaMaterial, id=entrada_id, proyecto__creado_por=request.user)
+    
+    if request.method == "POST":
+        form = EntradaMaterialForm(request.POST, instance=entrada)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Entrada de {entrada.material.nombre} actualizada correctamente.')
+            return redirect("projects:project_board", project_id=entrada.proyecto.id)
+    else:
+        form = EntradaMaterialForm(instance=entrada)
+    
+    return render(request, "projects/editar_entrada_material.html", {"form": form, "entrada": entrada})
+
+@login_required
+def borrar_entrada_material(request, entrada_id):
+    """
+    Borra una entrada de material y muestra un mensaje de éxito.
+    """
+    entrada = get_object_or_404(EntradaMaterial, id=entrada_id)
+
+    if request.method == "POST":
+        material_name = entrada.material.name  # usa el campo correcto
+        entrada.delete()
+        messages.success(
+            request, f'Entrada de {material_name} eliminada correctamente.'
+        )
+        return redirect('projects:project_board', project_id=entrada.proyecto.id)
+    
+    # Redirige al tablero si se accede con GET
+    return redirect('projects:project_board', project_id=entrada.proyecto.id)

@@ -1,9 +1,12 @@
 from django.db import models
 from django.conf import settings  # Para usar el modelo de usuario personalizado
 from django.core.validators import MinValueValidator
+from catalog.models import Material, Supplier
+from django.db.models import F
+from django.core.validators import MinValueValidator
+from django.db import transaction
 
 # MODELOS DE ROLES Y TRABAJADORES
-
 class Role(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Nombre del rol")
     description = models.TextField(blank=True, verbose_name="Descripción")
@@ -468,3 +471,97 @@ class Project(models.Model):
             total = float(self.area_construida_total) * 1500000 if self.area_construida_total else 0
         
         return int(total)
+
+ #Modelos de proveeddores entradas y materiales
+
+class EntradaMaterial(models.Model):
+    proyecto = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="entradas",
+        verbose_name="Proyecto"
+    )
+    material = models.ForeignKey(
+        Material,
+        on_delete=models.CASCADE,
+        related_name="entradas",
+        verbose_name="Material"
+    )
+    cantidad = models.PositiveIntegerField(verbose_name="Cantidad ingresada")
+    lote = models.CharField(max_length=50, verbose_name="Número de lote")
+    proveedor = models.ForeignKey(
+        Supplier,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Proveedor"
+    )
+    fecha_ingreso = models.DateField(verbose_name="Fecha de ingreso")
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Entrada de material"
+        verbose_name_plural = "Entradas de materiales"
+        ordering = ["-fecha_ingreso"]
+
+    def __str__(self):
+        return f"{self.material.nombre} +{self.cantidad} (Lote {self.lote})"
+
+    def save(self, *args, **kwargs):
+        """
+        Cuando se crea o edita una entrada:
+        - Si es nueva: aumenta stock
+        - Si se edita: ajusta stock en base a la diferencia
+        """
+        with transaction.atomic():
+            if self.pk:  
+                # Si ya existe, calculamos la diferencia
+                old = EntradaMaterial.objects.get(pk=self.pk)
+                diferencia = self.cantidad - old.cantidad
+            else:
+                # Si es nuevo, la diferencia es la cantidad completa
+                diferencia = self.cantidad
+
+            super().save(*args, **kwargs)
+
+            if diferencia != 0:
+                # Actualizar stock global
+                Material.objects.filter(pk=self.material.pk).update(
+                    stock=F("stock") + diferencia
+                )
+
+                # Actualizar stock por proyecto
+                pm, _ = ProyectoMaterial.objects.get_or_create(
+                    proyecto=self.proyecto,
+                    material=self.material,
+                    defaults={"stock_proyecto": 0}
+                )
+                pm.stock_proyecto = F("stock_proyecto") + diferencia
+                pm.save()
+
+
+# STOCK POR PROYECTO
+class ProyectoMaterial(models.Model):
+    proyecto = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="materiales"
+    )
+    material = models.ForeignKey(
+        Material,
+        on_delete=models.CASCADE,
+        related_name="proyectos"
+    )
+    stock_proyecto = models.DecimalField(
+        "Stock asignado al proyecto",
+        max_digits=12,
+        decimal_places=3,
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+
+    class Meta:
+        unique_together = ("proyecto", "material")
+
+    def __str__(self):
+        return f"{self.material.nombre} en {self.proyecto.name} → {self.stock_proyecto}"

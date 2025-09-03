@@ -17,16 +17,16 @@
     <nav class="nav-inner">
       {% with current=request.resolver_match.url_name %}
         <a class="nav-link {% if current == 'home_jefe' %}active{% endif %}"
-           href="{% url 'home' %}">inicio</a>
+           href="{% url 'home' %}">Inicio</a>
 
-        <a class="nav-link" href="#">chatbot</a>
+        <a class="nav-link" href="#">ChatBot</a>
         <a class="nav-link" href="#">Precios unitarios</a>
 
         <a class="nav-link {% if current == 'material_list' %}active{% endif %}"
            href="{% url 'material_list' %}">Materiales</a>
 
         <a class="nav-link {% if current == 'project_list' %}active{% endif %}"
-           href="{% url 'projects:project_list' %}">lista de proyectos</a>
+           href="{% url 'projects:project_list' %}">Lista de proyectos</a>
 
         {% if user.is_authenticated %}
           <form method="post" action="{% url 'logout' %}" style="display:inline">

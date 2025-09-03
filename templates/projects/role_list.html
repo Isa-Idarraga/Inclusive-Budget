@@ -8,7 +8,9 @@
                     <h3 class="mb-0"><i class="fas fa-user-tag me-2"></i>Lista de Roles</h3>
                 </div>
                 <div class="card-body p-4">
-                    <a href="{% url 'projects:role_create' %}" class="btn btn-secondary mb-3"><i class="fas fa-user-tag"></i> Añadir rol</a>
+                    <a href="{% url 'projects:role_create' %}" class="btn btn-secondary mb-3">
+                        <i class="fas fa-user-tag"></i> Añadir rol
+                    </a>
                     <table class="table table-bordered table-hover">
                         <thead>
                             <tr>
@@ -24,12 +26,57 @@
                                 <td>{{ role.name }}</td>
                                 <td>{{ role.description }}</td>
                                 <td>${{ role.salario_base_dia|floatformat:0 }}</td>
-                                <td>
-                                    <a href="{% url 'projects:role_update' role.id %}" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i> Editar</a>
+                                <td class="d-flex gap-2">
+                                    
+                                    <a href="{% url 'projects:role_update' role.id %}" 
+                                       class="btn btn-sm btn-primary flex-fill">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </a>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-sm btn-danger flex-fill  " 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteModal{{ role.id }}">
+                                        <i class="fas fa-trash"></i> Eliminar
+                                    </button>
                                 </td>
                             </tr>
+
+                            
+                            <div class="modal fade" id="deleteModal{{ role.id }}" tabindex="-1" 
+                                 aria-labelledby="deleteModalLabel{{ role.id }}" aria-hidden="true">
+                              <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                  <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title" id="deleteModalLabel{{ role.id }}">
+                                        Confirmar eliminación
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" 
+                                            data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    ¿Seguro que quieres eliminar el rol 
+                                    <strong>{{ role.name }}</strong>?  
+                                    Esta acción no se puede deshacer.
+                                  </div>
+                                  <div class="modal-footer">
+                                    <form method="post" action="{% url 'projects:role_delete' role.id %}">
+                                        {% csrf_token %}
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            Cancelar
+                                        </button>
+                                        <button type="submit" class="btn btn-danger">
+                                            Sí, eliminar
+                                        </button>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                             {% empty %}
-                            <tr><td colspan="4" class="text-center">No hay roles registrados.</td></tr>
+                            <tr>
+                                <td colspan="4" class="text-center">No hay roles registrados.</td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>

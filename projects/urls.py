@@ -19,4 +19,9 @@ urlpatterns = [
     path('roles/<int:role_id>/update/', views.role_update, name='role_update'),
     path('workers/<int:worker_id>/delete/', views.worker_delete, name='worker_delete'),
     path('<int:project_id>/tablero/', views.project_board, name='project_board'),
+    path('roles/<int:role_id>/delete/', views.role_delete, name='role_delete'),
+    path("proyectos/<int:project_id>/registrar_entrada_material/", views.registrar_entrada_material, name="registrar_entrada_material"),
+    path('entrada/<int:entrada_id>/editar/', views.editar_entrada_material, name='editar_entrada_material'),
+    path('entrada/<int:entrada_id>/borrar/', views.borrar_entrada_material, name='borrar_entrada_material'),
+
 ]
