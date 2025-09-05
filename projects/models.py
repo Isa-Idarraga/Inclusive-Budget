@@ -5,6 +5,8 @@ from catalog.models import Material, Supplier
 from django.db.models import F
 from django.core.validators import MinValueValidator
 from django.db import transaction
+from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+
 
 # MODELOS DE ROLES Y TRABAJADORES
 class Role(models.Model):
@@ -264,6 +266,8 @@ class Project(models.Model):
         verbose_name="Presupuesto total",
         default=0,
         validators=[MinValueValidator(0)]
+
+        
     )
     
     # PostgreSQL: NUMERIC(15,2) - Mismo formato que presupuesto
@@ -282,6 +286,26 @@ class Project(models.Model):
         default='futuro',
         verbose_name="Estado del proyecto"
     )
+
+    @property
+    def presupuesto_actual(self):
+        return self.presupuesto - self.presupuesto_gastado_calculado
+
+    @property
+    def presupuesto_gastado_calculado(self):
+    
+        total = (
+            EntradaMaterial.objects
+            .filter(proyecto=self)
+            .annotate(
+                costo=ExpressionWrapper(
+                    F("cantidad") * F("material__unit_cost"),
+                    output_field=DecimalField(max_digits=15, decimal_places=2)
+                )
+            )
+            .aggregate(total=Sum("costo"))["total"]
+        )
+        return total or 0
     
     # ===== NUEVOS CAMPOS DEL CUESTIONARIO DETALLADO =====
     

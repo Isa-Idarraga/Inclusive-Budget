@@ -16,30 +16,47 @@
     </div>
 
     <!-- Presupuestos -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-6">
-        <div class="p-4 bg-white rounded-4 shadow-sm d-flex justify-content-between align-items-center">
-          <div>
-            <div class="text-muted">Presupuesto</div>
-            <div class="fs-3 fw-semibold">
-              ${{ project.presupuesto|default:0|floatformat:0|intcomma }}
-            </div>
-          </div>
-          <span class="btn btn-success px-4 disabled">Presupuesto</span>
+<div class="row g-3 mb-4">
+  <!-- Presupuesto inicial -->
+  <div class="col-md-4">
+    <div class="p-4 bg-white rounded-4 shadow-sm d-flex justify-content-between align-items-center">
+      <div>
+        <div class="text-muted">Presupuesto inicial</div>
+        <div class="fs-3 fw-semibold">
+          ${{ project.presupuesto|floatformat:0|intcomma }}
         </div>
       </div>
-      <div class="col-md-6">
-        <div class="p-4 bg-white rounded-4 shadow-sm d-flex justify-content-between align-items-center">
-          <div>
-            <div class="text-muted">Presupuesto gastado</div>
-            <div class="fs-3 fw-semibold">
-              ${{ project.presupuesto_gastado|default:0|floatformat:0|intcomma }}
-            </div>
-          </div>
-          <span class="btn btn-success px-4 disabled">Presupuesto gastado</span>
-        </div>
-      </div>
+      <span class="btn btn-success px-4 disabled">Inicial</span>
     </div>
+  </div>
+
+  <!-- Presupuesto gastado -->
+  <div class="col-md-4">
+    <div class="p-4 bg-white rounded-4 shadow-sm d-flex justify-content-between align-items-center">
+      <div>
+        <div class="text-muted">Presupuesto gastado</div>
+        <div class="fs-3 fw-semibold">
+          ${{ project.presupuesto_gastado_calculado|floatformat:0|intcomma }}
+        </div>
+      </div>
+      <span class="btn btn-danger px-4 disabled">Gastado</span>
+    </div>
+  </div>
+
+  <!-- Presupuesto actual -->
+  <div class="col-md-4">
+    <div class="p-4 bg-white rounded-4 shadow-sm d-flex justify-content-between align-items-center">
+      <div>
+        <div class="text-muted">Presupuesto actual</div>
+        <div class="fs-3 fw-semibold">
+          ${{ project.presupuesto_actual|floatformat:0|intcomma }}
+        </div>
+      </div>
+      <span class="btn btn-warning px-4 disabled">Disponible</span>
+    </div>
+  </div>
+</div>
+
 
     <!-- Dos columnas -->
     <div class="row g-4">
@@ -53,11 +70,11 @@
               {% for entrada in compras %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                   <div>
-                    <strong>{{ entrada.material.nombre }}</strong>
+                    <strong>{{ entrada.material.name }}</strong>
                     <br>
                     Lote: {{ entrada.lote }} | Cantidad: {{ entrada.cantidad }}
                     {% if entrada.proveedor %}
-                      | Proveedor: {{ entrada.proveedor.nombre }}
+                      | Proveedor: {{ entrada.proveedor.name }}
                     {% endif %}
                     <br>
                     Fecha ingreso: {{ entrada.fecha_ingreso|date:"d M Y" }}
@@ -83,7 +100,7 @@
                           </div>
                           <div class="modal-body">
                             ¿Seguro que quieres eliminar la entrada de 
-                            <strong>{{ entrada.material.nombre }}</strong>? Esta acción no se puede deshacer.
+                            <strong>{{ entrada.material.name }}</strong>? Esta acción no se puede deshacer.
                           </div>
                           <div class="modal-footer">
                             <form method="post" action="{% url 'projects:borrar_entrada_material' entrada.id %}">
