@@ -36,6 +36,18 @@ def project_list(request):
     # Obtener parámetros de búsqueda desde la URL
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
+    ubicacion_filter = request.GET.get('ubicacion', '')
+    pisos_filter = request.GET.get('pisos', '')
+    acabados_filter = request.GET.get('acabados', '')
+    area_min_filter = request.GET.get('area_min', '')
+    area_max_filter = request.GET.get('area_max', '')
+    presupuesto_min_filter = request.GET.get('presupuesto_min', '')
+    presupuesto_max_filter = request.GET.get('presupuesto_max', '')
+    terreno_filter = request.GET.get('terreno', '')
+    acceso_filter = request.GET.get('acceso', '')
+    banos_filter = request.GET.get('banos', '')
+    fecha_desde_filter = request.GET.get('fecha_desde', '')
+    fecha_hasta_filter = request.GET.get('fecha_hasta', '')
     
     # Consulta inicial: obtener proyectos del usuario actual
     # PostgreSQL: SELECT * FROM projects_project WHERE creado_por_id = [user_id]
@@ -53,11 +65,91 @@ def project_list(request):
     if status_filter:
         projects = projects.filter(estado=status_filter)
     
+    # Filtro por ubicación
+    if ubicacion_filter:
+        projects = projects.filter(ubicacion_proyecto=ubicacion_filter)
+    
+    # Filtro por número de pisos
+    if pisos_filter:
+        projects = projects.filter(numero_pisos=pisos_filter)
+    
+    # Filtro por nivel de acabados
+    if acabados_filter:
+        projects = projects.filter(acabado_muros=acabados_filter)
+    
+    # Filtro por área mínima
+    if area_min_filter:
+        try:
+            area_min = float(area_min_filter)
+            projects = projects.filter(area_construida_total__gte=area_min)
+        except ValueError:
+            pass
+    
+    # Filtro por área máxima
+    if area_max_filter:
+        try:
+            area_max = float(area_max_filter)
+            projects = projects.filter(area_construida_total__lte=area_max)
+        except ValueError:
+            pass
+    
+    # Filtro por presupuesto mínimo
+    if presupuesto_min_filter:
+        try:
+            presupuesto_min = float(presupuesto_min_filter)
+            projects = projects.filter(presupuesto__gte=presupuesto_min)
+        except ValueError:
+            pass
+    
+    # Filtro por presupuesto máximo
+    if presupuesto_max_filter:
+        try:
+            presupuesto_max = float(presupuesto_max_filter)
+            projects = projects.filter(presupuesto__lte=presupuesto_max)
+        except ValueError:
+            pass
+    
+    # Filtro por tipo de terreno
+    if terreno_filter:
+        projects = projects.filter(tipo_terreno=terreno_filter)
+    
+    # Filtro por acceso a obra
+    if acceso_filter:
+        projects = projects.filter(acceso_obra=acceso_filter)
+    
+    # Filtro por número de baños
+    if banos_filter:
+        try:
+            banos_count = int(banos_filter)
+            if banos_count == 3:
+                # Para 3+, filtrar por 3 o más
+                projects = projects.filter(numero_banos__gte=3)
+            else:
+                projects = projects.filter(numero_banos=banos_count)
+        except ValueError:
+            pass
+    
+    # Filtro por fecha desde
+    if fecha_desde_filter:
+        projects = projects.filter(fecha_creacion__gte=fecha_desde_filter)
+    
+    # Filtro por fecha hasta
+    if fecha_hasta_filter:
+        projects = projects.filter(fecha_creacion__lte=fecha_hasta_filter)
+    
     # Agrupar por estado para mostrar en secciones separadas
     # PostgreSQL: Múltiples consultas SELECT con filtros diferentes
     projects_en_proceso = projects.filter(estado='en_proceso')
     projects_terminados = projects.filter(estado='terminado')
     projects_futuros = projects.filter(estado='futuro')
+    
+    # Verificar si hay filtros activos
+    has_active_filters = any([
+        search_query, status_filter, ubicacion_filter, pisos_filter, 
+        acabados_filter, area_min_filter, area_max_filter, 
+        presupuesto_min_filter, presupuesto_max_filter, terreno_filter,
+        acceso_filter, banos_filter, fecha_desde_filter, fecha_hasta_filter
+    ])
     
     context = {
         'projects_en_proceso': projects_en_proceso,
@@ -65,6 +157,19 @@ def project_list(request):
         'projects_futuros': projects_futuros,
         'search_query': search_query,
         'status_filter': status_filter,
+        'ubicacion_filter': ubicacion_filter,
+        'pisos_filter': pisos_filter,
+        'acabados_filter': acabados_filter,
+        'area_min_filter': area_min_filter,
+        'area_max_filter': area_max_filter,
+        'presupuesto_min_filter': presupuesto_min_filter,
+        'presupuesto_max_filter': presupuesto_max_filter,
+        'terreno_filter': terreno_filter,
+        'acceso_filter': acceso_filter,
+        'banos_filter': banos_filter,
+        'fecha_desde_filter': fecha_desde_filter,
+        'fecha_hasta_filter': fecha_hasta_filter,
+        'has_active_filters': has_active_filters,
     }
     
     return render(request, 'projects/project_list.html', context)
@@ -137,7 +242,9 @@ def project_create(request):
                 project.save()
                 # Calcular presupuesto automáticamente
                 project.presupuesto = project.calculate_detailed_budget()
-                # Guardar nuevamente con el presupuesto
+                # Calcular campos heredados automáticamente
+                project.calculate_legacy_fields()
+                # Guardar nuevamente con el presupuesto y campos calculados
                 project.save()
                 # Asignar trabajadores seleccionados
                 if selected_workers:
@@ -205,15 +312,26 @@ def project_update(request, project_id):
         form = ProjectForm(request.POST, request.FILES, instance=project)
         selected_workers = request.POST.getlist('workers')
         if form.is_valid():
-            # Actualizar en PostgreSQL
-            form.save()
-            # Actualizar trabajadores asignados
-            if selected_workers:
-                project.workers.set(selected_workers)
-            else:
-                project.workers.clear()
-            messages.success(request, 'Proyecto actualizado exitosamente!')
-            return redirect('projects:project_detail', project_id=project.id)
+            try:
+                # Actualizar en PostgreSQL
+                form.save()
+                # Calcular campos heredados automáticamente
+                project.calculate_legacy_fields()
+                # Calcular presupuesto actualizado
+                project.presupuesto = project.calculate_detailed_budget()
+                # Guardar con los campos calculados
+                project.save()
+                # Actualizar trabajadores asignados
+                if selected_workers:
+                    project.workers.set(selected_workers)
+                else:
+                    project.workers.clear()
+                messages.success(request, 'Proyecto actualizado exitosamente!')
+                return redirect('projects:project_detail', project_id=project.id)
+            except Exception as e:
+                messages.error(request, f'❌ Error al actualizar el proyecto: {str(e)}')
+        else:
+            messages.error(request, '❌ Por favor corrige los errores en el formulario')
     else:
         # Mostrar formulario con datos existentes
         form = ProjectForm(instance=project)
@@ -298,6 +416,44 @@ def calculate_estimated_budget(project):
     Usa precios unitarios configurables desde el admin
     """
     return project.calculate_detailed_budget()
+
+@login_required
+def recalculate_legacy_fields(request, project_id):
+    """
+    Vista para recalcular campos heredados de un proyecto específico via AJAX
+    """
+    if request.method == 'POST':
+        try:
+            # Obtener proyecto
+            project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+            
+            # Calcular campos heredados
+            project.calculate_legacy_fields()
+            
+            # Calcular presupuesto actualizado
+            project.presupuesto = project.calculate_detailed_budget()
+            
+            # Guardar cambios
+            project.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Campos recalculados exitosamente',
+                'data': {
+                    'walls_area': float(project.walls_area),
+                    'windows_area': float(project.windows_area),
+                    'doors_count': project.doors_count,
+                    'presupuesto': float(project.presupuesto)
+                }
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({'success': False, 'error': 'Método no permitido'})
 
 @login_required
 def project_view(request):

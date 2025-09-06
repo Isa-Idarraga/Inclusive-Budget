@@ -589,3 +589,69 @@ class ProyectoMaterial(models.Model):
 
     def __str__(self):
         return f"{self.material.nombre} en {self.proyecto.name} → {self.stock_proyecto}"
+    
+    def calculate_legacy_fields(self):
+        """
+        Calcula campos heredados basados en datos del proyecto
+        Estos campos se usan para compatibilidad con sistemas legacy
+        """
+        from decimal import Decimal
+        
+        # 1. Área construida total (si no existe)
+        if not self.area_construida_total or self.area_construida_total == 0:
+            self.area_construida_total = self.built_area or Decimal('0')
+        
+        # 2. Área exterior a intervenir (si no existe)
+        if not self.area_exterior_intervenir or self.area_exterior_intervenir == 0:
+            self.area_exterior_intervenir = self.exterior_area or Decimal('0')
+        
+        # 3. Número de columnas (si no existe)
+        if not self.columns_count or self.columns_count == 0:
+            # Calcular columnas basado en área (aproximadamente 1 columna cada 25m²)
+            area = float(self.area_construida_total or 0)
+            self.columns_count = max(4, int(area / 25))  # Mínimo 4 columnas
+        
+        # 4. Área de paredes (si no existe)
+        if not self.walls_area or self.walls_area == 0:
+            # Calcular área de paredes basado en área construida y altura
+            area = float(self.area_construida_total or 0)
+            altura_pared = 2.7  # Altura estándar de pared
+            perimetro = (area ** 0.5) * 4  # Perímetro aproximado
+            self.walls_area = Decimal(str(perimetro * altura_pared))
+        
+        # 5. Área de ventanas (si no existe)
+        if not self.windows_area or self.windows_area == 0:
+            # Calcular área de ventanas (aproximadamente 15% del área de paredes)
+            area_paredes = float(self.walls_area or 0)
+            self.windows_area = Decimal(str(area_paredes * 0.15))
+        
+        # 6. Número de puertas (si no existe)
+        if not self.doors_count or self.doors_count == 0:
+            # Priorizar el valor del formulario puertas_interiores
+            if self.puertas_interiores and self.puertas_interiores > 0:
+                self.doors_count = self.puertas_interiores
+            else:
+                # Calcular puertas basado en área (aproximadamente 1 puerta cada 30m²)
+                area = float(self.area_construida_total or 0)
+                self.doors_count = max(2, int(area / 30))  # Mínimo 2 puertas
+        
+        # 7. Altura de puertas (si no existe)
+        if not self.doors_height or self.doors_height == 0:
+            self.doors_height = Decimal('2.1')  # Altura estándar de puerta
+        
+        # 8. Área de mueble de cocina (si no existe)
+        if not self.metros_mueble_cocina or self.metros_mueble_cocina == 0:
+            # Calcular metros lineales de cocina (aproximadamente 6m para cocina estándar)
+            self.metros_mueble_cocina = Decimal('6.0')
+        
+        # 9. Área de adoquín (si no existe)
+        if not self.area_adoquin or self.area_adoquin == 0:
+            # Calcular área de adoquín (aproximadamente 20% del área exterior)
+            area_exterior = float(self.area_exterior_intervenir or 0)
+            self.area_adoquin = Decimal(str(area_exterior * 0.2))
+        
+        # 10. Área de zonas verdes (si no existe)
+        if not self.area_zonas_verdes or self.area_zonas_verdes == 0:
+            # Calcular área de zonas verdes (aproximadamente 30% del área exterior)
+            area_exterior = float(self.area_exterior_intervenir or 0)
+            self.area_zonas_verdes = Decimal(str(area_exterior * 0.3))

@@ -93,6 +93,8 @@ class ProjectAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         if not change:  # Si es un nuevo proyecto
             obj.creado_por = request.user
+        # Calcular campos heredados automáticamente
+        obj.calculate_legacy_fields()
         # Calcular presupuesto automáticamente al guardar
         obj.presupuesto = obj.calculate_detailed_budget()
         super().save_model(request, obj, form, change)
@@ -103,10 +105,13 @@ class ProjectAdmin(admin.ModelAdmin):
         """Acción para recalcular presupuestos de proyectos seleccionados"""
         updated = 0
         for project in queryset:
+            # Calcular campos heredados
+            project.calculate_legacy_fields()
+            # Calcular presupuesto
             project.presupuesto = project.calculate_detailed_budget()
             project.save()
             updated += 1
         
-        self.message_user(request, f'Se recalcularon {updated} presupuestos exitosamente.')
+        self.message_user(request, f'Se recalcularon {updated} presupuestos y campos heredados exitosamente.')
     
     recalculate_budgets.short_description = "Recalcular presupuestos seleccionados"
