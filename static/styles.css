@@ -631,3 +631,5 @@ input{
 .calendar .day.muted { opacity: .35; }
 .calendar .day.today { outline: 2px solid #212529; }
 .calendar .day.selected { background: #212529; color: #fff; }
+
+

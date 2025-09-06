@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'projects',
     'catalog',
     'dashboard',
+    'chatbot'
 ]
 
 AUTH_USER_MODEL = "users.User"  
@@ -155,3 +156,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")

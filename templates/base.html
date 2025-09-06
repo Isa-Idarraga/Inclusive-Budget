@@ -19,7 +19,7 @@
         <a class="nav-link {% if current == 'home_jefe' %}active{% endif %}"
            href="{% url 'home' %}">Inicio</a>
 
-        <a class="nav-link" href="#">ChatBot</a>
+        <a class="nav-link" href="{% url 'chatbot:chat' %}">ChatBot</a>
         <a class="nav-link" href="#">Precios unitarios</a>
 
         <a class="nav-link {% if current == 'material_list' %}active{% endif %}"
