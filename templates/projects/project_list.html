@@ -1,0 +1,917 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* Estilos para filtros avanzados */
+    .form-control-inclusive:focus,
+    .form-select-inclusive:focus {
+        border-color: var(--inclusive-green-primary);
+        box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+    }
+    
+    .form-control-inclusive,
+    .form-select-inclusive {
+        border: 2px solid var(--inclusive-gray-light);
+        transition: all 0.3s ease;
+    }
+    
+    .form-control-inclusive:hover,
+    .form-select-inclusive:hover {
+        border-color: var(--inclusive-green-secondary);
+    }
+    
+    /* Animaciones para filtros */
+    .filter-card {
+        transition: all 0.3s ease;
+    }
+    
+    .filter-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    
+    /* Badges de filtros activos */
+    .filter-badge {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .filter-badge:hover {
+        transform: scale(1.05);
+        background-color: var(--inclusive-green-neon) !important;
+    }
+    
+    /* Contador de resultados */
+    .results-counter {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    /* Responsive para filtros */
+    @media (max-width: 768px) {
+        .filter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (min-width: 769px) and (max-width: 1200px) {
+        .filter-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (min-width: 1201px) {
+        .filter-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+    
+    /* Estilos para campos de rango */
+    .range-inputs {
+        position: relative;
+    }
+    
+    .range-inputs::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 20px;
+        height: 2px;
+        background-color: var(--inclusive-gray-medium);
+    }
+    
+    /* Tooltips personalizados */
+    .custom-tooltip {
+        position: relative;
+        cursor: help;
+    }
+    
+    .custom-tooltip::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--inclusive-dark);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        z-index: 1000;
+    }
+    
+    .custom-tooltip:hover::after {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    /* Estilos para filtros desplegables */
+    #filtersContainer {
+        transition: all 0.3s ease;
+    }
+    
+    /* Botón toggle con transición simple */
+    #toggleFiltersBtn {
+        transition: all 0.3s ease;
+    }
+    
+    #toggleFiltersBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-detail-bg py-5">
+    <div class="container">
+        <!-- Header con filtros avanzados -->
+        <div class="mb-5 animate-fade-in">
+            <div class="text-center mb-4">
+                <h4 class="text-inclusive-secondary mb-3 fw-semibold">Filtros de Búsqueda</h4>
+                <p class="text-inclusive-secondary small">Encuentra rápidamente los proyectos que necesitas</p>
+                
+                <!-- Barra de búsqueda rápida siempre visible -->
+                <div class="row justify-content-center mb-4">
+                    <div class="col-md-8 col-lg-6">
+                        <form method="get" action="{% url 'projects:project_list' %}" class="d-flex">
+                            <div class="input-group input-group-lg">
+                                <input type="text" 
+                                       name="search" 
+                                       class="form-control form-control-inclusive rounded-start-pill" 
+                                       placeholder="🔍 Buscar por nombre, descripción o dirección..."
+                                       value="{{ search_query }}"
+                                       aria-label="Buscar proyectos">
+                                <button type="submit" class="btn btn-inclusive-primary rounded-end-pill px-4">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Botón para mostrar/ocultar filtros -->
+                <div class="text-center mb-3">
+                    <button type="button" class="btn btn-outline-inclusive-primary btn-lg px-4" id="toggleFiltersBtn" onclick="toggleFilters()">
+                        <i class="fas fa-filter me-2"></i>
+                        <span id="toggleText">Mostrar Filtros Avanzados</span>
+                        <i class="fas fa-chevron-down ms-2" id="toggleIcon"></i>
+                        {% if has_active_filters %}
+                        <span class="badge bg-inclusive-neon text-inclusive-dark ms-2">
+                            <i class="fas fa-check me-1"></i>Activos
+                        </span>
+                        {% endif %}
+                    </button>
+                </div>
+                
+                <!-- Información sobre filtros -->
+                <div class="alert alert-info border-0 bg-inclusive-light text-inclusive-dark mt-3" style="max-width: 600px; margin: 0 auto;">
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-lightbulb text-inclusive-primary mt-1 me-3"></i>
+                        <div class="text-start">
+                            <strong>💡 Consejos de uso:</strong>
+                            <ul class="mb-0 mt-2 small">
+                                <li>Usa la barra de búsqueda para encontrar proyectos rápidamente</li>
+                                <li>Haz clic en "Mostrar Filtros Avanzados" para opciones más específicas</li>
+                                <li>Puedes combinar múltiples filtros para resultados más precisos</li>
+                                <li>Los filtros se aplican automáticamente al cambiar los valores</li>
+                                <li>Usa rangos de área y presupuesto para encontrar proyectos similares</li>
+                                <li>Los filtros de fecha te ayudan a encontrar proyectos por período</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Formulario de filtros (inicialmente oculto) -->
+            <div id="filtersContainer" style="display: none;">
+                <form method="get" action="{% url 'projects:project_list' %}" id="filtersForm">
+                    <div class="card shadow-inclusive-lg rounded-4 border-0">
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <!-- Filtros principales -->
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="status" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-tasks me-2"></i>Estado
+                                    </label>
+                                    <select id="status" name="status" class="form-select form-select-inclusive">
+                                        <option value="">Todos los estados</option>
+                                        <option value="futuro" {% if status_filter == 'futuro' %}selected{% endif %}>🕐 Futuro</option>
+                                        <option value="en_proceso" {% if status_filter == 'en_proceso' %}selected{% endif %}>⚡ En Proceso</option>
+                                        <option value="terminado" {% if status_filter == 'terminado' %}selected{% endif %}>✅ Terminado</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="ubicacion" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Ubicación
+                                    </label>
+                                    <select id="ubicacion" name="ubicacion" class="form-select form-select-inclusive">
+                                        <option value="">Todas las ubicaciones</option>
+                                        <option value="medellin" {% if ubicacion_filter == 'medellin' %}selected{% endif %}>🏙️ Medellín</option>
+                                        <option value="bogota" {% if ubicacion_filter == 'bogota' %}selected{% endif %}>🏛️ Bogotá</option>
+                                        <option value="cali" {% if ubicacion_filter == 'cali' %}selected{% endif %}>🌴 Cali</option>
+                                        <option value="otra" {% if ubicacion_filter == 'otra' %}selected{% endif %}>📍 Otra</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="pisos" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-building me-2"></i>Número de Pisos
+                                    </label>
+                                    <select id="pisos" name="pisos" class="form-select form-select-inclusive">
+                                        <option value="">Todos los pisos</option>
+                                        <option value="1" {% if pisos_filter == '1' %}selected{% endif %}>🏠 1 piso</option>
+                                        <option value="2" {% if pisos_filter == '2' %}selected{% endif %}>🏢 2 pisos</option>
+                                        <option value="3_mas" {% if pisos_filter == '3_mas' %}selected{% endif %}>🏗️ 3 o más</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="acabados" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-paint-brush me-2"></i>Nivel de Acabados
+                                    </label>
+                                    <select id="acabados" name="acabados" class="form-select form-select-inclusive">
+                                        <option value="">Todos los acabados</option>
+                                        <option value="basico" {% if acabados_filter == 'basico' %}selected{% endif %}>🎨 Básico</option>
+                                        <option value="estandar" {% if acabados_filter == 'estandar' %}selected{% endif %}>✨ Estándar</option>
+                                        <option value="premium" {% if acabados_filter == 'premium' %}selected{% endif %}>💎 Premium</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Filtros de rango -->
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="area_min" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-ruler-combined me-2"></i>Área mínima (m²)
+                                    </label>
+                                    <input type="number" 
+                                           id="area_min" 
+                                           name="area_min" 
+                                           class="form-control form-control-inclusive" 
+                                           placeholder="0"
+                                           value="{{ area_min_filter|default:'' }}"
+                                           min="0">
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="area_max" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-ruler-combined me-2"></i>Área máxima (m²)
+                                    </label>
+                                    <input type="number" 
+                                           id="area_max" 
+                                           name="area_max" 
+                                           class="form-control form-control-inclusive" 
+                                           placeholder="1000"
+                                           value="{{ area_max_filter|default:'' }}"
+                                           min="0">
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="presupuesto_min" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-dollar-sign me-2"></i>Presupuesto mínimo
+                                    </label>
+                                    <input type="number" 
+                                           id="presupuesto_min" 
+                                           name="presupuesto_min" 
+                                           class="form-control form-control-inclusive" 
+                                           placeholder="0"
+                                           value="{{ presupuesto_min_filter|default:'' }}"
+                                           min="0">
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="presupuesto_max" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-dollar-sign me-2"></i>Presupuesto máximo
+                                    </label>
+                                    <input type="number" 
+                                           id="presupuesto_max" 
+                                           name="presupuesto_max" 
+                                           class="form-control form-control-inclusive" 
+                                           placeholder="1000000000"
+                                           value="{{ presupuesto_max_filter|default:'' }}"
+                                           min="0">
+                                </div>
+                                
+                                <!-- Filtros adicionales -->
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="terreno" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-mountain me-2"></i>Tipo de Terreno
+                                    </label>
+                                    <select id="terreno" name="terreno" class="form-select form-select-inclusive">
+                                        <option value="">Todos los terrenos</option>
+                                        <option value="blando" {% if terreno_filter == 'blando' %}selected{% endif %}>🌱 Blando</option>
+                                        <option value="normal" {% if terreno_filter == 'normal' %}selected{% endif %}>🏔️ Normal</option>
+                                        <option value="rocoso" {% if terreno_filter == 'rocoso' %}selected{% endif %}>🗿 Rocoso</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="acceso" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-road me-2"></i>Acceso a Obra
+                                    </label>
+                                    <select id="acceso" name="acceso" class="form-select form-select-inclusive">
+                                        <option value="">Todos los accesos</option>
+                                        <option value="facil" {% if acceso_filter == 'facil' %}selected{% endif %}>🚗 Fácil</option>
+                                        <option value="medio" {% if acceso_filter == 'medio' %}selected{% endif %}>⚠️ Medio</option>
+                                        <option value="dificil" {% if acceso_filter == 'dificil' %}selected{% endif %}>🚧 Difícil</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="banos" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-bath me-2"></i>Número de Baños
+                                    </label>
+                                    <select id="banos" name="banos" class="form-select form-select-inclusive">
+                                        <option value="">Cualquier cantidad</option>
+                                        <option value="1" {% if banos_filter == '1' %}selected{% endif %}>🚿 1 baño</option>
+                                        <option value="2" {% if banos_filter == '2' %}selected{% endif %}>🚿🚿 2 baños</option>
+                                        <option value="3" {% if banos_filter == '3' %}selected{% endif %}>🚿🚿🚿 3+ baños</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="fecha_desde" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-calendar me-2"></i>Fecha desde
+                                    </label>
+                                    <input type="date" 
+                                           id="fecha_desde" 
+                                           name="fecha_desde" 
+                                           class="form-control form-control-inclusive"
+                                           value="{{ fecha_desde_filter|default:'' }}">
+                                </div>
+                                
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="fecha_hasta" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-calendar me-2"></i>Fecha hasta
+                                    </label>
+                                    <input type="date" 
+                                           id="fecha_hasta" 
+                                           name="fecha_hasta" 
+                                           class="form-control form-control-inclusive"
+                                           value="{{ fecha_hasta_filter|default:'' }}">
+                                </div>
+                            </div>
+                            
+                            <!-- Botones de acción -->
+                            <div class="row mt-4">
+                                <div class="col-12 text-center">
+                                    <button type="submit" class="btn btn-inclusive-primary btn-lg px-5 me-3">
+                                        <i class="fas fa-search me-2"></i>Aplicar Filtros
+                                    </button>
+                                    <a href="{% url 'projects:project_list' %}" class="btn btn-outline-inclusive-secondary btn-lg px-4">
+                                        <i class="fas fa-times me-2"></i>Limpiar Filtros
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- Resumen de filtros activos -->
+                {% if has_active_filters %}
+                <div class="mt-3 text-center">
+                    <div class="d-inline-flex align-items-center bg-inclusive-light px-4 py-3 rounded-pill shadow-sm">
+                        <i class="fas fa-filter text-inclusive-primary me-2"></i>
+                        <small class="text-inclusive-secondary fw-semibold me-2">
+                            Filtros aplicados:
+                        </small>
+                        <div class="d-flex flex-wrap gap-1 justify-content-center">
+                            {% if search_query %}<span class="badge bg-inclusive-primary px-2 py-1">{{ search_query }}</span>{% endif %}
+                            {% if status_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ status_filter|title }}</span>{% endif %}
+                            {% if ubicacion_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ ubicacion_filter|title }}</span>{% endif %}
+                            {% if pisos_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ pisos_filter|title }}</span>{% endif %}
+                            {% if acabados_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ acabados_filter|title }}</span>{% endif %}
+                            {% if area_min_filter or area_max_filter %}<span class="badge bg-inclusive-primary px-2 py-1">Área: {{ area_min_filter|default:"0" }}-{{ area_max_filter|default:"∞" }}m²</span>{% endif %}
+                            {% if presupuesto_min_filter or presupuesto_max_filter %}<span class="badge bg-inclusive-primary px-2 py-1">Presupuesto: ${{ presupuesto_min_filter|default:"0" }}-${{ presupuesto_max_filter|default:"∞" }}</span>{% endif %}
+                            {% if terreno_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ terreno_filter|title }}</span>{% endif %}
+                            {% if acceso_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ acceso_filter|title }}</span>{% endif %}
+                            {% if banos_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ banos_filter|title }}</span>{% endif %}
+                            {% if fecha_desde_filter or fecha_hasta_filter %}<span class="badge bg-inclusive-primary px-2 py-1">Fecha: {{ fecha_desde_filter|default:"∞" }} - {{ fecha_hasta_filter|default:"∞" }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Contador de resultados -->
+                {% if has_active_filters %}
+                <div class="mt-3 text-center">
+                    <div class="d-inline-flex align-items-center bg-inclusive-primary text-white px-4 py-2 rounded-pill">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        <span class="fw-semibold">
+                            Resultados: {{ projects_en_proceso.count|add:projects_terminados.count|add:projects_futuros.count }} proyecto{{ projects_en_proceso.count|add:projects_terminados.count|add:projects_futuros.count|pluralize }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Sin resultados -->
+        {% if has_active_filters and projects_en_proceso.count == 0 and projects_terminados.count == 0 and projects_futuros.count == 0 %}
+        <div class="text-center py-5 animate-fade-in">
+            <div class="card shadow-inclusive-lg rounded-4 border-0">
+                <div class="card-body p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-search text-inclusive-secondary display-1"></i>
+                    </div>
+                    <h3 class="text-inclusive-dark mb-3">No se encontraron proyectos</h3>
+                    <p class="text-inclusive-secondary mb-4">
+                        No hay proyectos que coincidan con los filtros aplicados. 
+                        Intenta ajustar los criterios de búsqueda.
+                    </p>
+                    <a href="{% url 'projects:project_list' %}" class="btn btn-inclusive-primary btn-lg px-4">
+                        <i class="fas fa-times me-2"></i>Limpiar Filtros
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+
+        <!-- Proyectos en Proceso -->
+        {% if projects_en_proceso %}
+        <div class="mb-5 position-relative animate-fade-in animate-delay-1">
+            <div class="position-absolute top-0 start-0" style="z-index: 10;">
+                <div class="bg-inclusive-primary text-white px-4 py-3 rounded-end-4 shadow-inclusive border-3" style="border-color: var(--inclusive-green-neon);">
+                    <h2 class="h5 fw-bold mb-0">
+                        <i class="fas fa-play-circle me-2"></i>
+                        Proyectos en Proceso ({{ projects_en_proceso.count }})
+                    </h2>
+                </div>
+            </div>
+            <div class="row g-4 pt-5">
+                {% for project in projects_en_proceso %}
+                <div class="col-sm-6 col-lg-4 col-xl-3">
+                    <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+                        <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                            <div class="position-relative overflow-hidden rounded-top-4">
+                                {% if project.imagen_proyecto %}
+                                    <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 14rem; object-fit: cover;" />
+                                {% else %}
+                                    <div class="card-img-top bg-inclusive-light d-flex align-items-center justify-content-center" style="height: 14rem;">
+                                        <i class="fas fa-building display-4 text-inclusive-secondary"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="position-absolute top-0 end-0 m-3">
+                                    <span class="badge status-badge-progress rounded-pill px-3 py-2 small fw-semibold">
+                                        <i class="fas fa-clock me-1"></i>
+                                        En Proceso
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="card-body card-body-inclusive p-4">
+                            <h5 class="card-title h6 fw-bold text-inclusive-dark mb-3">{{ project.name }}</h5>
+                            
+                            <!-- Información detallada -->
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-map text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.get_ubicacion_proyecto_display|default:"Medellín" }}</small>
+                                </div>
+                                
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-home text-inclusive-neon me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m² • 
+                                        {{ project.get_numero_pisos_display|default:"1 piso" }}
+                                    </small>
+                                </div>
+                                
+                                {% if project.numero_banos %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-bath text-inclusive-bright me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.numero_banos }} baño{{ project.numero_banos|pluralize }}</small>
+                                </div>
+                                {% endif %}
+                                
+                                {% if project.get_acabado_muros_display %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-paint-brush text-inclusive-secondary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.get_acabado_muros_display }}</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Presupuesto destacado -->
+                            <div class="text-center p-3 rounded-3 border-2" style="border-color: var(--inclusive-green-primary); background-color: var(--inclusive-gray-light);">
+                                <small class="text-inclusive-secondary d-block mb-1">Presupuesto</small>
+                                <span class="h6 fw-bold text-inclusive-primary mb-0">
+                                    {% if project.presupuesto and project.presupuesto > 0 %}
+                                        ${{ project.presupuesto|floatformat:0 }}
+                                    {% else %}
+                                        <span class="text-inclusive-bright">Por calcular</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                   </div>
+                </div>
+               {% endfor %}
+           </div>
+       </div>
+       {% endif %}
+
+       <!-- Proyectos Terminados -->
+        {% if projects_terminados %}
+        <div class="mb-5 position-relative animate-fade-in animate-delay-2">
+            <div class="position-absolute top-0 start-0" style="z-index: 10;">
+                <div class="bg-inclusive-neon text-inclusive-dark px-4 py-3 rounded-end-4 shadow-inclusive border-3" style="border-color: var(--inclusive-green-primary);">
+                    <h2 class="h5 fw-bold mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Proyectos Terminados ({{ projects_terminados.count }})
+                    </h2>
+                </div>
+            </div>
+            <div class="row g-4 pt-5">
+                {% for project in projects_terminados %}
+                <div class="col-sm-6 col-lg-4 col-xl-3">
+                    <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+                        <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                            <div class="position-relative overflow-hidden rounded-top-4">
+                                {% if project.imagen_proyecto %}
+                                    <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 14rem; object-fit: cover;" />
+                                {% else %}
+                                    <div class="card-img-top bg-inclusive-light d-flex align-items-center justify-content-center" style="height: 14rem;">
+                                        <i class="fas fa-building display-4 text-inclusive-secondary"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="position-absolute top-0 end-0 m-3">
+                                    <span class="badge status-badge-complete rounded-pill px-3 py-2 small fw-semibold">
+                                        <i class="fas fa-check me-1"></i>
+                                        Terminado
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="card-body card-body-inclusive p-4">
+                            <h5 class="card-title h6 fw-bold text-inclusive-dark mb-3">{{ project.name }}</h5>
+                            
+                            <!-- Información detallada -->
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-map text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.get_ubicacion_proyecto_display|default:"Medellín" }}</small>
+                                </div>
+                                
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-home text-inclusive-neon me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m² • 
+                                        {{ project.get_numero_pisos_display|default:"1 piso" }}
+                                    </small>
+                                </div>
+                                
+                                {% if project.numero_banos %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-bath text-inclusive-bright me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.numero_banos }} baño{{ project.numero_banos|pluralize }}</small>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calendar text-inclusive-secondary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"M Y" }}</small>
+                                </div>
+                            </div>
+                            
+                            <!-- Presupuesto destacado -->
+                            <div class="text-center p-3 rounded-3 border-2" style="border-color: var(--inclusive-green-neon); background-color: var(--inclusive-gray-light);">
+                                <small class="text-inclusive-secondary d-block mb-1">Presupuesto Final</small>
+                                <span class="h6 fw-bold text-inclusive-neon mb-0">
+                                    {% if project.presupuesto and project.presupuesto > 0 %}
+                                        ${{ project.presupuesto|floatformat:0 }}
+                                    {% else %}
+                                        <span class="text-inclusive-bright">Calculando...</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                   </div>
+                </div>
+               {% endfor %}
+           </div>
+       </div>
+       {% endif %}
+
+       <!-- Proyectos Futuros -->
+        {% if projects_futuros %}
+        <div class="mb-5 position-relative animate-fade-in animate-delay-3">
+            <div class="position-absolute top-0 start-0" style="z-index: 10;">
+                <div class="bg-inclusive-secondary text-white px-4 py-3 rounded-end-4 shadow-inclusive border-3" style="border-color: var(--inclusive-gray-dark);">
+                    <h2 class="h5 fw-bold mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        Proyectos Futuros ({{ projects_futuros.count }})
+                    </h2>
+                </div>
+            </div>
+            <div class="row g-4 pt-5">
+                {% for project in projects_futuros %}
+                <div class="col-sm-6 col-lg-4 col-xl-3">
+                    <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+                        <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                            <div class="position-relative overflow-hidden rounded-top-4">
+                                {% if project.imagen_proyecto %}
+                                    <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 14rem; object-fit: cover;" />
+                                {% else %}
+                                    <div class="card-img-top bg-inclusive-light d-flex align-items-center justify-content-center" style="height: 14rem;">
+                                        <i class="fas fa-building display-4 text-inclusive-secondary"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="position-absolute top-0 end-0 m-3">
+                                    <span class="badge status-badge-future rounded-pill px-3 py-2 small fw-semibold">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        Futuro
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="card-body card-body-inclusive p-4">
+                            <h5 class="card-title h6 fw-bold text-inclusive-dark mb-3">{{ project.name }}</h5>
+                            
+                            <!-- Información detallada -->
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-map text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.get_ubicacion_proyecto_display|default:"Medellín" }}</small>
+                                </div>
+                                
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-home text-inclusive-secondary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m² • 
+                                        {{ project.get_numero_pisos_display|default:"1 piso" }}
+                                    </small>
+                                </div>
+                                
+                                {% if project.numero_banos %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-bath text-inclusive-bright me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.numero_banos }} baño{{ project.numero_banos|pluralize }}</small>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calendar text-inclusive-secondary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"M Y" }}</small>
+                                </div>
+                            </div>
+                            
+                            <!-- Presupuesto estimado -->
+                            <div class="text-center p-3 rounded-3 border-2" style="border-color: var(--inclusive-gray-dark); background-color: var(--inclusive-gray-light);">
+                                <small class="text-inclusive-secondary d-block mb-1">Presupuesto Estimado</small>
+                                <span class="h6 fw-bold text-inclusive-secondary mb-0">
+                                    {% if project.presupuesto and project.presupuesto > 0 %}
+                                        ${{ project.presupuesto|floatformat:0 }}
+                                    {% else %}
+                                        <span class="text-inclusive-bright">Por calcular</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                   </div>
+                </div>
+               {% endfor %}
+           </div>
+       </div>
+       {% endif %}
+
+    <!-- Sin proyectos -->
+    {% if not projects_en_proceso and not projects_terminados and not projects_futuros %}
+    <div class="text-center py-5 animate-fade-in">
+        <div class="mx-auto" style="max-width: 28rem;">
+            <div class="bg-inclusive-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-4" style="width: 8rem; height: 8rem;">
+                <i class="fas fa-folder-open display-2 text-inclusive-secondary"></i>
+            </div>
+            <h3 class="h4 fw-bold text-inclusive-dark mb-3">No hay proyectos</h3>
+            <p class="text-inclusive-secondary mb-4">Comienza creando tu primer proyecto de construcción con nuestro cuestionario detallado</p>
+            <a href="{% url 'projects:project_create' %}" class="btn btn-inclusive-primary fw-semibold rounded-4 px-5 py-3">
+                <i class="fas fa-plus me-2"></i>
+                Crear Primer Proyecto
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Botón flotante para crear nuevo proyecto -->
+    <div class="position-fixed bottom-0 end-0 p-4">
+        <a href="{% url 'projects:project_create' %}" class="btn fab-gradient text-white rounded-circle shadow-inclusive-lg d-flex align-items-center justify-content-center" style="width: 4rem; height: 4rem;" title="Crear Nuevo Proyecto">
+            <i class="fas fa-plus fs-4"></i>
+        </a>
+    </div>
+        {% endif %}
+</div>
+
+<!-- Formulario oculto para búsqueda -->
+<form method="get" id="searchForm" class="d-none">
+    <input type="text" name="search" value="{{ search_query }}">
+    <button type="submit"></button>
+</form>
+
+<script>
+// Función para mostrar/ocultar filtros (disponible globalmente)
+function toggleFilters() {
+    console.log('toggleFilters ejecutada'); // Debug
+    const filtersContainer = document.getElementById('filtersContainer');
+    const toggleText = document.getElementById('toggleText');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    console.log('filtersContainer:', filtersContainer); // Debug
+    console.log('toggleText:', toggleText); // Debug
+    console.log('toggleIcon:', toggleIcon); // Debug
+    
+    if (filtersContainer.style.display === 'none' || filtersContainer.style.display === '') {
+        // Mostrar filtros
+        console.log('Mostrando filtros...'); // Debug
+        filtersContainer.style.display = 'block';
+        toggleText.textContent = 'Ocultar Filtros Avanzados';
+        toggleIcon.className = 'fas fa-chevron-up ms-2';
+    } else {
+        // Ocultar filtros
+        console.log('Ocultando filtros...'); // Debug
+        filtersContainer.style.display = 'none';
+        toggleText.textContent = 'Mostrar Filtros Avanzados';
+        toggleIcon.className = 'fas fa-chevron-down ms-2';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para aplicar filtros automáticamente
+    function autoApplyFilters() {
+        const form = document.getElementById('filtersForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        
+        // Solo incluir campos que tengan valor
+        for (let [key, value] of formData.entries()) {
+            if (value && value.trim() !== '') {
+                params.append(key, value);
+            }
+        }
+        
+        // Redirigir con los filtros aplicados
+        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    }
+    
+    // Aplicar filtros automáticamente al cambiar selects
+    document.querySelectorAll('select').forEach(select => {
+        select.addEventListener('change', function() {
+            // Pequeño delay para evitar múltiples redirecciones
+            setTimeout(autoApplyFilters, 300);
+        });
+    });
+    
+    // Aplicar filtros al presionar Enter en campos de texto
+    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                autoApplyFilters();
+            }
+        });
+    });
+    
+    // Aplicar filtros al perder el foco en campos numéricos y de fecha
+    document.querySelectorAll('input[type="number"], input[type="date"]').forEach(input => {
+        input.addEventListener('blur', function() {
+            if (this.value && this.value.trim() !== '') {
+                setTimeout(autoApplyFilters, 500);
+            }
+        });
+    });
+    
+    // Botón de aplicar filtros
+    document.querySelector('button[type="submit"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        autoApplyFilters();
+    });
+    
+    // Botón de limpiar filtros
+    document.querySelector('a[href="{% url "projects:project_list" %}"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        window.location.href = this.href;
+    });
+    
+    // Efectos hover para las cards de proyectos
+    document.querySelectorAll('.project-card-hover').forEach((card, index) => {
+        // Añadir delay de animación escalonado
+        card.style.animationDelay = `${index * 100}ms`;
+        
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-12px) scale(1.02)';
+            this.style.boxShadow = '0 20px 40px rgba(0,0,0,0.15)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+            this.style.boxShadow = '';
+        });
+    });
+    
+    // Función para formatear números grandes
+    function formatNumber(num) {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        } else if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+        }
+        return num.toString();
+    }
+    
+    // Formatear presupuestos en las cards
+    document.querySelectorAll('.h6.fw-bold').forEach(element => {
+        const text = element.textContent;
+        if (text.includes('$') && text.includes(',')) {
+            const number = parseInt(text.replace(/[$,]/g, ''));
+            if (!isNaN(number)) {
+                element.textContent = '$' + formatNumber(number);
+            }
+        }
+    });
+    
+    // Tooltip para filtros complejos
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Animación de carga para filtros
+    function showLoading() {
+        const submitBtn = document.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Aplicando...';
+        submitBtn.disabled = true;
+        
+        setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }, 1000);
+    }
+    
+    // Mostrar loading al aplicar filtros
+    document.querySelector('button[type="submit"]').addEventListener('click', showLoading);
+    
+    // Validación de rangos
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const min = this.getAttribute('min');
+            const value = parseFloat(this.value);
+            
+            if (min && value < parseFloat(min)) {
+                this.setCustomValidity(`El valor mínimo es ${min}`);
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    });
+    
+    // Validación de fechas
+    const fechaDesde = document.getElementById('fecha_desde');
+    const fechaHasta = document.getElementById('fecha_hasta');
+    
+    if (fechaDesde && fechaHasta) {
+        fechaDesde.addEventListener('change', function() {
+            fechaHasta.min = this.value;
+        });
+        
+        fechaHasta.addEventListener('change', function() {
+            fechaDesde.max = this.value;
+        });
+    }
+
+    // Mostrar filtros automáticamente si hay filtros activos
+    function autoShowFiltersIfNeeded() {
+        const filtersContainer = document.getElementById('filtersContainer');
+        const toggleText = document.getElementById('toggleText');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        // Verificar si hay filtros activos en la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasActiveFilters = Array.from(urlParams.entries()).some(([key, value]) => 
+            value && value.trim() !== '' && key !== 'page'
+        );
+        
+        if (hasActiveFilters) {
+            filtersContainer.style.display = 'block';
+            toggleText.textContent = 'Ocultar Filtros Avanzados';
+            toggleIcon.className = 'fas fa-chevron-up ms-2';
+        }
+    }
+
+    // Ejecutar auto-show al cargar la página
+    autoShowFiltersIfNeeded();
+});
+</script>
+{% endblock %}

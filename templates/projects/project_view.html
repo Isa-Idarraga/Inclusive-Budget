@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="project-detail-bg py-5">
+    <div class="container">
+        <div class="row g-4">
+            {% for project in projects %}
+            <div class="col-sm-6 col-lg-4 col-xl-3">
+                <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+                    <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                        <div class="position-relative overflow-hidden rounded-top-4">
+                            {% if project.imagen_proyecto %}
+                                <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 12rem; object-fit: cover;" />
+                            {% else %}
+                                <div class="card-img-top bg-inclusive-light d-flex align-items-center justify-content-center" style="height: 12rem;">
+                                    <i class="fas fa-building display-4 text-inclusive-secondary"></i>
+                                </div>
+                            {% endif %}
+                            <!-- Status badge overlay -->
+                            <div class="position-absolute top-0 end-0 m-3">
+                                <span class="badge rounded-pill px-3 py-2 small fw-semibold
+                                    {% if project.estado == 'terminado' %}status-badge-complete{% elif project.estado == 'en_proceso' %}status-badge-progress{% else %}status-badge-future{% endif %}">
+                                    {% if project.estado == 'terminado' %}
+                                        <i class="fas fa-check me-1"></i>Terminado
+                                    {% elif project.estado == 'en_proceso' %}
+                                        <i class="fas fa-clock me-1"></i>En Proceso
+                                    {% else %}
+                                        <i class="fas fa-calendar me-1"></i>Futuro
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="card-body card-body-inclusive p-4">
+                        <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                            <h5 class="card-title h6 fw-bold text-inclusive-dark mb-3">{{ project.name }}</h5>
+                        </a>
+                        
+                        <!-- Rating stars based on project status -->
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="d-flex align-items-center me-2">
+                                {% if project.estado == 'terminado' %}
+                                    {% for i in "12345" %}
+                                        <svg class="text-inclusive-bright me-1" style="width: 1rem; height: 1rem;" fill="currentColor" viewBox="0 0 22 20">
+                                            <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z"/>
+                                        </svg>
+                                    {% endfor %}
+                                {% elif project.estado == 'en_proceso' %}
+                                    {% for i in "123" %}
+                                        <svg class="text-inclusive-bright me-1" style="width: 1rem; height: 1rem;" fill="currentColor" viewBox="0 0 22 20">
+                                            <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z"/>
+                                        </svg>
+                                    {% endfor %}
+                                    {% for i in "45" %}
+                                        <svg class="text-inclusive-secondary me-1" style="width: 1rem; height: 1rem;" fill="currentColor" viewBox="0 0 22 20">
+                                            <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z"/>
+                                        </svg>
+                                    {% endfor %}
+                                {% else %}
+                                    {% for i in "12345" %}
+                                        <svg class="text-inclusive-secondary me-1" style="width: 1rem; height: 1rem;" fill="currentColor" viewBox="0 0 22 20">
+                                            <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z"/>
+                                        </svg>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            <span class="badge bg-inclusive-light text-inclusive-primary rounded-pill small fw-semibold px-3 py-2">
+                                {% if project.estado == 'terminado' %}5.0{% elif project.estado == 'en_proceso' %}3.0{% else %}1.0{% endif %}
+                            </span>
+                        </div>
+                        
+                        <!-- Project info and price -->
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="text-start">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="fas fa-map-marker-alt text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.location_address|truncatechars:15 }}</small>
+                                </div>
+                                <span class="h5 fw-bold text-inclusive-primary mb-0">
+                                    ${{ project.presupuesto|default:"0"|floatformat:0 }}
+                                </span>
+                            </div>
+                            <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-inclusive-primary btn-sm rounded-3 px-3">
+                                <i class="fas fa-eye me-1"></i>
+                                Ver detalles
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5 animate-fade-in">
+                <div class="mx-auto" style="max-width: 28rem;">
+                    <div class="bg-inclusive-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-4" style="width: 8rem; height: 8rem;">
+                        <i class="fas fa-folder-open display-2 text-inclusive-secondary"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-inclusive-dark mb-3">No hay proyectos</h3>
+                    <p class="text-inclusive-secondary mb-4">Comienza creando tu primer proyecto de construcción</p>
+                    <a href="{% url 'projects:project_create' %}" class="btn btn-inclusive-primary d-inline-flex align-items-center rounded-4 px-4 py-3">
+                        <i class="fas fa-plus me-2"></i>
+                        Crear Primer Proyecto
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Botón flotante para crear nuevo proyecto -->
+        <div class="position-fixed bottom-0 end-0 p-4">
+            <a href="{% url 'projects:project_create' %}" class="btn fab-gradient text-white rounded-circle shadow-inclusive-lg d-flex align-items-center justify-content-center" style="width: 3.5rem; height: 3.5rem;">
+                <i class="fas fa-plus fs-5"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Efectos hover mejorados para las cards
+    document.querySelectorAll('.project-card-hover').forEach((card, index) => {
+        // Añadir delay de animación escalonado
+        card.style.animationDelay = `${index * 100}ms`;
+        
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-12px) scale(1.02)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+});
+</script>
+{% endblock %}

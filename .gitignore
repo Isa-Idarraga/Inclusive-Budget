@@ -5,6 +5,7 @@ __pycache__/
 *.pyo
 
 # Venv
+myenv/
 .venv/
 jjenv/
 

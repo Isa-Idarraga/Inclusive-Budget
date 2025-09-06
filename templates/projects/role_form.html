@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-secondary text-white rounded-top-4">
+                    <h3 class="mb-0"><i class="fas fa-user-tag me-2"></i>Crear Rol</h3>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="id_name" class="form-label">Nombre del rol</label>
+                            {{ form.name }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_description" class="form-label">Descripción</label>
+                            {{ form.description }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_salario_base_dia" class="form-label">Salario base por día (COP)</label>
+                            {{ form.salario_base_dia }}
+                        </div>
+                        <button type="submit" class="btn btn-secondary"><i class="fas fa-save me-2"></i>Guardar rol</button>
+                        <a href="{% url 'projects:role_list' %}" class="btn btn-success ms-2">Ver todos</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

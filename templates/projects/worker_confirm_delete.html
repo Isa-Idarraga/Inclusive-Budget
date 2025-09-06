@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-danger text-white rounded-top-4">
+                    <h3 class="mb-0"><i class="fas fa-trash me-2"></i>Eliminar Trabajador</h3>
+                </div>
+                <div class="card-body p-4">
+                    <p>¿Estás seguro que deseas eliminar al trabajador <strong>{{ worker.name }}</strong>?</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-trash me-2"></i>Eliminar</button>
+                        <a href="{% url 'projects:worker_list' %}" class="btn btn-secondary ms-2">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
