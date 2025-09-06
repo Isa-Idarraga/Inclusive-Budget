@@ -240,11 +240,7 @@
                     <div class="card-body p-4 bg-gray-green-accent">
                         <div class="text-center mb-4 p-4 rounded-4 border border-3" style="border-color: var(--inclusive-green-primary); background-color: var(--inclusive-gray-medium);">
                             <div class="display-5 fw-bold text-inclusive-primary mb-2">
-                                {% if project.presupuesto and project.presupuesto > 0 %}
-                                    ${{ project.presupuesto|floatformat:0|default:"0" }}
-                                {% else %}
-                                    ${{ estimated_budget|floatformat:0|default:"0" }}
-                                {% endif %}
+                                ${{ estimated_budget|floatformat:0|intcomma }}
                             </div>
                             <p class="text-inclusive-secondary small mb-0">Pesos Colombianos</p>
                         </div>
