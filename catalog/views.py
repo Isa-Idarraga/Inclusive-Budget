@@ -143,10 +143,12 @@ def material_supplier_create(request, material_id):
 
             link, created = MaterialSupplier.objects.get_or_create(
                 material=material, supplier=supplier,
+                defaults={'price': price, 'preferred': preferred}
             )
             if not created:
                 link.price = price
                 link.preferred = preferred or link.preferred
+                link.save()
 
             if preferred:
                 material.supplier_prices.exclude(pk=link.pk).update(preferred=False)
