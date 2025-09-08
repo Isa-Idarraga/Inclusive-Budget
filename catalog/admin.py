@@ -21,7 +21,7 @@ class UnitAdmin(admin.ModelAdmin):
 
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
-    # columnas de la lista (ajustadas a tu modelo actual)
+    # columnas de la lista 
     list_display = (
         "sku",
         "name",
