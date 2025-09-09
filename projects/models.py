@@ -280,13 +280,9 @@ class Project(models.Model):
         decimal_places=2,
         verbose_name="Presupuesto total",
         default=0,
-<<<<<<< HEAD
         validators=[MinValueValidator(0)]
 
         
-=======
-        validators=[MinValueValidator(0)],
->>>>>>> origin/main
     )
 
     # PostgreSQL: NUMERIC(15,2) - Mismo formato que presupuesto

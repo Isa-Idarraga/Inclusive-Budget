@@ -296,7 +296,6 @@ def project_detail(request, project_id):
     # Obtener proyecto específico del usuario actual
     project = get_object_or_404(Project, id=project_id, creado_por=request.user)
 
-<<<<<<< HEAD
     # Entradas de materiales del proyecto
     compras = project.entradas.select_related("material", "proveedor").all()
     print("DEBUG compras:", compras)
@@ -313,14 +312,6 @@ def project_detail(request, project_id):
     context = {
         'project': project,
         'compras': compras,
-=======
-    # Calcular presupuesto estimado usando los datos del proyecto
-    estimated_budget = calculate_estimated_budget(project)
-
-    context = {
-        "project": project,
-        "estimated_budget": estimated_budget,
->>>>>>> origin/main
     }
 
     return render(request, "projects/project_detail.html", context)
@@ -632,7 +623,6 @@ def worker_delete(request, worker_id):
     if request.method == "POST":
         worker.delete()
         messages.success(request, f'Trabajador "{worker.name}" eliminado exitosamente!')
-<<<<<<< HEAD
         return redirect('projects:worker_list')
     return render(request, 'projects/worker_confirm_delete.html', {'worker': worker})
 
@@ -681,7 +671,3 @@ def borrar_entrada_material(request, entrada_id):
     
     # Redirige al tablero si se accede con GET
     return redirect('projects:project_board', project_id=entrada.proyecto.id)
-=======
-        return redirect("projects:worker_list")
-    return render(request, "projects/worker_confirm_delete.html", {"worker": worker})
->>>>>>> origin/main
