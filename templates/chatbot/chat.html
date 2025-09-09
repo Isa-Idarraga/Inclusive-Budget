@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+  <h2 class="fw-bold mb-4 text-center"> Chatbot Asistente</h2>
+
+  <!-- Caja de chat -->
+  <div id="chat-box" class="p-3 border rounded-4 bg-light mb-3" style="height: 400px; overflow-y: auto;">
+    <!-- Mensajes se insertan aquí -->
+  </div>
+
+  <!-- Formulario -->
+  <form id="chat-form" class="d-flex gap-2">
+    <input 
+      type="text" 
+      id="user-input" 
+      class="form-control" 
+      placeholder="Escribe tu mensaje..." 
+      required
+    >
+    <button type="submit" class="btn btn-dark">Enviar</button>
+  </form>
+</div>
+
+<script>
+document.getElementById("chat-form").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const input = document.getElementById("user-input");
+  const message = input.value.trim();
+  if (!message) return;
+
+  // Mostrar mensaje del usuario
+  const chatBox = document.getElementById("chat-box");
+  chatBox.innerHTML += `<div class="mb-2 text-end"><span class="badge bg-primary">${message}</span></div>`;
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  input.value = "";
+
+  try {
+    // Llamar al backend
+    const response = await fetch("{% url 'chatbot:chat_api' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}"
+      },
+      body: JSON.stringify({ message })
+    });
+
+    const data = await response.json();
+
+    // Mostrar respuesta del bot
+    chatBox.innerHTML += `<div class="mb-2 text-start"><span class="badge bg-secondary">${data.respuesta}</span></div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+  } catch (error) {
+    chatBox.innerHTML += `<div class="mb-2 text-start text-danger">⚠️ Error al conectar con el chatbot.</div>`;
+  }
+
+  
+});
+</script>
+{% endblock %}
+

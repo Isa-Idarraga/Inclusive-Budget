@@ -1,5 +1,29 @@
 from django import forms
-from .models import Project, Role, Worker
+from .models import Project, Role, Worker, EntradaMaterial
+from catalog.models import Material, Supplier
+
+class EntradaMaterialForm(forms.ModelForm):
+    class Meta:
+        model = EntradaMaterial
+        fields = ["material", "cantidad", "lote", "proveedor", "fecha_ingreso"]
+
+    material = forms.ModelChoiceField(
+        queryset=Material.objects.all(),
+        label="Material"
+    )
+
+    proveedor = forms.ModelChoiceField(
+        queryset=Supplier.objects.all(),
+        label="Proveedor"
+    )
+
+    fecha_ingreso = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control form-control-inclusive',
+            'type': 'date'
+        }),
+        label="Fecha de ingreso"
+    )
 
 
 # Formulario para Role
