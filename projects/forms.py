@@ -87,7 +87,8 @@ class ProjectForm(forms.ModelForm):
             
             # 1. Datos generales del proyecto
             'ubicacion_proyecto': forms.Select(attrs={
-                'class': 'form-control form-control-inclusive'
+                'class': 'form-control form-control-inclusive',
+                'required': 'required'
             }),
             'otra_ubicacion': forms.TextInput(attrs={
                 'class': 'form-control form-control-inclusive',
@@ -97,16 +98,19 @@ class ProjectForm(forms.ModelForm):
                 'class': 'form-control form-control-inclusive',
                 'placeholder': '120',
                 'step': '0.01',
-                'min': '0'
+                'min': '0',
+                'required': 'required'
             }),
             'numero_pisos': forms.Select(attrs={
-                'class': 'form-control form-control-inclusive'
+                'class': 'form-control form-control-inclusive',
+                'required': 'required'
             }),
             'area_exterior_intervenir': forms.NumberInput(attrs={
                 'class': 'form-control form-control-inclusive',
                 'placeholder': '50',
                 'step': '0.01',
-                'min': '0'
+                'min': '0',
+                'required': 'required'
             }),
             
             # 2. Terreno y preliminares
@@ -359,7 +363,14 @@ class ProjectForm(forms.ModelForm):
         ]
         
         # Solo requerir campos básicos esenciales
-        required_fields = ['name', 'location_address', 'ubicacion_proyecto', 'area_construida_total', 'numero_pisos']
+        required_fields = [
+            'name',
+            'location_address',
+            'ubicacion_proyecto',
+            'area_construida_total',
+            'numero_pisos',
+            'area_exterior_intervenir',
+        ]
         
         # Asegurar que doors_height no sea requerido
         if 'doors_height' in self.fields:
@@ -382,6 +393,16 @@ class ProjectForm(forms.ModelForm):
                 'otra_ubicacion': 'Debe especificar la ubicación si selecciona "Otra"'
             })
         
+        # Validar áreas mayores a cero
+        area_construida_total = cleaned_data.get('area_construida_total')
+        area_exterior_intervenir = cleaned_data.get('area_exterior_intervenir')
+
+        if area_construida_total is None or float(area_construida_total) <= 0:
+            self.add_error('area_construida_total', 'El área construida total debe ser mayor que 0')
+
+        if area_exterior_intervenir is None or float(area_exterior_intervenir) <= 0:
+            self.add_error('area_exterior_intervenir', 'El área exterior a intervenir debe ser mayor que 0')
+
         # Asegurar valores por defecto para campos heredados (compatibilidad)
         if not cleaned_data.get('built_area'):
             cleaned_data['built_area'] = cleaned_data.get('area_construida_total') or 0

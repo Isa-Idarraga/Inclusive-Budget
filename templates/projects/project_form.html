@@ -681,15 +681,32 @@ document.addEventListener('DOMContentLoaded', function() {
     ubicacionSelect.addEventListener('change', toggleOtraUbicacion);
     toggleOtraUbicacion(); // Ejecutar al cargar
 
-    // Manejar envío directo del formulario
+    // Manejar envío directo del formulario con validación de básicos
     form.addEventListener('submit', function(e) {
-        // Validar formulario antes de enviar
+        const ubicacion = document.getElementById('id_ubicacion_proyecto');
+        const areaConstruida = document.getElementById('id_area_construida_total');
+        const numeroPisos = document.getElementById('id_numero_pisos');
+        const areaExterior = document.getElementById('id_area_exterior_intervenir');
+
+        const missingBasics = [];
+        if (!ubicacion || !ubicacion.value) missingBasics.push('Ubicación del proyecto');
+        if (!areaConstruida || !areaConstruida.value || parseFloat(areaConstruida.value) <= 0) missingBasics.push('Área construida total (> 0)');
+        if (!numeroPisos || !numeroPisos.value) missingBasics.push('Número de pisos');
+        if (!areaExterior || !areaExterior.value || parseFloat(areaExterior.value) <= 0) missingBasics.push('Área exterior a intervenir (> 0)');
+
+        if (missingBasics.length > 0) {
+            e.preventDefault();
+            alert('Por favor completa los campos básicos antes de crear el proyecto:\n\n- ' + missingBasics.join('\n- '));
+            return;
+        }
+
+        // Validación HTML5 estándar
         if (!form.checkValidity()) {
             e.preventDefault();
             form.reportValidity();
             return;
         }
-        
+
         // Cambiar texto del botón mientras se procesa
         const submitBtn = form.querySelector('button[type="submit"]');
         if (submitBtn) {
