@@ -76,7 +76,7 @@ class Material(models.Model):
         validators=[MinValueValidator(0)]
     )
 
-    # Nueva: imagen opcional del material
+    # Imagen opcional del material
     image = models.ImageField(
         "Imagen",
         upload_to="materials/%Y/%m/",
