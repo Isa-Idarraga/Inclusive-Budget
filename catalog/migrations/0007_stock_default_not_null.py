@@ -1,14 +1,14 @@
 from django.db import migrations
 
-class Migration(migrations.Migration):
 
+class Migration(migrations.Migration):
     dependencies = [
-        ('catalog', '0006_remove_materialsupplier_lead_time_days'),
+        ("catalog", "0006_remove_materialsupplier_lead_time_days"),
     ]
 
     operations = [
         migrations.RunSQL(
-            sql='''
+            sql="""
                 ALTER TABLE "catalog_material"
                   ALTER COLUMN "stock" SET DEFAULT 0;
                 UPDATE "catalog_material"
@@ -16,13 +16,13 @@ class Migration(migrations.Migration):
                   WHERE "stock" IS NULL;
                 ALTER TABLE "catalog_material"
                   ALTER COLUMN "stock" SET NOT NULL;
-            ''',
-            reverse_sql='''
+            """,
+            reverse_sql="""
                 -- Reversa opcional: quita el NOT NULL y el DEFAULT
                 ALTER TABLE "catalog_material"
                   ALTER COLUMN "stock" DROP NOT NULL;
                 ALTER TABLE "catalog_material"
                   ALTER COLUMN "stock" DROP DEFAULT;
-            '''
+            """,
         ),
     ]

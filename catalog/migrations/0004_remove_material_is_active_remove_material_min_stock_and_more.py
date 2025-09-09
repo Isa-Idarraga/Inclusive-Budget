@@ -4,23 +4,27 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('catalog', '0003_material_presentation_qty_alter_material_category_and_more'),
+        ("catalog", "0003_material_presentation_qty_alter_material_category_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='material',
-            name='is_active',
+            model_name="material",
+            name="is_active",
         ),
         migrations.RemoveField(
-            model_name='material',
-            name='min_stock',
+            model_name="material",
+            name="min_stock",
         ),
         migrations.AddField(
-            model_name='material',
-            name='image',
-            field=models.ImageField(blank=True, null=True, upload_to='materials/%Y/%m/', verbose_name='Imagen'),
+            model_name="material",
+            name="image",
+            field=models.ImageField(
+                blank=True,
+                null=True,
+                upload_to="materials/%Y/%m/",
+                verbose_name="Imagen",
+            ),
         ),
     ]

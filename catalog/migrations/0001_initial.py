@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,35 +14,96 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Unit',
+            name="Unit",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=50, verbose_name='Nombre')),
-                ('symbol', models.CharField(max_length=10, verbose_name='Símbolo')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=50, verbose_name="Nombre")),
+                ("symbol", models.CharField(max_length=10, verbose_name="Símbolo")),
             ],
             options={
-                'ordering': ['name'],
-                'unique_together': {('name', 'symbol')},
+                "ordering": ["name"],
+                "unique_together": {("name", "symbol")},
             },
         ),
         migrations.CreateModel(
-            name='Material',
+            name="Material",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('sku', models.CharField(max_length=64, unique=True, verbose_name='Código/Referencia')),
-                ('name', models.CharField(max_length=120, verbose_name='Nombre')),
-                ('category', models.CharField(blank=True, max_length=80, verbose_name='Categoría')),
-                ('unit_cost', models.DecimalField(decimal_places=2, default=0, max_digits=12, verbose_name='Costo unitario')),
-                ('min_stock', models.DecimalField(decimal_places=3, default=0, max_digits=12, verbose_name='Stock mínimo')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Activo')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('created_by', models.ForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
-                ('unit', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='materials', to='catalog.unit')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "sku",
+                    models.CharField(
+                        max_length=64, unique=True, verbose_name="Código/Referencia"
+                    ),
+                ),
+                ("name", models.CharField(max_length=120, verbose_name="Nombre")),
+                (
+                    "category",
+                    models.CharField(
+                        blank=True, max_length=80, verbose_name="Categoría"
+                    ),
+                ),
+                (
+                    "unit_cost",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=12,
+                        verbose_name="Costo unitario",
+                    ),
+                ),
+                (
+                    "min_stock",
+                    models.DecimalField(
+                        decimal_places=3,
+                        default=0,
+                        max_digits=12,
+                        verbose_name="Stock mínimo",
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True, verbose_name="Activo")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        editable=False,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "unit",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="materials",
+                        to="catalog.unit",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name'],
-                'indexes': [models.Index(fields=['name'], name='catalog_mat_name_bf21dd_idx'), models.Index(fields=['sku'], name='catalog_mat_sku_64c102_idx')],
+                "ordering": ["name"],
+                "indexes": [
+                    models.Index(fields=["name"], name="catalog_mat_name_bf21dd_idx"),
+                    models.Index(fields=["sku"], name="catalog_mat_sku_64c102_idx"),
+                ],
             },
         ),
     ]

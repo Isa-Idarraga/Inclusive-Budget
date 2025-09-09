@@ -9,7 +9,7 @@ urlpatterns = [
     path("", include("dashboard.urls")),
     path("accounts/", include("django.contrib.auth.urls")),
     path("projects/", include("projects.urls")),
-    path("catalog/", include("catalog.urls")), # Catálogo de materiales
+    path("catalog/", include("catalog.urls")),  # Catálogo de materiales
 ]
 
 # Configuración para servir archivos media en desarrollo

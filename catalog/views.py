@@ -9,23 +9,28 @@ from django.db.models import Q, Prefetch
 from django.contrib import messages
 from .forms import MaterialSupplierForm
 
+
 @login_required
 def material_list(request):
     q = (request.GET.get("q") or "").strip()
     prefetch = Prefetch(
         "supplier_prices",
-        queryset=MaterialSupplier.objects.select_related("supplier").order_by("-preferred", "supplier__name")
+        queryset=MaterialSupplier.objects.select_related("supplier").order_by(
+            "-preferred", "supplier__name"
+        ),
     )
     materials = (
-        Material.objects
-        .select_related("unit")
+        Material.objects.select_related("unit")
         .prefetch_related(prefetch)
         .order_by("name")
     )
     if q:
         materials = materials.filter(Q(name__icontains=q) | Q(sku__icontains=q))
 
-    return render(request, "catalog/material_list.html", {"materials": materials, "q": q})
+    return render(
+        request, "catalog/material_list.html", {"materials": materials, "q": q}
+    )
+
 
 @login_required
 def material_create(request):
@@ -46,8 +51,9 @@ def material_create(request):
             price = form.cleaned_data["supplier_price"]
 
             link, created = MaterialSupplier.objects.get_or_create(
-                material=obj, supplier=supplier,
-                defaults={"price": price, "preferred": True}
+                material=obj,
+                supplier=supplier,
+                defaults={"price": price, "preferred": True},
             )
             if not created:
                 link.price = price
@@ -63,7 +69,10 @@ def material_create(request):
             return redirect("material_list")
     else:
         form = MaterialForm()
-    return render(request, "catalog/material_form.html", {"form": form, "mode": "create"})
+    return render(
+        request, "catalog/material_form.html", {"form": form, "mode": "create"}
+    )
+
 
 @login_required
 def material_update(request, pk):
@@ -81,8 +90,9 @@ def material_update(request, pk):
             price = form.cleaned_data["supplier_price"]
 
             link, created = MaterialSupplier.objects.get_or_create(
-                material=obj, supplier=supplier,
-                defaults={"price": price, "preferred": True}
+                material=obj,
+                supplier=supplier,
+                defaults={"price": price, "preferred": True},
             )
             if not created:
                 link.price = price
@@ -98,7 +108,12 @@ def material_update(request, pk):
             return redirect("material_list")
     else:
         form = MaterialForm(instance=material)
-    return render(request, "catalog/material_form.html", {"form": form, "mode": "update", "material": material})
+    return render(
+        request,
+        "catalog/material_form.html",
+        {"form": form, "mode": "update", "material": material},
+    )
+
 
 @login_required
 def material_delete(request, pk):
@@ -110,23 +125,27 @@ def material_delete(request, pk):
         material.delete()
         messages.success(request, "Material eliminado.")
         return redirect("material_list")
-    return render(request, "catalog/material_delete_confirm.html", {"material": material})
+    return render(
+        request, "catalog/material_delete_confirm.html", {"material": material}
+    )
+
 
 @login_required
 def material_suppliers_list(request, material_id):
     material = get_object_or_404(
-        Material.objects.select_related("unit"),
-        pk=material_id
+        Material.objects.select_related("unit"), pk=material_id
     )
-    links = (
-        material.supplier_prices
-        .select_related("supplier")
-        .order_by("-preferred", "supplier__name")
+    links = material.supplier_prices.select_related("supplier").order_by(
+        "-preferred", "supplier__name"
     )
-    return render(request, "catalog/material_suppliers_list.html", {
-        "material": material,
-        "links": links,
-    })
+    return render(
+        request,
+        "catalog/material_suppliers_list.html",
+        {
+            "material": material,
+            "links": links,
+        },
+    )
 
 
 @login_required
@@ -137,13 +156,16 @@ def material_supplier_create(request, material_id):
         form = MaterialSupplierForm(request.POST, material=material)  # ⬅️ aquí
         if form.is_valid():
             name = form.cleaned_data["supplier_name"]
-            supplier = Supplier.objects.filter(name__iexact=name).first() or Supplier.objects.create(name=name, is_active=True)
+            supplier = Supplier.objects.filter(
+                name__iexact=name
+            ).first() or Supplier.objects.create(name=name, is_active=True)
             price = form.cleaned_data["price"]
             preferred = form.cleaned_data["preferred"]
 
             link, created = MaterialSupplier.objects.get_or_create(
-                material=material, supplier=supplier,
-                defaults={'price': price, 'preferred': preferred}
+                material=material,
+                supplier=supplier,
+                defaults={"price": price, "preferred": preferred},
             )
             if not created:
                 link.price = price
@@ -161,23 +183,36 @@ def material_supplier_create(request, material_id):
     else:
         form = MaterialSupplierForm(material=material)  # ⬅️ aquí
 
-    return render(request, "catalog/material_supplier_form.html", {
-        "material": material,
-        "form": form,
-        "mode": "create",
-    })
+    return render(
+        request,
+        "catalog/material_supplier_form.html",
+        {
+            "material": material,
+            "form": form,
+            "mode": "create",
+        },
+    )
+
 
 @login_required
 @transaction.atomic
 def material_supplier_update(request, material_id, link_id):
     material = get_object_or_404(Material, pk=material_id)
-    link = get_object_or_404(MaterialSupplier.objects.select_related("supplier"), pk=link_id, material=material)
+    link = get_object_or_404(
+        MaterialSupplier.objects.select_related("supplier"),
+        pk=link_id,
+        material=material,
+    )
 
     if request.method == "POST":
-        form = MaterialSupplierForm(request.POST, instance=link, material=material)  # ⬅️ aquí
+        form = MaterialSupplierForm(
+            request.POST, instance=link, material=material
+        )  # ⬅️ aquí
         if form.is_valid():
             name = form.cleaned_data["supplier_name"]
-            supplier = Supplier.objects.filter(name__iexact=name).first() or Supplier.objects.create(name=name, is_active=True)
+            supplier = Supplier.objects.filter(
+                name__iexact=name
+            ).first() or Supplier.objects.create(name=name, is_active=True)
 
             link.supplier = supplier
             link.price = form.cleaned_data["price"]
@@ -195,12 +230,17 @@ def material_supplier_update(request, material_id, link_id):
     else:
         form = MaterialSupplierForm(instance=link, material=material)  # ⬅️ aquí
 
-    return render(request, "catalog/material_supplier_form.html", {
-        "material": material,
-        "form": form,
-        "mode": "update",
-        "link": link,
-    })
+    return render(
+        request,
+        "catalog/material_supplier_form.html",
+        {
+            "material": material,
+            "form": form,
+            "mode": "update",
+            "link": link,
+        },
+    )
+
 
 @login_required
 @transaction.atomic
@@ -230,7 +270,11 @@ def material_supplier_delete(request, material_id, link_id):
         messages.success(request, "Proveedor eliminado del material.")
         return redirect("material_suppliers_list", material_id=material.pk)
 
-    return render(request, "catalog/material_supplier_delete_confirm.html", {
-        "material": material,
-        "link": link,
-    })
+    return render(
+        request,
+        "catalog/material_supplier_delete_confirm.html",
+        {
+            "material": material,
+            "link": link,
+        },
+    )
