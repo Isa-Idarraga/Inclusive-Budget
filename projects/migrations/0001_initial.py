@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,31 +15,154 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Project',
+            name="Project",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=200, verbose_name='Nombre del proyecto')),
-                ('location_address', models.TextField(verbose_name='Dirección ubicación')),
-                ('description', models.TextField(verbose_name='Descripción')),
-                ('built_area', models.DecimalField(decimal_places=2, max_digits=10, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Metros² de construido (casa)')),
-                ('exterior_area', models.DecimalField(decimal_places=2, max_digits=10, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Metros² de exteriores')),
-                ('columns_count', models.IntegerField(validators=[django.core.validators.MinValueValidator(0)], verbose_name='Número de columnas')),
-                ('walls_area', models.DecimalField(decimal_places=2, max_digits=10, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Metros² de paredes')),
-                ('windows_area', models.DecimalField(decimal_places=2, max_digits=10, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Metros² de ventanas')),
-                ('doors_count', models.IntegerField(validators=[django.core.validators.MinValueValidator(0)], verbose_name='Número de puertas')),
-                ('doors_height', models.DecimalField(decimal_places=2, max_digits=5, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Altura de las puertas (en metros)')),
-                ('presupuesto', models.DecimalField(decimal_places=2, default=0, max_digits=15, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Presupuesto total')),
-                ('presupuesto_gastado', models.DecimalField(decimal_places=2, default=0, max_digits=15, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Presupuesto gastado')),
-                ('estado', models.CharField(choices=[('en_proceso', 'En Proceso'), ('terminado', 'Terminado'), ('futuro', 'Futuro')], default='futuro', max_length=20, verbose_name='Estado del proyecto')),
-                ('imagen_proyecto', models.ImageField(blank=True, null=True, upload_to='imagenes_proyectos/', verbose_name='Imagen del proyecto')),
-                ('fecha_creacion', models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')),
-                ('fecha_actualizacion', models.DateTimeField(auto_now=True, verbose_name='Última actualización')),
-                ('creado_por', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL, verbose_name='Creado por')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        max_length=200, verbose_name="Nombre del proyecto"
+                    ),
+                ),
+                (
+                    "location_address",
+                    models.TextField(verbose_name="Dirección ubicación"),
+                ),
+                ("description", models.TextField(verbose_name="Descripción")),
+                (
+                    "built_area",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=10,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Metros² de construido (casa)",
+                    ),
+                ),
+                (
+                    "exterior_area",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=10,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Metros² de exteriores",
+                    ),
+                ),
+                (
+                    "columns_count",
+                    models.IntegerField(
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Número de columnas",
+                    ),
+                ),
+                (
+                    "walls_area",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=10,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Metros² de paredes",
+                    ),
+                ),
+                (
+                    "windows_area",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=10,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Metros² de ventanas",
+                    ),
+                ),
+                (
+                    "doors_count",
+                    models.IntegerField(
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Número de puertas",
+                    ),
+                ),
+                (
+                    "doors_height",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=5,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Altura de las puertas (en metros)",
+                    ),
+                ),
+                (
+                    "presupuesto",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=15,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Presupuesto total",
+                    ),
+                ),
+                (
+                    "presupuesto_gastado",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=15,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Presupuesto gastado",
+                    ),
+                ),
+                (
+                    "estado",
+                    models.CharField(
+                        choices=[
+                            ("en_proceso", "En Proceso"),
+                            ("terminado", "Terminado"),
+                            ("futuro", "Futuro"),
+                        ],
+                        default="futuro",
+                        max_length=20,
+                        verbose_name="Estado del proyecto",
+                    ),
+                ),
+                (
+                    "imagen_proyecto",
+                    models.ImageField(
+                        blank=True,
+                        null=True,
+                        upload_to="imagenes_proyectos/",
+                        verbose_name="Imagen del proyecto",
+                    ),
+                ),
+                (
+                    "fecha_creacion",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Fecha de creación"
+                    ),
+                ),
+                (
+                    "fecha_actualizacion",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Última actualización"
+                    ),
+                ),
+                (
+                    "creado_por",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="Creado por",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Proyecto',
-                'verbose_name_plural': 'Proyectos',
-                'ordering': ['-fecha_creacion'],
+                "verbose_name": "Proyecto",
+                "verbose_name_plural": "Proyectos",
+                "ordering": ["-fecha_creacion"],
             },
         ),
     ]

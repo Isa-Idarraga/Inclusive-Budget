@@ -21,7 +21,7 @@ class UnitAdmin(admin.ModelAdmin):
 
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
-    # columnas de la lista 
+    # columnas de la lista
     list_display = (
         "sku",
         "name",
@@ -40,20 +40,29 @@ class MaterialAdmin(admin.ModelAdmin):
 
     readonly_fields = ("image_preview", "created_at", "updated_at")
     fields = (
-        "sku", "name", "category", "unit",
-        "presentation_qty", "unit_cost",
-        "image", "image_preview",
-        "created_by", "created_at", "updated_at",
+        "sku",
+        "name",
+        "category",
+        "unit",
+        "presentation_qty",
+        "unit_cost",
+        "image",
+        "image_preview",
+        "created_by",
+        "created_at",
+        "updated_at",
     )
 
     # helpers para mostrar bonito
     def category_label(self, obj):
         return obj.get_category_display()
+
     category_label.short_description = "Categoría"
 
     def unit_cost_display(self, obj):
         formatted = f"{obj.unit_cost:,.0f}".replace(",", ".")
         return format_html("${} COP", formatted)
+
     unit_cost_display.short_description = "Costo (COP)"
     unit_cost_display.admin_order_field = "unit_cost"
 
@@ -61,16 +70,18 @@ class MaterialAdmin(admin.ModelAdmin):
         if obj.image:
             return format_html(
                 '<img src="{}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;" />',
-                obj.image.url
+                obj.image.url,
             )
         return "-"
+
     thumb.short_description = "Imagen"
 
     def image_preview(self, obj):
         if obj.image:
             return format_html(
                 '<img src="{}" style="max-width:240px;max-height:240px;object-fit:cover;border-radius:6px;" />',
-                obj.image.url
+                obj.image.url,
             )
         return "Sin imagen"
+
     image_preview.short_description = "Vista previa"

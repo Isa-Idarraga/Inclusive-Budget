@@ -2,6 +2,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+
 class User(AbstractUser):
     JEFE_OBRA = "JEFE_OBRA"
     GESTOR_INVENTARIO = "GESTOR_INVENTARIO"

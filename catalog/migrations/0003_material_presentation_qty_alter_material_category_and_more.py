@@ -5,35 +5,78 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('catalog', '0002_alter_unit_name_alter_unit_symbol'),
+        ("catalog", "0002_alter_unit_name_alter_unit_symbol"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='material',
-            name='presentation_qty',
-            field=models.DecimalField(decimal_places=3, default=1, help_text='Ej.: si el bulto es de 50 kg, aquí va 50 (unidad = kg).', max_digits=12, validators=[django.core.validators.MinValueValidator(0.001)], verbose_name='Cantidad por unidad de medida'),
+            model_name="material",
+            name="presentation_qty",
+            field=models.DecimalField(
+                decimal_places=3,
+                default=1,
+                help_text="Ej.: si el bulto es de 50 kg, aquí va 50 (unidad = kg).",
+                max_digits=12,
+                validators=[django.core.validators.MinValueValidator(0.001)],
+                verbose_name="Cantidad por unidad de medida",
+            ),
         ),
         migrations.AlterField(
-            model_name='material',
-            name='category',
-            field=models.CharField(choices=[('CEMENTOS', 'Cementos'), ('AGREGADOS', 'Agregados'), ('ACERO', 'Acero'), ('MADERA', 'Madera'), ('PINTURAS', 'Pinturas'), ('ELECTRICOS', 'Eléctricos'), ('HIDRAULICOS', 'Hidráulicos'), ('LADRILLOS', 'Ladrillos'), ('OTROS', 'Otros')], default='OTROS', max_length=20, verbose_name='Categoría'),
+            model_name="material",
+            name="category",
+            field=models.CharField(
+                choices=[
+                    ("CEMENTOS", "Cementos"),
+                    ("AGREGADOS", "Agregados"),
+                    ("ACERO", "Acero"),
+                    ("MADERA", "Madera"),
+                    ("PINTURAS", "Pinturas"),
+                    ("ELECTRICOS", "Eléctricos"),
+                    ("HIDRAULICOS", "Hidráulicos"),
+                    ("LADRILLOS", "Ladrillos"),
+                    ("OTROS", "Otros"),
+                ],
+                default="OTROS",
+                max_length=20,
+                verbose_name="Categoría",
+            ),
         ),
         migrations.AlterField(
-            model_name='material',
-            name='min_stock',
-            field=models.DecimalField(decimal_places=3, default=0, max_digits=12, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Stock mínimo'),
+            model_name="material",
+            name="min_stock",
+            field=models.DecimalField(
+                decimal_places=3,
+                default=0,
+                max_digits=12,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Stock mínimo",
+            ),
         ),
         migrations.AlterField(
-            model_name='material',
-            name='sku',
-            field=models.CharField(max_length=8, unique=True, validators=[django.core.validators.RegexValidator(message='El código debe tener 3 letras, un guion y 1–4 dígitos (p. ej. ABC-1234).', regex='^[A-Z]{3}-\\d{1,4}$')], verbose_name='Código'),
+            model_name="material",
+            name="sku",
+            field=models.CharField(
+                max_length=8,
+                unique=True,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        message="El código debe tener 3 letras, un guion y 1–4 dígitos (p. ej. ABC-1234).",
+                        regex="^[A-Z]{3}-\\d{1,4}$",
+                    )
+                ],
+                verbose_name="Código",
+            ),
         ),
         migrations.AlterField(
-            model_name='material',
-            name='unit_cost',
-            field=models.DecimalField(decimal_places=0, default=0, max_digits=12, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Costo unitario (COP)'),
+            model_name="material",
+            name="unit_cost",
+            field=models.DecimalField(
+                decimal_places=0,
+                default=0,
+                max_digits=12,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Costo unitario (COP)",
+            ),
         ),
     ]
