@@ -5,204 +5,445 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('projects', '0001_initial'),
+        ("projects", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='UnitPrice',
+            name="UnitPrice",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('category', models.CharField(choices=[('construccion', 'Construcción'), ('terreno', 'Terreno y Preliminares'), ('estructura', 'Estructura y Cimentación'), ('muros', 'Muros y Acabados'), ('pisos', 'Pisos y Enchapes'), ('carpinteria', 'Carpinterías'), ('hidro', 'Hidrosanitario'), ('electrico', 'Instalaciones Eléctricas'), ('cubierta', 'Cubierta e Impermeabilización'), ('exteriores', 'Exteriores y Paisajismo'), ('profesionales', 'Indirectos y Profesionales')], max_length=20, verbose_name='Categoría')),
-                ('item_name', models.CharField(max_length=200, verbose_name='Nombre del ítem')),
-                ('unit', models.CharField(help_text='Ej: m², unidad, ml', max_length=50, verbose_name='Unidad')),
-                ('price', models.DecimalField(decimal_places=2, max_digits=15, verbose_name='Precio unitario')),
-                ('description', models.TextField(blank=True, verbose_name='Descripción')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Activo')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "category",
+                    models.CharField(
+                        choices=[
+                            ("construccion", "Construcción"),
+                            ("terreno", "Terreno y Preliminares"),
+                            ("estructura", "Estructura y Cimentación"),
+                            ("muros", "Muros y Acabados"),
+                            ("pisos", "Pisos y Enchapes"),
+                            ("carpinteria", "Carpinterías"),
+                            ("hidro", "Hidrosanitario"),
+                            ("electrico", "Instalaciones Eléctricas"),
+                            ("cubierta", "Cubierta e Impermeabilización"),
+                            ("exteriores", "Exteriores y Paisajismo"),
+                            ("profesionales", "Indirectos y Profesionales"),
+                        ],
+                        max_length=20,
+                        verbose_name="Categoría",
+                    ),
+                ),
+                (
+                    "item_name",
+                    models.CharField(max_length=200, verbose_name="Nombre del ítem"),
+                ),
+                (
+                    "unit",
+                    models.CharField(
+                        help_text="Ej: m², unidad, ml",
+                        max_length=50,
+                        verbose_name="Unidad",
+                    ),
+                ),
+                (
+                    "price",
+                    models.DecimalField(
+                        decimal_places=2, max_digits=15, verbose_name="Precio unitario"
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(blank=True, verbose_name="Descripción"),
+                ),
+                ("is_active", models.BooleanField(default=True, verbose_name="Activo")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name': 'Precio Unitario',
-                'verbose_name_plural': 'Precios Unitarios',
-                'ordering': ['category', 'item_name'],
+                "verbose_name": "Precio Unitario",
+                "verbose_name_plural": "Precios Unitarios",
+                "ordering": ["category", "item_name"],
             },
         ),
         migrations.AddField(
-            model_name='project',
-            name='acabado_muros',
-            field=models.CharField(choices=[('basico', 'Básico (pintura sencilla, 1–2 manos)'), ('estandar', 'Estándar (estuco + pintura 2–3 manos)'), ('premium', 'Premium (estuco fino + pintura o acabados especiales)')], default='estandar', max_length=20, verbose_name='Acabado de muros interiores'),
+            model_name="project",
+            name="acabado_muros",
+            field=models.CharField(
+                choices=[
+                    ("basico", "Básico (pintura sencilla, 1–2 manos)"),
+                    ("estandar", "Estándar (estuco + pintura 2–3 manos)"),
+                    (
+                        "premium",
+                        "Premium (estuco fino + pintura o acabados especiales)",
+                    ),
+                ],
+                default="estandar",
+                max_length=20,
+                verbose_name="Acabado de muros interiores",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='acceso_obra',
-            field=models.CharField(choices=[('facil', 'Fácil (camiones entran sin problema)'), ('medio', 'Medio (calles angostas / pendientes)'), ('dificil', 'Difícil (solo vehículos pequeños, acarreos)')], default='facil', max_length=20, verbose_name='Acceso a la obra'),
+            model_name="project",
+            name="acceso_obra",
+            field=models.CharField(
+                choices=[
+                    ("facil", "Fácil (camiones entran sin problema)"),
+                    ("medio", "Medio (calles angostas / pendientes)"),
+                    ("dificil", "Difícil (solo vehículos pequeños, acarreos)"),
+                ],
+                default="facil",
+                max_length=20,
+                verbose_name="Acceso a la obra",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='area_adoquin',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=10, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Área aproximada de adoquín exterior (m²)'),
+            model_name="project",
+            name="area_adoquin",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=10,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Área aproximada de adoquín exterior (m²)",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='area_construida_total',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=10, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Área construida total (m²)'),
+            model_name="project",
+            name="area_construida_total",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=10,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Área construida total (m²)",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='area_exterior_intervenir',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=10, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Área exterior a intervenir (m²)'),
+            model_name="project",
+            name="area_exterior_intervenir",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=10,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Área exterior a intervenir (m²)",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='area_zonas_verdes',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=10, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Área aproximada de zonas verdes (m²)'),
+            model_name="project",
+            name="area_zonas_verdes",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=10,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Área aproximada de zonas verdes (m²)",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='calentador_gas',
-            field=models.BooleanField(default=False, verbose_name='¿Tendrá calentador de agua a gas?'),
+            model_name="project",
+            name="calentador_gas",
+            field=models.BooleanField(
+                default=False, verbose_name="¿Tendrá calentador de agua a gas?"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='cielorrasos',
-            field=models.CharField(choices=[('ninguno', 'Ninguno (concreto visto)'), ('parcial', 'Drywall parcial (zonas sociales y baños)'), ('total', 'Drywall total')], default='parcial', max_length=20, verbose_name='Cielorrasos'),
+            model_name="project",
+            name="cielorrasos",
+            field=models.CharField(
+                choices=[
+                    ("ninguno", "Ninguno (concreto visto)"),
+                    ("parcial", "Drywall parcial (zonas sociales y baños)"),
+                    ("total", "Drywall total"),
+                ],
+                default="parcial",
+                max_length=20,
+                verbose_name="Cielorrasos",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='dotacion_electrica',
-            field=models.CharField(choices=[('basico', 'Básico (mínimo normativo)'), ('estandar', 'Estándar (más puntos de tomas y luminarias)'), ('premium', 'Premium (domótica o iluminación decorativa)')], default='estandar', max_length=20, verbose_name='Nivel de dotación eléctrica'),
+            model_name="project",
+            name="dotacion_electrica",
+            field=models.CharField(
+                choices=[
+                    ("basico", "Básico (mínimo normativo)"),
+                    ("estandar", "Estándar (más puntos de tomas y luminarias)"),
+                    ("premium", "Premium (domótica o iluminación decorativa)"),
+                ],
+                default="estandar",
+                max_length=20,
+                verbose_name="Nivel de dotación eléctrica",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='exigencia_estructural',
-            field=models.CharField(choices=[('normal', 'Normal (residencial estándar)'), ('alta', 'Alta (sísmica / cargas especiales)')], default='normal', max_length=20, verbose_name='Nivel de exigencia estructural'),
+            model_name="project",
+            name="exigencia_estructural",
+            field=models.CharField(
+                choices=[
+                    ("normal", "Normal (residencial estándar)"),
+                    ("alta", "Alta (sísmica / cargas especiales)"),
+                ],
+                default="normal",
+                max_length=20,
+                verbose_name="Nivel de exigencia estructural",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='impermeabilizacion_adicional',
-            field=models.BooleanField(default=False, verbose_name='¿Requiere impermeabilización adicional?'),
+            model_name="project",
+            name="impermeabilizacion_adicional",
+            field=models.BooleanField(
+                default=False, verbose_name="¿Requiere impermeabilización adicional?"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='incluir_estudios_disenos',
-            field=models.BooleanField(default=False, verbose_name='¿Incluir costos de estudios y diseños?'),
+            model_name="project",
+            name="incluir_estudios_disenos",
+            field=models.BooleanField(
+                default=False, verbose_name="¿Incluir costos de estudios y diseños?"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='incluir_licencia_impuestos',
-            field=models.BooleanField(default=False, verbose_name='¿Incluir costos de licencia e impuestos?'),
+            model_name="project",
+            name="incluir_licencia_impuestos",
+            field=models.BooleanField(
+                default=False, verbose_name="¿Incluir costos de licencia e impuestos?"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='incluye_lavadero',
-            field=models.BooleanField(default=False, verbose_name='¿Incluye lavadero / zona de ropas?'),
+            model_name="project",
+            name="incluye_lavadero",
+            field=models.BooleanField(
+                default=False, verbose_name="¿Incluye lavadero / zona de ropas?"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='metros_mueble_cocina',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=5, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Cocina – metros lineales de mueble bajo'),
+            model_name="project",
+            name="metros_mueble_cocina",
+            field=models.DecimalField(
+                decimal_places=2,
+                default=0,
+                max_digits=5,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Cocina – metros lineales de mueble bajo",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='nivel_enchape_banos',
-            field=models.CharField(choices=[('bajo', 'Bajo (1.5 m de altura)'), ('medio', 'Medio (2.1 m aprox.)'), ('total', 'Total (hasta techo)')], default='medio', max_length=20, verbose_name='Nivel de enchape en baños'),
+            model_name="project",
+            name="nivel_enchape_banos",
+            field=models.CharField(
+                choices=[
+                    ("bajo", "Bajo (1.5 m de altura)"),
+                    ("medio", "Medio (2.1 m aprox.)"),
+                    ("total", "Total (hasta techo)"),
+                ],
+                default="medio",
+                max_length=20,
+                verbose_name="Nivel de enchape en baños",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='numero_banos',
-            field=models.IntegerField(default=1, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Número de baños completos'),
+            model_name="project",
+            name="numero_banos",
+            field=models.IntegerField(
+                default=1,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Número de baños completos",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='numero_pisos',
-            field=models.CharField(choices=[('1', '1 piso'), ('2', '2 pisos'), ('3_mas', '3 o más')], default='1', max_length=10, verbose_name='Número de pisos'),
+            model_name="project",
+            name="numero_pisos",
+            field=models.CharField(
+                choices=[("1", "1 piso"), ("2", "2 pisos"), ("3_mas", "3 o más")],
+                default="1",
+                max_length=10,
+                verbose_name="Número de pisos",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='otra_ubicacion',
-            field=models.CharField(blank=True, max_length=200, verbose_name='Otra ubicación (especificar)'),
+            model_name="project",
+            name="otra_ubicacion",
+            field=models.CharField(
+                blank=True, max_length=200, verbose_name="Otra ubicación (especificar)"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='piso_habitaciones',
-            field=models.CharField(choices=[('ceramica', 'Cerámica básica'), ('porcelanato', 'Porcelanato estándar'), ('spc', 'SPC o laminado')], default='ceramica', max_length=20, verbose_name='Tipo de piso en habitaciones'),
+            model_name="project",
+            name="piso_habitaciones",
+            field=models.CharField(
+                choices=[
+                    ("ceramica", "Cerámica básica"),
+                    ("porcelanato", "Porcelanato estándar"),
+                    ("spc", "SPC o laminado"),
+                ],
+                default="ceramica",
+                max_length=20,
+                verbose_name="Tipo de piso en habitaciones",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='piso_zona_social',
-            field=models.CharField(choices=[('ceramica', 'Cerámica básica'), ('porcelanato', 'Porcelanato estándar'), ('spc', 'SPC o laminado')], default='ceramica', max_length=20, verbose_name='Tipo de piso en zona social'),
+            model_name="project",
+            name="piso_zona_social",
+            field=models.CharField(
+                choices=[
+                    ("ceramica", "Cerámica básica"),
+                    ("porcelanato", "Porcelanato estándar"),
+                    ("spc", "SPC o laminado"),
+                ],
+                default="ceramica",
+                max_length=20,
+                verbose_name="Tipo de piso en zona social",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='porcentaje_ventanas',
-            field=models.CharField(choices=[('bajo', 'Bajo (10%)'), ('medio', 'Medio (20%)'), ('alto', 'Alto (30%)')], default='medio', max_length=20, verbose_name='Porcentaje aproximado de fachada en ventanas'),
+            model_name="project",
+            name="porcentaje_ventanas",
+            field=models.CharField(
+                choices=[
+                    ("bajo", "Bajo (10%)"),
+                    ("medio", "Medio (20%)"),
+                    ("alto", "Alto (30%)"),
+                ],
+                default="medio",
+                max_length=20,
+                verbose_name="Porcentaje aproximado de fachada en ventanas",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='puerta_principal_especial',
-            field=models.BooleanField(default=False, verbose_name='¿Puerta principal especial?'),
+            model_name="project",
+            name="puerta_principal_especial",
+            field=models.BooleanField(
+                default=False, verbose_name="¿Puerta principal especial?"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='puertas_interiores',
-            field=models.IntegerField(default=0, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Cantidad de puertas interiores'),
+            model_name="project",
+            name="puertas_interiores",
+            field=models.IntegerField(
+                default=0,
+                validators=[django.core.validators.MinValueValidator(0)],
+                verbose_name="Cantidad de puertas interiores",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='punto_lavadero',
-            field=models.BooleanField(default=False, verbose_name='Punto lavadero'),
+            model_name="project",
+            name="punto_lavadero",
+            field=models.BooleanField(default=False, verbose_name="Punto lavadero"),
         ),
         migrations.AddField(
-            model_name='project',
-            name='punto_lavadora',
-            field=models.BooleanField(default=False, verbose_name='Punto lavadora'),
+            model_name="project",
+            name="punto_lavadora",
+            field=models.BooleanField(default=False, verbose_name="Punto lavadora"),
         ),
         migrations.AddField(
-            model_name='project',
-            name='punto_lavaplatos',
-            field=models.BooleanField(default=False, verbose_name='Punto lavaplatos'),
+            model_name="project",
+            name="punto_lavaplatos",
+            field=models.BooleanField(default=False, verbose_name="Punto lavaplatos"),
         ),
         migrations.AddField(
-            model_name='project',
-            name='red_gas_natural',
-            field=models.BooleanField(default=False, verbose_name='¿Incluye red de gas natural?'),
+            model_name="project",
+            name="red_gas_natural",
+            field=models.BooleanField(
+                default=False, verbose_name="¿Incluye red de gas natural?"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='relacion_muros',
-            field=models.CharField(choices=[('baja', 'Baja (mucho espacio abierto, pocos muros internos)'), ('media', 'Media (distribución típica de vivienda)'), ('alta', 'Alta (muchos muros divisorios y fachadas)')], default='media', max_length=20, verbose_name='Relación muros / área construida'),
+            model_name="project",
+            name="relacion_muros",
+            field=models.CharField(
+                choices=[
+                    ("baja", "Baja (mucho espacio abierto, pocos muros internos)"),
+                    ("media", "Media (distribución típica de vivienda)"),
+                    ("alta", "Alta (muchos muros divisorios y fachadas)"),
+                ],
+                default="media",
+                max_length=20,
+                verbose_name="Relación muros / área construida",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='requiere_cerramiento',
-            field=models.BooleanField(default=False, verbose_name='¿Requiere cerramiento provisional?'),
+            model_name="project",
+            name="requiere_cerramiento",
+            field=models.BooleanField(
+                default=False, verbose_name="¿Requiere cerramiento provisional?"
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='sistema_entrepiso',
-            field=models.CharField(choices=[('maciza', 'Losa maciza'), ('aligerada', 'Losa aligerada (casetón recuperable)')], default='maciza', max_length=20, verbose_name='Sistema de entrepiso / losa'),
+            model_name="project",
+            name="sistema_entrepiso",
+            field=models.CharField(
+                choices=[
+                    ("maciza", "Losa maciza"),
+                    ("aligerada", "Losa aligerada (casetón recuperable)"),
+                ],
+                default="maciza",
+                max_length=20,
+                verbose_name="Sistema de entrepiso / losa",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='tipo_cubierta',
-            field=models.CharField(choices=[('tradicional', 'Teja tradicional (fibrocemento, zinc)'), ('panel', 'Panel inyectado (térmico)')], default='tradicional', max_length=20, verbose_name='Tipo de cubierta'),
+            model_name="project",
+            name="tipo_cubierta",
+            field=models.CharField(
+                choices=[
+                    ("tradicional", "Teja tradicional (fibrocemento, zinc)"),
+                    ("panel", "Panel inyectado (térmico)"),
+                ],
+                default="tradicional",
+                max_length=20,
+                verbose_name="Tipo de cubierta",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='tipo_terreno',
-            field=models.CharField(choices=[('blando', 'Suelo blando / relleno'), ('normal', 'Suelo normal (tierra firme)'), ('rocoso', 'Suelo rocoso')], default='normal', max_length=20, verbose_name='Tipo de terreno predominante'),
+            model_name="project",
+            name="tipo_terreno",
+            field=models.CharField(
+                choices=[
+                    ("blando", "Suelo blando / relleno"),
+                    ("normal", "Suelo normal (tierra firme)"),
+                    ("rocoso", "Suelo rocoso"),
+                ],
+                default="normal",
+                max_length=20,
+                verbose_name="Tipo de terreno predominante",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='ubicacion_proyecto',
-            field=models.CharField(choices=[('medellin', 'Medellín'), ('bogota', 'Bogotá'), ('cali', 'Cali'), ('otra', 'Otra (especificar)')], default='medellin', max_length=20, verbose_name='Ubicación del proyecto'),
+            model_name="project",
+            name="ubicacion_proyecto",
+            field=models.CharField(
+                choices=[
+                    ("medellin", "Medellín"),
+                    ("bogota", "Bogotá"),
+                    ("cali", "Cali"),
+                    ("otra", "Otra (especificar)"),
+                ],
+                default="medellin",
+                max_length=20,
+                verbose_name="Ubicación del proyecto",
+            ),
         ),
         migrations.AddField(
-            model_name='project',
-            name='vestier_closets',
-            field=models.CharField(choices=[('ninguno', 'Ninguno'), ('basico', 'Básico (1–2 módulos)'), ('amplio', 'Amplio (vestier completo)')], default='ninguno', max_length=20, verbose_name='Vestier o closets'),
+            model_name="project",
+            name="vestier_closets",
+            field=models.CharField(
+                choices=[
+                    ("ninguno", "Ninguno"),
+                    ("basico", "Básico (1–2 módulos)"),
+                    ("amplio", "Amplio (vestier completo)"),
+                ],
+                default="ninguno",
+                max_length=20,
+                verbose_name="Vestier o closets",
+            ),
         ),
     ]

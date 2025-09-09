@@ -6,42 +6,105 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('catalog', '0004_remove_material_is_active_remove_material_min_stock_and_more'),
+        (
+            "catalog",
+            "0004_remove_material_is_active_remove_material_min_stock_and_more",
+        ),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Supplier',
+            name="Supplier",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=120, unique=True, verbose_name='Proveedor')),
-                ('contact_name', models.CharField(blank=True, max_length=120, verbose_name='Contacto')),
-                ('phone', models.CharField(blank=True, max_length=30, verbose_name='Teléfono')),
-                ('email', models.EmailField(blank=True, max_length=254)),
-                ('notes', models.TextField(blank=True)),
-                ('is_active', models.BooleanField(default=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        max_length=120, unique=True, verbose_name="Proveedor"
+                    ),
+                ),
+                (
+                    "contact_name",
+                    models.CharField(
+                        blank=True, max_length=120, verbose_name="Contacto"
+                    ),
+                ),
+                (
+                    "phone",
+                    models.CharField(
+                        blank=True, max_length=30, verbose_name="Teléfono"
+                    ),
+                ),
+                ("email", models.EmailField(blank=True, max_length=254)),
+                ("notes", models.TextField(blank=True)),
+                ("is_active", models.BooleanField(default=True)),
             ],
             options={
-                'ordering': ['name'],
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='MaterialSupplier',
+            name="MaterialSupplier",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('price', models.DecimalField(decimal_places=0, max_digits=12, validators=[django.core.validators.MinValueValidator(0)], verbose_name='Precio (COP)')),
-                ('preferred', models.BooleanField(default=False, verbose_name='Proveedor principal')),
-                ('lead_time_days', models.PositiveIntegerField(default=0, verbose_name='Plazo (días)')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('material', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='supplier_prices', to='catalog.material')),
-                ('supplier', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='material_prices', to='catalog.supplier')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "price",
+                    models.DecimalField(
+                        decimal_places=0,
+                        max_digits=12,
+                        validators=[django.core.validators.MinValueValidator(0)],
+                        verbose_name="Precio (COP)",
+                    ),
+                ),
+                (
+                    "preferred",
+                    models.BooleanField(
+                        default=False, verbose_name="Proveedor principal"
+                    ),
+                ),
+                (
+                    "lead_time_days",
+                    models.PositiveIntegerField(default=0, verbose_name="Plazo (días)"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "material",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="supplier_prices",
+                        to="catalog.material",
+                    ),
+                ),
+                (
+                    "supplier",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="material_prices",
+                        to="catalog.supplier",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-preferred', 'supplier__name'],
-                'unique_together': {('material', 'supplier')},
+                "ordering": ["-preferred", "supplier__name"],
+                "unique_together": {("material", "supplier")},
             },
         ),
     ]

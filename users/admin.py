@@ -11,16 +11,13 @@ try:
 except Exception:
     HAS_ROLE = False
 
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     # fieldsets y add_fieldsets (solo agregamos "role" si existe)
     if HAS_ROLE:
-        fieldsets = DjangoUserAdmin.fieldsets + (
-            (_("Rol"), {"fields": ("role",)}),
-        )
-        add_fieldsets = DjangoUserAdmin.add_fieldsets + (
-            (None, {"fields": ("role",)}),
-        )
+        fieldsets = DjangoUserAdmin.fieldsets + ((_("Rol"), {"fields": ("role",)}),)
+        add_fieldsets = DjangoUserAdmin.add_fieldsets + ((None, {"fields": ("role",)}),)
 
     # list_display / list_filter sin romper si no hay role aún
     base_list_display = ("username", "email", "first_name", "last_name", "is_staff")
