@@ -308,10 +308,12 @@ def project_detail(request, project_id):
         compra.stock_proyecto = pm.stock_proyecto if pm else 0
 
     # Calcular presupuesto estimado usando los datos del proyecto
+    estimated_budget = project.calculate_detailed_budget()
     
     context = {
         'project': project,
         'compras': compras,
+        'estimated_budget': estimated_budget,
     }
 
     return render(request, "projects/project_detail.html", context)
