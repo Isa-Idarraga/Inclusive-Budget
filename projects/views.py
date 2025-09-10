@@ -253,10 +253,10 @@ def project_create(request):
 
                 # Guardar en PostgreSQL primero
                 project.save()
-                # Calcular presupuesto automáticamente
-                project.presupuesto = project.calculate_detailed_budget()
-                # Calcular campos heredados automáticamente
+                # Calcular campos heredados automáticamente PRIMERO
                 project.calculate_legacy_fields()
+                # Calcular presupuesto automáticamente DESPUÉS
+                project.presupuesto = project.calculate_detailed_budget()
                 # Guardar nuevamente con el presupuesto y campos calculados
                 project.save()
                 # Asignar trabajadores seleccionados
@@ -308,6 +308,8 @@ def project_detail(request, project_id):
         compra.stock_proyecto = pm.stock_proyecto if pm else 0
 
     # Calcular presupuesto estimado usando los datos del proyecto
+    # Primero recalcular campos heredados para asegurar consistencia
+    project.calculate_legacy_fields()
     estimated_budget = project.calculate_detailed_budget()
     
     context = {
