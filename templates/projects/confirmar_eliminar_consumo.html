@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Confirmar Eliminación de Consumo
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>¿Estás seguro de eliminar este registro de consumo?</strong>
+                    </div>
+
+                    <h5 class="mb-3">Detalles del consumo:</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <strong>Material:</strong> {{ consumo.material.name }} ({{ consumo.material.sku }})
+                        </li>
+                        <li class="mb-2">
+                            <strong>Cantidad consumida:</strong> {{ consumo.cantidad_consumida }} {{ consumo.material.unit.symbol }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Fecha de consumo:</strong> {{ consumo.fecha_consumo|date:"d/m/Y" }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Componente/Actividad:</strong> {{ consumo.componente_actividad }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Responsable:</strong> {{ consumo.responsable }}
+                        </li>
+                        {% if consumo.observaciones %}
+                        <li class="mb-2">
+                            <strong>Observaciones:</strong> {{ consumo.observaciones }}
+                        </li>
+                        {% endif %}
+                    </ul>
+
+                    <div class="alert alert-info mt-4">
+                        <i class="fas fa-undo me-2"></i>
+                        <strong>Nota:</strong> El stock del material se restaurará automáticamente al proyecto al eliminar este consumo.
+                    </div>
+
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'projects:listar_consumos_proyecto' project.id %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="fas fa-trash me-2"></i>Sí, eliminar consumo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

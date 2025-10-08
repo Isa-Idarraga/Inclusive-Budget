@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="mb-4">
+                <a href="{% url 'projects:project_board' project.id %}" class="btn btn-outline-secondary mb-3">
+                    <i class="fas fa-arrow-left me-2"></i>Volver al tablero
+                </a>
+                <h2 class="fw-bold">
+                    {% if is_edit %}
+                        <i class="fas fa-edit text-warning me-2"></i>Editar Consumo de Material
+                    {% else %}
+                        <i class="fas fa-clipboard-list text-primary me-2"></i>Registrar Consumo de Material
+                    {% endif %}
+                </h2>
+                <p class="text-muted">Proyecto: <strong>{{ project.name }}</strong></p>
+                {% if fecha_seleccionada %}
+                <p class="text-muted">Fecha seleccionada: <strong>{{ fecha_seleccionada }}</strong></p>
+                {% endif %}
+            </div>
+
+            <!-- Formulario -->
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Instrucciones -->
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Instrucciones:</strong> Complete todos los campos obligatorios (*) para registrar el consumo de material del día.
+                        </div>
+
+                        <!-- Alerta de Stock Insuficiente (RF17D) -->
+                        {% if stock_insuficiente %}
+                        <div class="alert alert-warning border-warning" role="alert">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning me-3"></i>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading mb-3">
+                                        <i class="fas fa-box-open me-2"></i>Stock Insuficiente para este Consumo
+                                    </h5>
+                                    <p class="mb-3">
+                                        <strong>Material:</strong> {{ material_info.nombre }}<br>
+                                        <strong>Stock disponible:</strong>
+                                        <span class="badge bg-danger fs-6">{{ stock_disponible }} {{ material_info.unidad }}</span>
+                                    </p>
+                                    <p class="mb-3 text-dark">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        No hay suficiente stock disponible para registrar este consumo.
+                                        Por favor, primero registra una compra de material para aumentar el stock disponible.
+                                    </p>
+
+                                    <!-- Botón para registrar compra -->
+                                    <div class="d-grid">
+                                        <a href="{{ add_purchases_url }}" class="btn btn-success">
+                                            <i class="fas fa-shopping-cart me-2"></i>Registrar Compra de Material
+                                        </a>
+                                    </div>
+
+                                    <div class="mt-3 p-2 bg-light rounded">
+                                        <small class="text-muted">
+                                            <i class="fas fa-lightbulb me-1"></i>
+                                            <strong>Sugerencia:</strong> Puedes ajustar la cantidad consumida en el formulario abajo
+                                            para que coincida con el stock disponible, o agregar más material antes de registrar el consumo.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Errores generales del formulario -->
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div><i class="fas fa-exclamation-triangle me-2"></i>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Material -->
+                        <div class="mb-4">
+                            <label for="{{ form.material.id_for_label }}" class="form-label fw-bold">
+                                {{ form.material.label }}
+                            </label>
+                            {{ form.material }}
+                            {% if form.material.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.material.errors %}
+                                        <small><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if form.material.help_text %}
+                                <small class="form-text text-muted">{{ form.material.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <!-- Cantidad consumida -->
+                        <div class="mb-4">
+                            <label for="{{ form.cantidad_consumida.id_for_label }}" class="form-label fw-bold">
+                                {{ form.cantidad_consumida.label }}
+                            </label>
+                            {{ form.cantidad_consumida }}
+                            {% if form.cantidad_consumida.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.cantidad_consumida.errors %}
+                                        <small><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if form.cantidad_consumida.help_text %}
+                                <small class="form-text text-muted">{{ form.cantidad_consumida.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <!-- Fecha de consumo -->
+                        <div class="mb-4">
+                            <label for="{{ form.fecha_consumo.id_for_label }}" class="form-label fw-bold">
+                                {{ form.fecha_consumo.label }}
+                            </label>
+                            {{ form.fecha_consumo }}
+                            {% if form.fecha_consumo.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.fecha_consumo.errors %}
+                                        <small><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if form.fecha_consumo.help_text %}
+                                <small class="form-text text-muted">{{ form.fecha_consumo.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <!-- Componente/Actividad -->
+                        <div class="mb-4">
+                            <label for="{{ form.componente_actividad.id_for_label }}" class="form-label fw-bold">
+                                {{ form.componente_actividad.label }}
+                            </label>
+                            {{ form.componente_actividad }}
+                            {% if form.componente_actividad.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.componente_actividad.errors %}
+                                        <small><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if form.componente_actividad.help_text %}
+                                <small class="form-text text-muted">{{ form.componente_actividad.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <!-- Observaciones -->
+                        <div class="mb-4">
+                            <label for="{{ form.observaciones.id_for_label }}" class="form-label fw-bold">
+                                {{ form.observaciones.label }}
+                            </label>
+                            {{ form.observaciones }}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.observaciones.errors %}
+                                        <small><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if form.observaciones.help_text %}
+                                <small class="form-text text-muted">{{ form.observaciones.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="{% url 'projects:project_board' project.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-save me-2"></i>
+                                {% if is_edit %}Actualizar Consumo{% else %}Guardar Consumo{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="alert alert-light mt-4">
+                <h6 class="fw-bold"><i class="fas fa-lightbulb text-warning me-2"></i>Nota importante:</h6>
+                <ul class="mb-0">
+                    <li>Solo puedes registrar consumo de materiales que tengan stock disponible en este proyecto.</li>
+                    <li>La fecha de consumo no puede ser en el futuro.</li>
+                    <li>El stock se descontará automáticamente al guardar el registro.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

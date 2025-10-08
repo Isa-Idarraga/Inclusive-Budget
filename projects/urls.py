@@ -33,4 +33,11 @@ urlpatterns = [
     path('entrada/<int:entrada_id>/editar/', views.editar_entrada_material, name='editar_entrada_material'),
     path('entrada/<int:entrada_id>/borrar/', views.borrar_entrada_material, name='borrar_entrada_material'),
 
+    # URLs para consumo diario de materiales (RF17A)
+    path('<int:project_id>/consumo/registrar/', views.registrar_consumo_material, name='registrar_consumo_material'),
+    path('<int:project_id>/consumo/listar/', views.listar_consumos_proyecto, name='listar_consumos_proyecto'),
+    path('<int:project_id>/consumo/api/fecha/', views.obtener_consumos_fecha, name='obtener_consumos_fecha'),
+    path('<int:project_id>/consumo/api/mes/', views.obtener_consumos_mes, name='obtener_consumos_mes'),  # RF17C
+    path('consumo/<int:consumo_id>/editar/', views.editar_consumo_material, name='editar_consumo_material'),
+    path('consumo/<int:consumo_id>/eliminar/', views.eliminar_consumo_material, name='eliminar_consumo_material'),
 ]

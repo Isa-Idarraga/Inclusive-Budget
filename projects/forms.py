@@ -1,5 +1,5 @@
 from django import forms
-from .models import Project, Role, Worker, EntradaMaterial
+from .models import Project, Role, Worker, EntradaMaterial, ConsumoMaterial
 from catalog.models import Material, Supplier
 
 class EntradaMaterialForm(forms.ModelForm):
@@ -26,6 +26,158 @@ class EntradaMaterialForm(forms.ModelForm):
     )
 
 
+# Formulario para registrar consumo diario de materiales (RF17A)
+class ConsumoMaterialForm(forms.ModelForm):
+    """
+    Formulario para registrar el consumo diario de materiales
+    Incluye validaciones según criterios de aceptación de RF17A
+    """
+    class Meta:
+        model = ConsumoMaterial
+        fields = [
+            'material',
+            'cantidad_consumida',
+            'fecha_consumo',
+            'componente_actividad',
+            'observaciones'
+        ]
+        widgets = {
+            'material': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'cantidad_consumida': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.001',
+                'min': '0.001',
+                'placeholder': 'Ej: 25.5',
+                'required': True
+            }),
+            'fecha_consumo': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            }),
+            'componente_actividad': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ej: Cimentación, Muros primer piso, Instalación eléctrica',
+                'maxlength': '200',
+                'required': True
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Notas adicionales (opcional)'
+            }),
+        }
+        labels = {
+            'material': 'Material *',
+            'cantidad_consumida': 'Cantidad consumida *',
+            'fecha_consumo': 'Fecha de consumo *',
+            'componente_actividad': 'Componente/Actividad *',
+            'observaciones': 'Observaciones'
+        }
+        help_texts = {
+            'cantidad_consumida': 'Cantidad del material que se consumió',
+            'componente_actividad': 'Actividad o parte del proyecto donde se usó el material',
+        }
+
+    def __init__(self, *args, proyecto=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Si se proporciona un proyecto, filtrar solo materiales con stock
+        if proyecto:
+            self.proyecto = proyecto
+            # Filtrar materiales que tengan stock en este proyecto
+            from .models import ProyectoMaterial
+            materiales_con_stock = ProyectoMaterial.objects.filter(
+                proyecto=proyecto,
+                stock_proyecto__gt=0
+            ).values_list('material_id', flat=True)
+
+            self.fields['material'].queryset = Material.objects.filter(
+                id__in=materiales_con_stock
+            ).select_related('unit')
+
+            # Personalizar la visualización del material con stock disponible
+            self.fields['material'].label_from_instance = lambda obj: (
+                f"{obj.name} ({obj.sku}) - Disponible: "
+                f"{ProyectoMaterial.objects.get(proyecto=proyecto, material=obj).stock_proyecto} "
+                f"{obj.unit.symbol}"
+            )
+
+        # Establecer fecha de hoy por defecto
+        from django.utils import timezone
+        if not self.instance.pk:
+            self.fields['fecha_consumo'].initial = timezone.now().date()
+
+    def clean_cantidad_consumida(self):
+        """Validar que la cantidad sea positiva"""
+        cantidad = self.cleaned_data.get('cantidad_consumida')
+        if cantidad and cantidad <= 0:
+            raise forms.ValidationError('La cantidad consumida debe ser mayor a cero.')
+        return cantidad
+
+    def clean_fecha_consumo(self):
+        """Validar que la fecha no sea futura"""
+        from django.utils import timezone
+        fecha = self.cleaned_data.get('fecha_consumo')
+        if fecha and fecha > timezone.now().date():
+            raise forms.ValidationError('La fecha de consumo no puede ser en el futuro.')
+        return fecha
+
+    def clean_componente_actividad(self):
+        """Validar que el componente/actividad no esté vacío"""
+        componente = self.cleaned_data.get('componente_actividad', '').strip()
+        if not componente:
+            raise forms.ValidationError('Debe especificar el componente o actividad.')
+        return componente
+
+    def clean(self):
+        """
+        Validación completa del formulario (RF17D)
+        Verifica que haya suficiente stock para el consumo
+        """
+        cleaned_data = super().clean()
+        material = cleaned_data.get('material')
+        cantidad_consumida = cleaned_data.get('cantidad_consumida')
+
+        if material and cantidad_consumida and hasattr(self, 'proyecto'):
+            from .models import ProyectoMaterial
+
+            try:
+                pm = ProyectoMaterial.objects.get(
+                    proyecto=self.proyecto,
+                    material=material
+                )
+
+                # Si estamos editando, restar la cantidad anterior
+                cantidad_actual_a_consumir = cantidad_consumida
+                if self.instance.pk:
+                    cantidad_actual_a_consumir = cantidad_consumida - self.instance.cantidad_consumida
+
+                # Verificar si hay suficiente stock
+                if pm.stock_proyecto < cantidad_actual_a_consumir:
+                    # Guardar el stock disponible para mostrarlo en el template
+                    self.stock_disponible = pm.stock_proyecto
+                    self.material_nombre = material.name
+                    self.material_unidad = material.unit.symbol
+
+                    raise forms.ValidationError(
+                        f'Stock insuficiente para este consumo. '
+                        f'Disponible: {pm.stock_proyecto} {material.unit.symbol}. '
+                        f'Solicitado: {cantidad_actual_a_consumir} {material.unit.symbol}.'
+                    )
+
+            except ProyectoMaterial.DoesNotExist:
+                raise forms.ValidationError(
+                    f'El material {material.name} no tiene stock asignado a este proyecto. '
+                    f'Debe registrar una entrada de material primero.'
+                )
+
+        return cleaned_data
+
+
 # Formulario para Role
 class RoleForm(forms.ModelForm):
     class Meta:
@@ -42,8 +194,7 @@ class WorkerForm(forms.ModelForm):
 
 class ProjectForm(forms.ModelForm):
     """
-    Formulario expandido para crear y editar proyectos
-    Incluye cuestionario detallado para cálculo preciso de presupuestos
+    Formulario para crear y editar proyectos
     """
 
     class Meta:
