@@ -251,6 +251,20 @@
                                     </select>
                                 </div>
                                 
+                                <div class="col-md-6 col-lg-3">
+                                    <label for="creador" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-user-tie me-2"></i>Creado Por
+                                    </label>
+                                    <select id="creador" name="creador" class="form-select form-select-inclusive">
+                                        <option value="">Todos los creadores</option>
+                                        {% for creador in creadores %}
+                                        <option value="{{ creador.id }}" {% if creador_filter == creador.id|stringformat:"s" %}selected{% endif %}>
+                                            👤 {{ creador.first_name }} {{ creador.last_name }} ({{ creador.get_role_display }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
                                 <!-- Filtros de rango -->
                                 <div class="col-md-6 col-lg-3">
                                     <label for="area_min" class="form-label fw-semibold text-inclusive-primary">
@@ -454,7 +468,11 @@
                 {% for project in projects_en_proceso %}
                 <div class="col-sm-6 col-lg-4 col-xl-3">
                     <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+                        {% if user.role == 'JEFE' or user.is_superuser or project.creado_por.id == user.id %}
                         <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                        {% else %}
+                        <a href="{% url 'projects:project_detail' project.id %}" class="text-decoration-none">
+                        {% endif %}
                             <div class="position-relative overflow-hidden rounded-top-4">
                                 {% if project.imagen_proyecto %}
                                     <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 14rem; object-fit: cover;" />
@@ -502,6 +520,14 @@
                                     <small class="text-inclusive-secondary">{{ project.get_acabado_muros_display }}</small>
                                 </div>
                                 {% endif %}
+
+                                <!-- Creado por -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-user-tie text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        <strong>Creado por:</strong> {{ project.creado_por.first_name }} {{ project.creado_por.last_name }}
+                                    </small>
+                                </div>
                             </div>
                             
                             <!-- Presupuesto destacado -->
@@ -538,7 +564,11 @@
                 {% for project in projects_terminados %}
                 <div class="col-sm-6 col-lg-4 col-xl-3">
                     <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+                        {% if user.role == 'JEFE' or user.is_superuser or project.creado_por.id == user.id %}
                         <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                        {% else %}
+                        <a href="{% url 'projects:project_detail' project.id %}" class="text-decoration-none">
+                        {% endif %}
                             <div class="position-relative overflow-hidden rounded-top-4">
                                 {% if project.imagen_proyecto %}
                                     <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 14rem; object-fit: cover;" />
@@ -580,6 +610,14 @@
                                 </div>
                                 {% endif %}
                                 
+                                <!-- Creado por -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-user-tie text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        <strong>Creado por:</strong> {{ project.creado_por.first_name }} {{ project.creado_por.last_name }}
+                                    </small>
+                                </div>
+
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fas fa-calendar text-inclusive-secondary me-2 small"></i>
                                     <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"M Y" }}</small>
@@ -620,7 +658,11 @@
                 {% for project in projects_futuros %}
                 <div class="col-sm-6 col-lg-4 col-xl-3">
                     <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+                        {% if user.role == 'JEFE' or user.is_superuser or project.creado_por.id == user.id %}
                         <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                        {% else %}
+                        <a href="{% url 'projects:project_detail' project.id %}" class="text-decoration-none">
+                        {% endif %}
                             <div class="position-relative overflow-hidden rounded-top-4">
                                 {% if project.imagen_proyecto %}
                                     <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 14rem; object-fit: cover;" />
@@ -662,6 +704,14 @@
                                 </div>
                                 {% endif %}
                                 
+                                <!-- Creado por -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-user-tie text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        <strong>Creado por:</strong> {{ project.creado_por.first_name }} {{ project.creado_por.last_name }}
+                                    </small>
+                                </div>
+
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fas fa-calendar text-inclusive-secondary me-2 small"></i>
                                     <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"M Y" }}</small>

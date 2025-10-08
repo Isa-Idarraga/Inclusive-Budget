@@ -5,11 +5,12 @@ from django.db.models import Q, Prefetch
 from .models import Material, Supplier, MaterialSupplier
 from .forms import MaterialForm
 from django.db import transaction
-from django.db.models import Q, Prefetch
-from django.contrib import messages
 from .forms import MaterialSupplierForm
+from users.decorators import role_required
+from users.models import User
 
 
+@role_required(User.CONSTRUCTOR, User.JEFE)
 @login_required
 def material_list(request):
     q = (request.GET.get("q") or "").strip()
