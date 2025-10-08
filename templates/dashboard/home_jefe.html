@@ -2,9 +2,11 @@
 {% load static %}
 {% block content %}
 <section class="hero">
-  <h1 class="hero-title">Hola Jefe ¿Desea iniciar un nuevo <br>proyecto?</h1>
+  <h1 class="hero-title">Hola Jefe 👑<br>¿Desea iniciar un nuevo proyecto?</h1>
   <div class="hero-buttons">
-    <a class="btn-hero" href="{% url 'projects:project_create' %}">Iniciar!! <span class="chev"></span></a>
+    <a class="btn-hero" href="{% url 'projects:project_create' %}">Iniciar Proyecto <span class="chev"></span></a>
+    <a class="btn-hero" href="{% url 'projects:project_list' %}">Ver Proyectos <span class="chev"></span></a>
+    <a class="btn-hero" href="{% url 'users:user_list' %}">Gestionar Usuarios <span class="chev"></span></a>
   </div>
 
   <div class="hero-logo">

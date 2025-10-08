@@ -4,19 +4,46 @@ from django.db import models
 
 
 class User(AbstractUser):
-    JEFE_OBRA = "JEFE_OBRA"
-    GESTOR_INVENTARIO = "GESTOR_INVENTARIO"
+    COMERCIAL = "COMERCIAL"
+    CONSTRUCTOR = "CONSTRUCTOR"
+    JEFE = "JEFE"
+
     ROLE_CHOICES = [
-        (JEFE_OBRA, "Jefe de obra"),
-        (GESTOR_INVENTARIO, "Gestor de inventario"),
+        (COMERCIAL, "Usuario Comercial"),
+        (CONSTRUCTOR, "Usuario Constructor"),
+        (JEFE, "Jefe"),
     ]
-    role = models.CharField(max_length=32, choices=ROLE_CHOICES, default=JEFE_OBRA)
+    role = models.CharField(max_length=32, choices=ROLE_CHOICES, default=COMERCIAL)
 
     def can_see(self, module: str) -> bool:
-        if self.is_superuser:
+        """Define qué módulos puede ver cada rol"""
+        if self.is_superuser or self.role == self.JEFE:
             return True
+
         visible = {
-            self.JEFE_OBRA: {"projects", "dashboard"},
-            self.GESTOR_INVENTARIO: {"catalog", "dashboard"},
+            self.COMERCIAL: {"projects_create"},  # Solo crear proyectos
+            self.CONSTRUCTOR: {"projects", "catalog", "dashboard"},  # Ve todo pero con restricciones
         }
         return module in visible.get(self.role, set())
+
+    def can_edit_project(self, project) -> bool:
+        """Define si puede editar un proyecto específico"""
+        if self.is_superuser or self.role == self.JEFE:
+            return True
+        if self.role == self.CONSTRUCTOR:
+            # Solo puede editar sus propios proyectos
+            return project.creado_por_id == self.id
+        return False
+
+    def can_access_project_board(self, project) -> bool:
+        """Define si puede acceder al tablero de control (calendario interactivo)"""
+        if self.is_superuser or self.role == self.JEFE:
+            return True
+        if self.role == self.CONSTRUCTOR:
+            # Solo accede al board de sus propios proyectos
+            return project.creado_por_id == self.id
+        return False
+
+    def can_manage_users(self) -> bool:
+        """Solo el JEFE puede crear y gestionar usuarios"""
+        return self.is_superuser or self.role == self.JEFE

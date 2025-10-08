@@ -10,8 +10,11 @@ import json
 from django.urls import reverse
 from .models import Project, EntradaMaterial
 from .forms import EntradaMaterialForm
+from users.decorators import role_required, project_owner_or_jefe_required
+from users.models import User
+from django.core.exceptions import PermissionDenied
 
-@login_required
+@project_owner_or_jefe_required
 def registrar_entrada_material(request, project_id):
     project = get_object_or_404(Project, id=project_id)
 
@@ -93,11 +96,13 @@ def registrar_entrada_material(request, project_id):
 
     return render(request, "projects/registrar_entrada_material.html", {"form": form, "project": project})
 
-@login_required
+@role_required(User.CONSTRUCTOR, User.JEFE)
 def project_list(request):
     """
-    Vista para listar todos los proyectos del usuario
-    PostgreSQL: Realiza consultas SELECT con filtros y agrupación por estado
+    Vista para listar proyectos
+    - COMERCIAL: Ve todos los proyectos (solo lectura, info básica)
+    - CONSTRUCTOR: Ve todos los proyectos (solo edita los suyos)
+    - JEFE: Ve y puede editar todos los proyectos
     """
     # Obtener parámetros de búsqueda desde la URL
     search_query = request.GET.get("search", "")
@@ -114,10 +119,10 @@ def project_list(request):
     banos_filter = request.GET.get("banos", "")
     fecha_desde_filter = request.GET.get("fecha_desde", "")
     fecha_hasta_filter = request.GET.get("fecha_hasta", "")
+    creador_filter = request.GET.get("creador", "")
 
-    # Consulta inicial: obtener proyectos del usuario actual
-    # PostgreSQL: SELECT * FROM projects_project WHERE creado_por_id = [user_id]
-    projects = Project.objects.filter(creado_por=request.user)
+    # TODOS los usuarios ven TODOS los proyectos
+    projects = Project.objects.all()
 
     # Filtro por búsqueda - PostgreSQL: LIKE queries para búsqueda de texto
     if search_query:
@@ -203,11 +208,24 @@ def project_list(request):
     if fecha_hasta_filter:
         projects = projects.filter(fecha_creacion__lte=fecha_hasta_filter)
 
+    # Filtro por creador
+    if creador_filter:
+        try:
+            creador_id = int(creador_filter)
+            projects = projects.filter(creado_por_id=creador_id)
+        except ValueError:
+            pass
+
     # Agrupar por estado para mostrar en secciones separadas
     # PostgreSQL: Múltiples consultas SELECT con filtros diferentes
     projects_en_proceso = projects.filter(estado="en_proceso")
     projects_terminados = projects.filter(estado="terminado")
     projects_futuros = projects.filter(estado="futuro")
+
+    # Obtener lista de creadores únicos para el filtro
+    creadores = User.objects.filter(
+        id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
+    ).order_by('first_name', 'last_name')
 
     # Verificar si hay filtros activos
     has_active_filters = any(
@@ -226,6 +244,7 @@ def project_list(request):
             banos_filter,
             fecha_desde_filter,
             fecha_hasta_filter,
+            creador_filter,
         ]
     )
 
@@ -247,6 +266,8 @@ def project_list(request):
         "banos_filter": banos_filter,
         "fecha_desde_filter": fecha_desde_filter,
         "fecha_hasta_filter": fecha_hasta_filter,
+        "creador_filter": creador_filter,
+        "creadores": creadores,
         "has_active_filters": has_active_filters,
     }
 
@@ -258,6 +279,8 @@ def project_list(request):
 def project_board(request, project_id):
     """
     Vista tablero del proyecto: nombre, presupuesto, calendario, botones y listado de compras.
+    - JEFE: Siempre accede al tablero (todos los proyectos)
+    - CONSTRUCTOR: Solo accede al tablero si él creó el proyecto
     """
     # Obtener proyecto con sus entradas relacionadas a material y proveedor
     project = get_object_or_404(
@@ -265,9 +288,14 @@ def project_board(request, project_id):
             'entradas__material', 
             'entradas__proveedor'
         ),
-        id=project_id,
-        creado_por=request.user
+        id=project_id
     )
+
+    # Verificar permisos: JEFE siempre puede, otros solo si crearon el proyecto
+    if request.user.role != User.JEFE and not request.user.is_superuser:
+        if project.creado_por != request.user:
+            # Si no es JEFE y no creó el proyecto, redirigir a detalles
+            return redirect('projects:project_detail', project_id=project.id)
 
     # Entradas de materiales del proyecto
     entradas_raw = project.entradas.all().order_by('material__name', '-fecha_ingreso')
@@ -329,7 +357,9 @@ def project_board(request, project_id):
 def project_create(request):
     """
     Vista para crear un nuevo proyecto
-    PostgreSQL: INSERT INTO projects_project (...) VALUES (...)
+    - COMERCIAL: Solo puede crear (después no podrá verlo en la lista)
+    - CONSTRUCTOR: Crea y puede gestionarlo completamente
+    - JEFE: Acceso completo
     """
     workers = Worker.objects.all()
     if request.method == "POST":
@@ -337,14 +367,10 @@ def project_create(request):
         selected_workers = request.POST.getlist("workers")
         if form.is_valid():
             try:
-                # Crear proyecto pero no guardar aún
                 project = form.save(commit=False)
-                # Asignar usuario actual como creador
                 project.creado_por = request.user
 
-                # Asegurar que los campos heredados tengan valores por defecto
                 from decimal import Decimal
-
                 project.built_area = project.area_construida_total or Decimal("0")
                 project.exterior_area = project.area_exterior_intervenir or Decimal("0")
                 project.columns_count = project.columns_count or 0
@@ -353,28 +379,34 @@ def project_create(request):
                 project.doors_count = project.doors_count or 0
                 project.doors_height = Decimal("2.1")
 
-                # Guardar en PostgreSQL primero
                 project.save()
-                # Calcular campos heredados automáticamente PRIMERO
                 project.calculate_legacy_fields()
-                # Calcular presupuesto automáticamente DESPUÉS
                 project.presupuesto = project.calculate_detailed_budget()
-                # Guardar nuevamente con el presupuesto y campos calculados
                 project.save()
-                # Asignar trabajadores seleccionados
+
                 if selected_workers:
                     project.workers.set(selected_workers)
+
                 messages.success(
                     request,
                     f'✅ Proyecto "{project.name}" creado exitosamente! Presupuesto estimado: ${project.presupuesto:,.0f}',
                 )
-                return redirect("projects:project_detail", project_id=project.id)
+
+                # Redirigir según el rol
+                if request.user.role == User.COMERCIAL:
+                    # COMERCIAL no puede ver el detalle, mostrar mensaje y redirigir a crear otro
+                    messages.info(request, "Proyecto creado. Puedes crear otro presupuesto.")
+                    return redirect("projects:project_create")
+                else:
+                    return redirect("projects:project_detail", project_id=project.id)
+
             except Exception as e:
                 messages.error(request, f"❌ Error al crear el proyecto: {str(e)}")
         else:
             messages.error(request, "❌ Por favor corrige los errores en el formulario")
     else:
         form = ProjectForm()
+
     return render(
         request,
         "projects/project_form.html",
@@ -393,10 +425,10 @@ def project_create(request):
 def project_detail(request, project_id):
     """
     Vista para mostrar el detalle de un proyecto
-    PostgreSQL: SELECT * FROM projects_project WHERE id = [project_id] AND creado_por_id = [user_id]
+    Accesible para todos los usuarios autenticados
     """
-    # Obtener proyecto específico del usuario actual
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    # Obtener proyecto sin restricción de creador
+    project = get_object_or_404(Project, id=project_id)
 
     # Entradas de materiales del proyecto
     compras = project.entradas.select_related("material", "proveedor").all()
@@ -477,17 +509,18 @@ def project_update(request, project_id):
     )
 
 
-@login_required
+@project_owner_or_jefe_required
 def project_delete(request, project_id):
     """
     Vista para eliminar un proyecto
-    PostgreSQL: DELETE FROM projects_project WHERE id = [project_id]
+    - CONSTRUCTOR: Solo puede eliminar SUS proyectos
+    - JEFE: Puede eliminar cualquier proyecto
+    - COMERCIAL: Sin acceso
     """
-    # Obtener proyecto específico del usuario actual
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    # Obtener proyecto (el decorador ya verificó los permisos)
+    project = get_object_or_404(Project, id=project_id)
 
     if request.method == "POST":
-        # Eliminar de PostgreSQL
         project.delete()
         messages.success(request, "Proyecto eliminado exitosamente!")
         return redirect("projects:project_list")

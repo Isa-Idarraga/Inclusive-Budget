@@ -22,7 +22,8 @@
                         <i class="fas fa-circle me-2" style="font-size: 0.75rem;"></i>
                         {{ project.get_estado_display }}
                     </span>
-                    <!-- Formulario simple para cambiar estado -->
+                    <!-- Formulario simple para cambiar estado - Solo visible para el creador o jefe -->
+                    {% if user.role == 'JEFE' or user.is_superuser or project.creado_por.id == user.id %}
                     <form method="post" action="{% url 'projects:update_project_status' project.id %}" class="d-inline">
                         {% csrf_token %}
                         <select name="status" class="form-select form-select-sm d-inline-block me-2" style="width: auto;" onchange="this.form.submit()">
@@ -31,6 +32,7 @@
                             <option value="terminado" {% if project.estado == 'terminado' %}selected{% endif %}>✅ Terminado</option>
                         </select>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -104,12 +106,26 @@
                             </div>
                             
                             <!-- Fecha de Creación -->
-                            <div class="col-12 p-4 accent-green-border rounded-bottom-4">
+                            <div class="col-12 p-4 accent-green-border border-bottom">
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-calendar-alt text-inclusive-primary me-3 fs-5"></i>
                                     <div class="flex-fill">
                                         <p class="small text-inclusive-secondary fw-medium mb-1">Fecha de Creación</p>
                                         <p class="text-inclusive-dark fw-semibold mb-0">{{ project.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Creado Por -->
+                            <div class="col-12 p-4 accent-green-border rounded-bottom-4">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user-tie text-inclusive-neon me-3 fs-5"></i>
+                                    <div class="flex-fill">
+                                        <p class="small text-inclusive-secondary fw-medium mb-1">Creado Por</p>
+                                        <p class="text-inclusive-dark fw-semibold mb-0">
+                                            {{ project.creado_por.first_name }} {{ project.creado_por.last_name }}
+                                            <span class="badge bg-inclusive-primary ms-2">{{ project.creado_por.get_role_display }}</span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -261,7 +277,8 @@
                     </div>
                 </div>
 
-                <!-- Acciones -->
+                <!-- Acciones - Solo visible para el creador o jefe -->
+                {% if user.role == 'JEFE' or user.is_superuser or project.creado_por.id == user.id %}
                 <div class="card shadow-inclusive-lg rounded-4 animate-fade-in animate-delay-4">
                     <div class="card-header card-header-inclusive rounded-top-4 border-0">
                         <div class="d-flex align-items-center">
@@ -295,6 +312,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>

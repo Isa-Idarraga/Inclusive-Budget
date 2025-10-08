@@ -10,10 +10,13 @@ def home_router(request):
     if u.is_superuser:  # si quieres que el superuser vea algo especial, decide aquí
         return redirect("home_jefe")  # o a "admin:index" si prefieres el admin
 
-    if u.role == User.JEFE_OBRA:
+    # Nuevos roles
+    if u.role == User.JEFE:
         return redirect("home_jefe")
-    if u.role == User.GESTOR_INVENTARIO:
-        return redirect("home_gestor")
+    if u.role == User.CONSTRUCTOR:
+        return redirect("home_constructor")
+    if u.role == User.COMERCIAL:
+        return redirect("home_comercial")
 
     # fallback por si el usuario no tiene rol (o algo raro)
     return redirect("login")
@@ -21,9 +24,17 @@ def home_router(request):
 
 @login_required
 def home_jefe(request):
+    """Vista de inicio para el JEFE - Acceso total"""
     return render(request, "dashboard/home_jefe.html")
 
 
 @login_required
-def home_gestor(request):
-    return render(request, "dashboard/home_gestor.html")
+def home_constructor(request):
+    """Vista de inicio para el CONSTRUCTOR - Gestión de proyectos y materiales"""
+    return render(request, "dashboard/home_constructor.html")
+
+
+@login_required
+def home_comercial(request):
+    """Vista de inicio para el COMERCIAL - Solo crear presupuestos"""
+    return render(request, "dashboard/home_comercial.html")

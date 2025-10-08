@@ -8,8 +8,9 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("dashboard.urls")),
     path("accounts/", include("django.contrib.auth.urls")),
+    path("users/", include("users.urls")),  # URLs de gestión de usuarios
     path("projects/", include("projects.urls")),
-    path("catalog/", include("catalog.urls")), # Catálogo de materiales
+    path("catalog/", include("catalog.urls")),  # Catálogo de materiales
     path('chatbot/', include('chatbot.urls')),
 ]
 
