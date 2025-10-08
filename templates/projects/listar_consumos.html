@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="mb-4">
+        <a href="{% url 'projects:project_board' project.id %}" class="btn btn-outline-secondary mb-3">
+            <i class="fas fa-arrow-left me-2"></i>Volver al tablero
+        </a>
+        <h2 class="fw-bold">
+            <i class="fas fa-chart-line text-success me-2"></i>Historial de Consumos
+        </h2>
+        <p class="text-muted">Proyecto: <strong>{{ project.name }}</strong></p>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Fecha desde</label>
+                    <input type="date" name="fecha_desde" class="form-control" value="{{ fecha_desde }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Fecha hasta</label>
+                    <input type="date" name="fecha_hasta" class="form-control" value="{{ fecha_hasta }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Material</label>
+                    <select name="material" class="form-select">
+                        <option value="">Todos los materiales</option>
+                        {% for material in materiales_usados %}
+                            <option value="{{ material.id }}" {% if material.id|stringformat:"s" == material_id %}selected{% endif %}>
+                                {{ material.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Actividad</label>
+                    <input type="text" name="actividad" class="form-control" placeholder="Buscar actividad..." value="{{ actividad }}">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Filtrar
+                    </button>
+                    <a href="{% url 'projects:listar_consumos_proyecto' project.id %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo me-2"></i>Limpiar filtros
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Listado de consumos -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Consumos Registrados ({{ consumos.count }})</h5>
+            <a href="{% url 'projects:registrar_consumo_material' project.id %}" class="btn btn-light btn-sm">
+                <i class="fas fa-plus me-2"></i>Nuevo Consumo
+            </a>
+        </div>
+        <div class="card-body p-0">
+            {% if consumos %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Material</th>
+                                <th>Cantidad</th>
+                                <th>Componente/Actividad</th>
+                                <th>Responsable</th>
+                                <th>Registrado por</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for consumo in consumos %}
+                            <tr>
+                                <td>
+                                    <i class="fas fa-calendar text-primary me-2"></i>
+                                    {{ consumo.fecha_consumo|date:"d/m/Y" }}
+                                </td>
+                                <td>
+                                    <strong>{{ consumo.material.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ consumo.material.sku }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        {{ consumo.cantidad_consumida }} {{ consumo.material.unit.symbol }}
+                                    </span>
+                                </td>
+                                <td>{{ consumo.componente_actividad }}</td>
+                                <td>{{ consumo.responsable }}</td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ consumo.registrado_por.username }}
+                                        <br>
+                                        {{ consumo.fecha_registro|date:"d/m/Y H:i" }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'projects:editar_consumo_material' consumo.id %}"
+                                           class="btn btn-outline-primary" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal{{ consumo.id }}"
+                                                title="Eliminar">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- Modal de confirmación -->
+                                    <div class="modal fade" id="deleteModal{{ consumo.id }}" tabindex="-1">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title">Confirmar eliminación</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>¿Estás seguro de eliminar este consumo?</p>
+                                                    <ul>
+                                                        <li><strong>Material:</strong> {{ consumo.material.name }}</li>
+                                                        <li><strong>Cantidad:</strong> {{ consumo.cantidad_consumida }} {{ consumo.material.unit.symbol }}</li>
+                                                        <li><strong>Fecha:</strong> {{ consumo.fecha_consumo|date:"d/m/Y" }}</li>
+                                                    </ul>
+                                                    <p class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>El stock se restaurará automáticamente.</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <form method="post" action="{% url 'projects:eliminar_consumo_material' consumo.id %}">
+                                                        {% csrf_token %}
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% if consumo.observaciones %}
+                            <tr class="table-light">
+                                <td colspan="7">
+                                    <small class="text-muted">
+                                        <i class="fas fa-comment me-2"></i><strong>Observaciones:</strong> {{ consumo.observaciones }}
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No hay consumos registrados con los filtros aplicados.</p>
+                    <a href="{% url 'projects:registrar_consumo_material' project.id %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Registrar primer consumo
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

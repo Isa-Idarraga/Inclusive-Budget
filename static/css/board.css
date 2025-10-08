@@ -1,0 +1,208 @@
+/* Estilos para el calendario del proyecto */
+
+.calendar {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-top: 15px;
+}
+
+.dow {
+  text-align: center;
+  font-weight: bold;
+  padding: 10px 5px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #495057;
+}
+
+.day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  background-color: #fff;
+  font-weight: 500;
+}
+
+.day .day-number {
+  position: relative;
+  z-index: 1;
+}
+
+.day:hover {
+  background-color: #e7f3ff;
+  border-color: #0d6efd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.day.muted {
+  color: #adb5bd;
+  background-color: #f8f9fa;
+}
+
+.day.today {
+  background-color: #0d6efd;
+  color: white;
+  font-weight: bold;
+  border-color: #0d6efd;
+}
+
+.day.today:hover {
+  background-color: #0b5ed7;
+}
+
+.day.selected {
+  background-color: #198754;
+  color: white;
+  border-color: #198754;
+}
+
+.day.selected:hover {
+  background-color: #157347;
+}
+
+/* Indicador de días CON consumos registrados (VERDE - RF17C) */
+.day.has-registro {
+  background-color: #d1f0e0;
+  border: 2px solid #28a745;
+  color: #155724;
+}
+
+.day.has-registro:hover {
+  background-color: #b8e6cc;
+  border-color: #20c997;
+}
+
+/* Indicador de días SIN consumos (GRIS - RF17C) */
+.day.sin-registro {
+  background-color: #e9ecef;
+  border: 2px solid #6c757d;
+  color: #6c757d;
+  opacity: 0.7;
+}
+
+.day.sin-registro:hover {
+  background-color: #dee2e6;
+  opacity: 1;
+}
+
+/* Badge de número de consumos (RF17C) */
+.consumo-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: white;
+  z-index: 2;
+  padding: 2px 6px;
+}
+
+.consumo-badge.bg-success {
+  background-color: #28a745 !important;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+/* Estilos para el modal de opciones */
+#dayOptionsModal .modal-content {
+  border: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+#dayOptionsModal .modal-header.bg-inclusive-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+#dayOptionsModal .btn-lg {
+  padding: 1rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+#dayOptionsModal .btn-lg:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#dayOptionsModal .btn-lg .text-start {
+  flex: 1;
+}
+
+#dayOptionsModal .btn-lg small {
+  font-size: 0.75rem;
+}
+
+#dayOptionsModal #day-summary {
+  border-left: 4px solid #0d6efd;
+  background: linear-gradient(to right, rgba(13, 110, 253, 0.05), transparent);
+}
+
+#dayOptionsModal .list-group-item {
+  border-left: 3px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+#dayOptionsModal .list-group-item:hover {
+  border-left-color: #667eea;
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .dow {
+    font-size: 0.7rem;
+    padding: 8px 3px;
+  }
+
+  .day {
+    padding: 5px;
+    font-size: 0.9rem;
+  }
+
+  .consumo-badge {
+    width: 16px;
+    height: 16px;
+    font-size: 0.6rem;
+  }
+}
+
+/* Animación de entrada */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cal-grid {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Estilos para tooltips informativos */
+.day[title] {
+  cursor: help;
+}

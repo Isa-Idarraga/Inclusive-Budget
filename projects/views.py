@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q
 from .models import Project, Worker, Role
-from .forms import ProjectForm, WorkerForm, RoleForm
+from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm
 import json
 from django.urls import reverse
 from .models import Project, EntradaMaterial
@@ -21,9 +21,75 @@ def registrar_entrada_material(request, project_id):
             entrada = form.save(commit=False)
             entrada.proyecto = project
             entrada.save()
-            return redirect("projects:project_board", project_id=project.id)  # vuelve al detalle del proyecto
+
+            # Verificar si hay un consumo pendiente en la sesión (RF17D)
+            consumo_pendiente = request.session.get('consumo_pendiente')
+
+            if consumo_pendiente:
+                try:
+                    # Intentar registrar el consumo pendiente automáticamente
+                    from .models import ConsumoMaterial
+                    from catalog.models import Material
+
+                    material = Material.objects.get(id=consumo_pendiente['material_id'])
+
+                    # Crear el consumo con los datos guardados
+                    consumo = ConsumoMaterial(
+                        proyecto=project,
+                        material=material,
+                        cantidad_consumida=consumo_pendiente['cantidad_consumida'],
+                        fecha_consumo=consumo_pendiente['fecha_consumo'],
+                        componente_actividad=consumo_pendiente['componente_actividad'],
+                        responsable=consumo_pendiente['responsable'],
+                        observaciones=consumo_pendiente.get('observaciones', ''),
+                        registrado_por=request.user
+                    )
+
+                    # Intentar guardar (validará stock nuevamente)
+                    consumo.save()
+
+                    # Limpiar la sesión
+                    del request.session['consumo_pendiente']
+
+                    messages.success(
+                        request,
+                        f'✅ Compra registrada exitosamente. '
+                        f'✅ Consumo registrado automáticamente: {consumo.cantidad_consumida} {material.unit.symbol} '
+                        f'de {material.name} para {consumo.componente_actividad}'
+                    )
+
+                except Exception as e:
+                    # Si falla el registro del consumo, solo mostrar advertencia
+                    messages.warning(
+                        request,
+                        f'✅ Compra registrada exitosamente. '
+                        f'⚠️ No se pudo registrar el consumo automáticamente: {str(e)}. '
+                        f'Por favor, regístralo manualmente.'
+                    )
+                    # Limpiar la sesión de todos modos
+                    if 'consumo_pendiente' in request.session:
+                        del request.session['consumo_pendiente']
+            else:
+                # No hay consumo pendiente, solo mensaje de compra exitosa
+                messages.success(request, f'✅ Compra de {entrada.material.name} registrada exitosamente.')
+
+            return redirect("projects:project_board", project_id=project.id)
     else:
         form = EntradaMaterialForm()
+
+        # Verificar si hay un consumo pendiente para mostrar un aviso
+        consumo_pendiente = request.session.get('consumo_pendiente')
+        if consumo_pendiente:
+            try:
+                from catalog.models import Material
+                material = Material.objects.get(id=consumo_pendiente['material_id'])
+                messages.info(
+                    request,
+                    f'ℹ️ Después de registrar esta compra, se agregará automáticamente el consumo de '
+                    f'{consumo_pendiente["cantidad_consumida"]} {material.unit.symbol} de {material.name}.'
+                )
+            except:
+                pass
 
     return render(request, "projects/registrar_entrada_material.html", {"form": form, "project": project})
 
@@ -204,20 +270,56 @@ def project_board(request, project_id):
     )
 
     # Entradas de materiales del proyecto
-    compras = project.entradas.all()
+    entradas_raw = project.entradas.all().order_by('material__name', '-fecha_ingreso')
 
-    # Agregar stock por proyecto a cada entrada
-    for compra in compras:
-        # Suponiendo que Material tiene un método stock_en_proyecto(project)
-        pm = compra.material.proyectos.filter(proyecto=project).first()
-        compra.stock_proyecto = pm.stock_proyecto if pm else 0
+    # Importar el modelo de consumos
+    from .models import ConsumoMaterial, ProyectoMaterial
+
+    # Agrupar por material
+    from collections import defaultdict
+    materiales_agrupados = defaultdict(lambda: {
+        'material': None,
+        'entradas': [],
+        'cantidad_total': 0,
+        'stock_proyecto': 0,
+        'consumos': [],
+        'cantidad_consumida': 0
+    })
+
+    for entrada in entradas_raw:
+        material_id = entrada.material.id
+
+        if materiales_agrupados[material_id]['material'] is None:
+            materiales_agrupados[material_id]['material'] = entrada.material
+
+            # Obtener consumos de este material en este proyecto
+            consumos = ConsumoMaterial.objects.filter(
+                proyecto=project,
+                material=entrada.material
+            ).select_related('registrado_por').order_by('-fecha_consumo')
+
+            materiales_agrupados[material_id]['consumos'] = list(consumos)
+            materiales_agrupados[material_id]['cantidad_consumida'] = sum(
+                c.cantidad_consumida for c in consumos
+            )
+
+        materiales_agrupados[material_id]['entradas'].append(entrada)
+        materiales_agrupados[material_id]['cantidad_total'] += entrada.cantidad
+
+    # Calcular el stock correcto para cada material después de sumar todas las entradas
+    for material_id, data in materiales_agrupados.items():
+        # Stock = Total comprado - Total consumido
+        data['stock_proyecto'] = data['cantidad_total'] - data['cantidad_consumida']
+
+    # Convertir a lista para el template
+    compras = list(materiales_agrupados.values())
 
     context = {
         "project": project,
         "compras": compras,
         "details_url": reverse("projects:project_detail", kwargs={"project_id": project.id}),
         "add_purchases_url": reverse("projects:registrar_entrada_material", kwargs={"project_id": project.id}),
-        "charts_url": f"/proyectos/{project.id}/graficos/",  # cámbialo si tienes URL real
+        "charts_url": f"/proyectos/{project.id}/graficos/",
     }
 
     return render(request, "projects/project_board.html", context)
@@ -334,7 +436,7 @@ def project_update(request, project_id):
 
     workers = Worker.objects.all()
     if request.method == "POST":
-        # Procesar formulario con datos existentes
+        # Procesar formulario with datos existentes
         form = ProjectForm(request.POST, request.FILES, instance=project)
         selected_workers = request.POST.getlist("workers")
         if form.is_valid():
@@ -675,3 +777,301 @@ def borrar_entrada_material(request, entrada_id):
     
     # Redirige al tablero si se accede con GET
     return redirect('projects:project_board', project_id=entrada.proyecto.id)
+
+
+# ===== VISTAS PARA CONSUMO DIARIO DE MATERIALES (RF17A) =====
+
+@login_required
+def registrar_consumo_material(request, project_id):
+    """
+    Vista para registrar el consumo diario de materiales (RF17A)
+    Con validación de stock insuficiente (RF17D)
+    Se accede desde el calendario al seleccionar una fecha
+    """
+    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+
+    # Obtener fecha seleccionada del parámetro GET o usar hoy
+    from django.utils import timezone
+    fecha_seleccionada = request.GET.get('fecha', timezone.now().date())
+
+    # Variables para manejar el error de stock insuficiente
+    stock_insuficiente = False
+    stock_disponible = None
+    material_info = None
+
+    if request.method == 'POST':
+        form = ConsumoMaterialForm(request.POST, proyecto=project)
+
+        if form.is_valid():
+            try:
+                consumo = form.save(commit=False)
+                consumo.proyecto = project
+                consumo.registrado_por = request.user
+                consumo.save()
+
+                messages.success(
+                    request,
+                    f'✅ Consumo registrado correctamente: {consumo.cantidad_consumida} {consumo.material.unit.symbol} '
+                    f'de {consumo.material.name} para {consumo.componente_actividad}'
+                )
+                return redirect('projects:project_board', project_id=project.id)
+
+            except Exception as e:
+                messages.error(request, f'❌ Error al registrar consumo: {str(e)}')
+        else:
+            # Verificar si el error es de stock insuficiente (RF17D)
+            if '__all__' in form.errors:
+                error_msg = str(form.errors['__all__'][0])
+                if 'Stock insuficiente' in error_msg:
+                    stock_insuficiente = True
+                    # Obtener información del stock desde el formulario
+                    if hasattr(form, 'stock_disponible'):
+                        stock_disponible = form.stock_disponible
+                        material_info = {
+                            'nombre': form.material_nombre,
+                            'unidad': form.material_unidad,
+                        }
+
+                    messages.warning(request, f'⚠️ {error_msg}')
+                else:
+                    messages.error(request, error_msg)
+            else:
+                # Mostrar otros errores del formulario
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        if field == '__all__':
+                            messages.error(request, f'{error}')
+                        else:
+                            messages.error(request, f'{field}: {error}')
+    else:
+        # Inicializar formulario with fecha seleccionada
+        initial_data = {'fecha_consumo': fecha_seleccionada}
+        form = ConsumoMaterialForm(initial=initial_data, proyecto=project)
+
+    context = {
+        'form': form,
+        'project': project,
+        'fecha_seleccionada': fecha_seleccionada,
+        'stock_insuficiente': stock_insuficiente,
+        'stock_disponible': stock_disponible,
+        'material_info': material_info,
+        'add_purchases_url': reverse("projects:registrar_entrada_material", kwargs={"project_id": project.id}),
+    }
+
+    return render(request, 'projects/registrar_consumo_material.html', context)
+
+
+@login_required
+def listar_consumos_proyecto(request, project_id):
+    """
+    Vista para listar todos los consumos de un proyecto
+    Permite filtrar por fecha, material, actividad
+    """
+    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+
+    # Obtener parámetros de filtro
+    fecha_desde = request.GET.get('fecha_desde', '')
+    fecha_hasta = request.GET.get('fecha_hasta', '')
+    material_id = request.GET.get('material', '')
+    actividad = request.GET.get('actividad', '')
+
+    # Consulta base
+    from .models import ConsumoMaterial
+    consumos = ConsumoMaterial.objects.filter(
+        proyecto=project
+    ).select_related('material', 'material__unit', 'registrado_por')
+
+    # Aplicar filtros
+    if fecha_desde:
+        consumos = consumos.filter(fecha_consumo__gte=fecha_desde)
+    if fecha_hasta:
+        consumos = consumos.filter(fecha_consumo__lte=fecha_hasta)
+    if material_id:
+        consumos = consumos.filter(material_id=material_id)
+    if actividad:
+        consumos = consumos.filter(componente_actividad__icontains=actividad)
+
+    # Obtener lista de materiales para el filtro
+    from catalog.models import Material
+    materiales_usados = Material.objects.filter(
+        consumos__proyecto=project
+    ).distinct().order_by('name')
+
+    context = {
+        'project': project,
+        'consumos': consumos,
+        'materiales_usados': materiales_usados,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
+        'material_id': material_id,
+        'actividad': actividad,
+    }
+
+    return render(request, 'projects/listar_consumos.html', context)
+
+
+@login_required
+def obtener_consumos_fecha(request, project_id):
+    """
+    API endpoint para obtener consumos de una fecha específica (para el calendario)
+    Retorna JSON con los consumos de la fecha
+    """
+    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    fecha = request.GET.get('fecha')
+
+    if not fecha:
+        return JsonResponse({'error': 'Fecha no proporcionada'}, status=400)
+
+    from .models import ConsumoMaterial
+    consumos = ConsumoMaterial.objects.filter(
+        proyecto=project,
+        fecha_consumo=fecha
+    ).select_related('material', 'material__unit').values(
+        'id',
+        'material__name',
+        'material__sku',
+        'cantidad_consumida',
+        'material__unit__symbol',
+        'componente_actividad',
+        'responsable',
+        'observaciones'
+    )
+
+    return JsonResponse({
+        'fecha': fecha,
+        'consumos': list(consumos),
+        'total': consumos.count()
+    })
+
+
+@login_required
+def obtener_consumos_mes(request, project_id):
+    """
+    API endpoint para obtener todos los consumos de un mes específico (RF17C)
+    Retorna JSON con los consumos agrupados por fecha para el calendario
+    """
+    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    mes = request.GET.get('mes')
+    anio = request.GET.get('anio')
+
+    if not mes or not anio:
+        return JsonResponse({'error': 'Mes y año requeridos'}, status=400)
+
+    try:
+        mes = int(mes)
+        anio = int(anio)
+    except ValueError:
+        return JsonResponse({'error': 'Mes y año deben ser números'}, status=400)
+
+    from .models import ConsumoMaterial
+    from datetime import date
+    from collections import defaultdict
+
+    # Obtener primer y último día del mes
+    primer_dia = date(anio, mes, 1)
+    if mes == 12:
+        ultimo_dia = date(anio + 1, 1, 1)
+    else:
+        ultimo_dia = date(anio, mes + 1, 1)
+
+    # Consultar consumos del mes
+    consumos = ConsumoMaterial.objects.filter(
+        proyecto=project,
+        fecha_consumo__gte=primer_dia,
+        fecha_consumo__lt=ultimo_dia
+    ).select_related('material', 'material__unit').order_by('fecha_consumo')
+
+    # Agrupar por fecha
+    consumos_por_fecha = defaultdict(list)
+    for consumo in consumos:
+        fecha_str = consumo.fecha_consumo.strftime('%Y-%m-%d')
+        consumos_por_fecha[fecha_str].append({
+            'id': consumo.id,
+            'material': consumo.material.name,
+            'cantidad': float(consumo.cantidad_consumida),
+            'unidad': consumo.material.unit.symbol,
+            'actividad': consumo.componente_actividad,
+            'responsable': consumo.responsable
+        })
+
+    return JsonResponse({
+        'mes': mes,
+        'anio': anio,
+        'consumos_por_fecha': dict(consumos_por_fecha),
+        'total_dias_con_registro': len(consumos_por_fecha)
+    })
+
+
+@login_required
+def editar_consumo_material(request, consumo_id):
+    """
+    Vista para editar un consumo existente
+    """
+    from .models import ConsumoMaterial
+    consumo = get_object_or_404(
+        ConsumoMaterial,
+        id=consumo_id,
+        proyecto__creado_por=request.user
+    )
+    project = consumo.proyecto
+
+    if request.method == 'POST':
+        form = ConsumoMaterialForm(request.POST, instance=consumo, proyecto=project)
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, 'Consumo actualizado correctamente.')
+                return redirect('projects:listar_consumos_proyecto', project_id=project.id)
+            except Exception as e:
+                messages.error(request, f'Error al actualizar consumo: {str(e)}')
+    else:
+        form = ConsumoMaterialForm(instance=consumo, proyecto=project)
+
+    context = {
+        'form': form,
+        'project': project,
+        'consumo': consumo,
+        'is_edit': True,
+    }
+
+    return render(request, 'projects/registrar_consumo_material.html', context)
+
+
+@login_required
+def eliminar_consumo_material(request, consumo_id):
+    """
+    Vista para eliminar un consumo de material
+    """
+    from .models import ConsumoMaterial
+    consumo = get_object_or_404(
+        ConsumoMaterial,
+        id=consumo_id,
+        proyecto__creado_por=request.user
+    )
+    project_id = consumo.proyecto.id
+
+    if request.method == 'POST':
+        try:
+            material_name = consumo.material.name
+            cantidad = consumo.cantidad_consumida
+            unidad = consumo.material.unit.symbol
+
+            # Al eliminar, el stock se restaura automáticamente en el modelo
+            consumo.delete()
+
+            messages.success(
+                request,
+                f'✅ Consumo eliminado correctamente: {cantidad} {unidad} de {material_name}. El stock ha sido restaurado.'
+            )
+        except Exception as e:
+            messages.error(
+                request,
+                f'❌ Error al eliminar el consumo: {str(e)}'
+            )
+
+        # Redirigir al tablero del proyecto
+        return redirect('projects:project_board', project_id=project_id)
+
+    # Si no es POST, también redirigir al tablero
+    messages.warning(request, 'Método no permitido')
+    return redirect('projects:project_board', project_id=project_id)

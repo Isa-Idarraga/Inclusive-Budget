@@ -6,13 +6,26 @@ from django.shortcuts import render
 from groq import Groq  
 from .services import get_context_data  
 
-# Cliente Groq
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# Cliente Groq - hacer opcional para no bloquear el proyecto
+try:
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    if groq_api_key:
+        client = Groq(api_key=groq_api_key)
+    else:
+        client = None
+except Exception as e:
+    client = None
+    print(f"Warning: Groq client not initialized: {e}")
 
 @csrf_exempt
 def chat_api(request):
     """API que recibe mensajes del frontend y responde con Groq"""
     if request.method == "POST":
+        if not client:
+            return JsonResponse({
+                "response": "El chatbot no está configurado. Por favor configure GROQ_API_KEY en el archivo .env"
+            }, status=503)
+
         data = json.loads(request.body)
         user_message = data.get("message", "")
 

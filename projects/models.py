@@ -763,7 +763,7 @@ class EntradaMaterial(models.Model):
         ordering = ["-fecha_ingreso"]
 
     def __str__(self):
-        return f"{self.material.nombre} +{self.cantidad} (Lote {self.lote})"
+        return f"{self.material.name} +{self.cantidad} (Lote {self.lote})"
 
     def save(self, *args, **kwargs):
         """
@@ -797,6 +797,31 @@ class EntradaMaterial(models.Model):
                 pm.stock_proyecto = F("stock_proyecto") + diferencia
                 pm.save()
 
+    def delete(self, *args, **kwargs):
+        """
+        Al eliminar una entrada de material, descontar del stock
+        """
+        with transaction.atomic():
+            # Descontar del stock global
+            Material.objects.filter(pk=self.material.pk).update(
+                stock=F("stock") - self.cantidad
+            )
+
+            # Descontar del stock del proyecto
+            try:
+                pm = ProyectoMaterial.objects.select_for_update().get(
+                    proyecto=self.proyecto,
+                    material=self.material
+                )
+                pm.stock_proyecto = F("stock_proyecto") - self.cantidad
+                pm.save()
+                pm.refresh_from_db()
+            except ProyectoMaterial.DoesNotExist:
+                pass  # Si no existe la relación, solo eliminar la entrada
+
+            # Eliminar la entrada
+            super().delete(*args, **kwargs)
+
 
 # STOCK POR PROYECTO
 class ProyectoMaterial(models.Model):
@@ -822,4 +847,165 @@ class ProyectoMaterial(models.Model):
         unique_together = ("proyecto", "material")
 
     def __str__(self):
-        return f"{self.material.nombre} en {self.proyecto.name} → {self.stock_proyecto}"
+        return f"{self.material.name} en {self.proyecto.name} → {self.stock_proyecto}"
+
+
+# CONSUMO DIARIO DE MATERIALES (RF17A)
+class ConsumoMaterial(models.Model):
+    """
+    Modelo para registrar el consumo diario de materiales en un proyecto
+    Permite documentar el uso de recursos con fecha específica
+    """
+    proyecto = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="consumos",
+        verbose_name="Proyecto"
+    )
+    material = models.ForeignKey(
+        Material,
+        on_delete=models.CASCADE,
+        related_name="consumos",
+        verbose_name="Material"
+    )
+    cantidad_consumida = models.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        verbose_name="Cantidad consumida",
+        validators=[MinValueValidator(0.001)],
+        help_text="Cantidad del material que se consumió"
+    )
+    fecha_consumo = models.DateField(
+        verbose_name="Fecha de consumo",
+        help_text="Fecha en la que se usó el material"
+    )
+    componente_actividad = models.CharField(
+        max_length=200,
+        verbose_name="Componente/Actividad",
+        help_text="Ej: Cimentación, Muros primer piso, Instalación eléctrica"
+    )
+    responsable = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Responsable del uso",
+        help_text="Nombre de la persona responsable del uso del material"
+    )
+    observaciones = models.TextField(
+        blank=True,
+        verbose_name="Observaciones",
+        help_text="Notas adicionales sobre el consumo (opcional)"
+    )
+
+    # Campos de auditoría
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Registrado por",
+        help_text="Usuario que registró este consumo"
+    )
+    fecha_registro = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de registro",
+        help_text="Fecha y hora en que se registró este consumo en el sistema"
+    )
+    actualizado_en = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última actualización",
+    )
+
+    class Meta:
+        verbose_name = "Consumo de material"
+        verbose_name_plural = "Consumos de materiales"
+        ordering = ["-fecha_consumo", "-fecha_registro"]
+        indexes = [
+            models.Index(fields=['proyecto', 'fecha_consumo']),
+            models.Index(fields=['material', 'fecha_consumo']),
+        ]
+
+    def __str__(self):
+        return f"{self.material.name} - {self.cantidad_consumida} ({self.fecha_consumo})"
+
+    def clean(self):
+        """Validación a nivel de modelo"""
+        from django.core.exceptions import ValidationError
+
+        if self.cantidad_consumida and self.cantidad_consumida <= 0:
+            raise ValidationError({
+                'cantidad_consumida': 'La cantidad consumida debe ser mayor a cero.'
+            })
+
+        # Validar que la fecha de consumo no sea futura
+        from django.utils import timezone
+        if self.fecha_consumo and self.fecha_consumo > timezone.now().date():
+            raise ValidationError({
+                'fecha_consumo': 'La fecha de consumo no puede ser en el futuro.'
+            })
+
+    def save(self, *args, **kwargs):
+        """
+        Al guardar un consumo, descontar del stock del proyecto
+        """
+        self.full_clean()  # Ejecutar validaciones
+
+        with transaction.atomic():
+            # Verificar si hay suficiente stock en el proyecto
+            try:
+                pm = ProyectoMaterial.objects.select_for_update().get(
+                    proyecto=self.proyecto,
+                    material=self.material
+                )
+
+                if self.pk:  # Si es actualización
+                    old = ConsumoMaterial.objects.get(pk=self.pk)
+                    diferencia = self.cantidad_consumida - old.cantidad_consumida
+                else:  # Si es nuevo
+                    diferencia = self.cantidad_consumida
+
+                # Verificar que hay suficiente stock (con tolerancia para redondeo)
+                from decimal import Decimal
+                tolerancia = Decimal('0.001')  # Tolerancia de 0.001 para errores de redondeo
+
+                if diferencia > pm.stock_proyecto + tolerancia:
+                    from django.core.exceptions import ValidationError
+                    raise ValidationError(
+                        f"Stock insuficiente. Disponible: {pm.stock_proyecto} {self.material.unit.symbol}"
+                    )
+
+                # Guardar el consumo
+                super().save(*args, **kwargs)
+
+                # Descontar del stock del proyecto
+                pm.stock_proyecto = F("stock_proyecto") - diferencia
+                pm.save()
+                pm.refresh_from_db()
+
+            except ProyectoMaterial.DoesNotExist:
+                from django.core.exceptions import ValidationError
+                raise ValidationError(
+                    f"El material {self.material.name} no tiene stock asignado a este proyecto."
+                )
+
+    def delete(self, *args, **kwargs):
+        """
+        Al eliminar un consumo, restaurar el stock del proyecto
+        """
+        with transaction.atomic():
+            try:
+                # Obtener la relación ProyectoMaterial para restaurar el stock
+                pm = ProyectoMaterial.objects.select_for_update().get(
+                    proyecto=self.proyecto,
+                    material=self.material
+                )
+
+                # Restaurar el stock del proyecto
+                pm.stock_proyecto = F("stock_proyecto") + self.cantidad_consumida
+                pm.save()
+                pm.refresh_from_db()
+
+                # Eliminar el consumo
+                super().delete(*args, **kwargs)
+
+            except ProyectoMaterial.DoesNotExist:
+                # Si no existe la relación, solo eliminar el consumo
+                super().delete(*args, **kwargs)

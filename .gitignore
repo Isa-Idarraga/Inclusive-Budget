@@ -11,8 +11,10 @@ jjenv/
 
 # Django
 db.sqlite3
-media/
 staticfiles/
+
+# IDE
+.idea/
 
 # OS
 .DS_Store
