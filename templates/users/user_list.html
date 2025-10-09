@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-users"></i> Gestión de Usuarios</h1>
+        <a href="{% url 'users:user_create' %}" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Crear Usuario
+        </a>
+    </div>
+
+    {% if users %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Fecha registro</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user_obj in users %}
+                        <tr>
+                            <td>
+                                <strong>{{ user_obj.username }}</strong>
+                                {% if user_obj.is_superuser %}
+                                <span class="badge bg-danger">Superuser</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user_obj.get_full_name|default:"-" }}</td>
+                            <td>{{ user_obj.email|default:"-" }}</td>
+                            <td>
+                                {% if user_obj.role == "JEFE" %}
+                                <span class="badge bg-primary">👑 {{ user_obj.get_role_display }}</span>
+                                {% elif user_obj.role == "CONSTRUCTOR" %}
+                                <span class="badge bg-success">👷 {{ user_obj.get_role_display }}</span>
+                                {% elif user_obj.role == "COMERCIAL" %}
+                                <span class="badge bg-info">💼 {{ user_obj.get_role_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user_obj.is_active %}
+                                <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user_obj.date_joined|date:"d/m/Y" }}</td>
+                            <td>
+                                <a href="{% url 'users:user_update' user_obj.id %}" class="btn btn-sm btn-warning" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if user_obj.id != user.id %}
+                                <a href="{% url 'users:user_delete' user_obj.id %}" class="btn btn-sm btn-danger" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No hay usuarios registrados.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

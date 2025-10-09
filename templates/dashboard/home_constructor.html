@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<section class="hero">
+  <h1 class="hero-title">Hola Constructor 👷<br>¿Qué deseas hacer hoy?</h1>
+  <div class="hero-buttons">
+    <a class="btn-hero" href="{% url 'projects:project_create' %}">Crear Proyecto <span class="chev"></span></a>
+    <a class="btn-hero" href="{% url 'projects:project_list' %}">Ver Proyectos <span class="chev"></span></a>
+    <a class="btn-hero" href="{% url 'material_list' %}">Gestionar Materiales <span class="chev"></span></a>
+  </div>
+
+  <div class="hero-logo">
+    <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive">
+  </div>
+</section>
+{% endblock %}
+
