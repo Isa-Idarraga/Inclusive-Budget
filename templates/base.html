@@ -17,7 +17,7 @@
     <nav class="nav-inner">
       {% with current=request.resolver_match.url_name %}
         <a class="nav-link {% if current == 'home_jefe' %}active{% endif %}"
-           href="{% url 'home' %}">Inicio</a>
+           href="{% url 'dashboard:home' %}">Inicio</a>
 
         <a class="nav-link" href="{% url 'chatbot:chat' %}">ChatBot</a>
         
@@ -31,7 +31,6 @@
             <li><a class="dropdown-item" href="{% url 'projects:budget_management' %}"><i class="fas fa-dollar-sign"></i> Gestión de Precios</a></li>
             <li><a class="dropdown-item" href="{% url 'projects:detailed_project_create' %}"><i class="fas fa-plus-circle"></i> Proyecto Detallado</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{% url 'admin:projects_budgetsection_changelist' %}"><i class="fas fa-cog"></i> Administrar Secciones</a></li>
             <li><a class="dropdown-item" href="{% url 'projects:budget_items_list' %}"><i class="fas fa-list"></i> Administrar Ítems</a></li>
           </ul>
         </div>

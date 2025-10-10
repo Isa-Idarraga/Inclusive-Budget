@@ -56,4 +56,7 @@ urlpatterns = [
     path('<int:project_id>/consumo/api/mes/', views.obtener_consumos_mes, name='obtener_consumos_mes'),  # RF17C
     path('consumo/<int:consumo_id>/editar/', views.editar_consumo_material, name='editar_consumo_material'),
     path('consumo/<int:consumo_id>/eliminar/', views.eliminar_consumo_material, name='eliminar_consumo_material'),
+    
+    # URL para gestión de trabajadores del proyecto
+    path('<int:project_id>/workers/', views.project_workers, name='project_workers'),
 ]

@@ -240,6 +240,7 @@
                                                 </thead>
                                                 <tbody>
                                                     {% for item in section_form.section.items.all %}
+                                                        {% if item.is_active %}
                                                         <tr>
                                                             <td>{{ forloop.counter }}</td>
                                                             <td>
@@ -272,6 +273,7 @@
                                                                 </span>
                                                             </td>
                                                         </tr>
+                                                        {% endif %}
                                                     {% empty %}
                                                         <tr>
                                                             <td colspan="6" class="text-center text-muted py-4">

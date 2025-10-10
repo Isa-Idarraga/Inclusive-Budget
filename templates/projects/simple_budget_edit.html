@@ -129,14 +129,16 @@
                                                             </span>
                                                         </td>
                                                         <td>
+                                                            <!-- DEBUG: item.quantity = {{ item.quantity }}, item.is_configured = {{ item.is_configured }}, item.quantity > 0 = {% if item.quantity > 0 %}True{% else %}False{% endif %} -->
                                                             <input type="number" 
                                                                    name="quantity_{{ item.budget_item.id }}" 
-                                                                   value="{{ item.quantity|floatformat:3 }}"
+                                                                   value="{% if item.is_configured and item.quantity > 0 %}{{ item.quantity|floatformat:0 }}{% else %}0{% endif %}"
                                                                    class="form-control quantity-input {% if item.is_configured %}border-success{% else %}border-secondary{% endif %}" 
-                                                                   step="0.001" 
+                                                                   step="1" 
                                                                    min="0"
                                                                    data-item-id="{{ item.budget_item.id }}"
                                                                    data-unit-price="{{ item.unit_price }}"
+                                                                   data-configured-value="{% if item.is_configured and item.quantity > 0 %}{{ item.quantity|floatformat:0 }}{% else %}0{% endif %}"
                                                                    title="Cantidad actual: {{ item.quantity|floatformat:3 }} {% if item.is_configured %}(Configurado){% else %}(No configurado){% endif %}">
                                                             <!-- Debug info -->
                                                             <small class="text-muted d-block">
@@ -358,15 +360,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Calcular totales iniciales
-    console.log('🔍 DEBUG: Calculando totales iniciales...');
+    // Asegurar que los valores se carguen correctamente en los campos
+    console.log('🔍 DEBUG: Cargando valores en campos...');
     document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
         const itemId = input.getAttribute('data-item-id');
-        const quantity = parseFloat(input.value) || 0;
-        const unitPrice = parseFloat(input.getAttribute('data-unit-price')) || 0;
-        console.log(`🔍 DEBUG: Ítem ${itemId}: cantidad=${quantity}, precio=${unitPrice}`);
+        const configuredValue = input.getAttribute('data-configured-value');
+        const currentValue = input.value;
+        
+        console.log(`🔍 DEBUG: Ítem ${itemId}: valor actual="${currentValue}", valor configurado="${configuredValue}"`);
+        
+        // FORZAR carga de valores configurados
+        if (configuredValue && parseFloat(configuredValue) > 0) {
+            // Remover comas del valor configurado para campos numéricos
+            const cleanValue = configuredValue.replace(/,/g, '');
+            input.value = cleanValue;
+            console.log(`🔍 DEBUG: ✅ FORZANDO carga de valor: ${configuredValue} → ${cleanValue}`);
+        }
+        
+        // Calcular total inicial
         calculateItemTotal(itemId);
     });
+    
+    // Segunda pasada para asegurar que los valores se carguen
+    setTimeout(() => {
+        console.log('🔍 DEBUG: Segunda pasada - verificando valores...');
+        document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+            const configuredValue = input.getAttribute('data-configured-value');
+            if (configuredValue && parseFloat(configuredValue) > 0 && input.value === '0') {
+                const cleanValue = configuredValue.replace(/,/g, '');
+                input.value = cleanValue;
+                console.log(`🔍 DEBUG: ✅ Segunda pasada - cargando: ${configuredValue} → ${cleanValue}`);
+            }
+        });
+    }, 100);
     
     // Calcular totales de secciones iniciales
     document.querySelectorAll('.mb-5[id^="section-"]').forEach(sectionDiv => {

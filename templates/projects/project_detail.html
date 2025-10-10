@@ -100,7 +100,7 @@
                             </div>
 
                             <!-- Creado Por -->
-                            <div class="col-12 p-4 accent-green-border rounded-bottom-4">
+                            <div class="col-12 p-4 accent-green-border {% if not project.workers.exists %}rounded-bottom-4{% endif %}">
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-user-tie text-inclusive-neon me-3 fs-5"></i>
                                     <div class="flex-fill">
@@ -112,6 +112,31 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Trabajadores Asignados -->
+                            {% if project.workers.exists %}
+                            <div class="col-12 p-4 accent-green-border rounded-bottom-4">
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-users text-inclusive-primary me-3 fs-5 mt-1"></i>
+                                    <div class="flex-fill">
+                                        <p class="small text-inclusive-secondary fw-medium mb-2">Trabajadores Asignados</p>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            {% for worker in project.workers.all %}
+                                            <div class="d-flex align-items-center bg-light rounded-pill px-3 py-2">
+                                                <i class="fas fa-user text-inclusive-primary me-2"></i>
+                                                <div>
+                                                    <span class="fw-semibold text-inclusive-dark">{{ worker.name }}</span>
+                                                    {% if worker.role %}
+                                                        <br><small class="text-muted">{{ worker.role.name }}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -335,6 +360,12 @@
                                 Ver Presupuesto Detallado
                             </a>
                             {% endif %}
+                            
+                            <!-- Gestión de Trabajadores -->
+                            <a href="{% url 'projects:project_workers' project.id %}" class="btn btn-inclusive-primary d-flex align-items-center justify-content-center rounded-3">
+                                <i class="fas fa-users me-2"></i>
+                                Gestionar Trabajadores
+                            </a>
                             
                             <a href="{% url 'projects:project_delete' project.id %}" class="btn btn-inclusive-secondary d-flex align-items-center justify-content-center rounded-3">
                                 <i class="fas fa-trash me-2"></i>

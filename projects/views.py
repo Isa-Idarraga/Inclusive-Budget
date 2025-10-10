@@ -1303,9 +1303,9 @@ def detailed_budget_edit(request, project_id):
                 items_for_section.append({
                     'budget_item': budget_item,
                     'project_item': project_item,
-                    'quantity': project_item.quantity,
-                    'unit_price': project_item.unit_price,
-                    'total_price': project_item.total_price,
+                    'quantity': float(project_item.quantity),
+                    'unit_price': float(project_item.unit_price),
+                    'total_price': float(project_item.total_price),
                     'is_configured': True
                 })
                 print(f"🔍 DEBUG: Ítem configurado {budget_item.description[:30]}: cantidad={project_item.quantity}, precio={project_item.unit_price}")
@@ -1314,9 +1314,9 @@ def detailed_budget_edit(request, project_id):
                 items_for_section.append({
                     'budget_item': budget_item,
                     'project_item': None,
-                    'quantity': 0,
-                    'unit_price': budget_item.unit_price,
-                    'total_price': 0,
+                    'quantity': 0.0,
+                    'unit_price': float(budget_item.unit_price),
+                    'total_price': 0.0,
                     'is_configured': False
                 })
                 print(f"🔍 DEBUG: Ítem no configurado {budget_item.description[:30]}: precio={budget_item.unit_price}")
@@ -1628,3 +1628,40 @@ def calculate_detailed_budget_total(project):
     total = costo_directo + administracion_automatica + administracion_manual
     
     return total
+
+
+@role_required(User.JEFE, User.CONSTRUCTOR)
+@login_required
+def project_workers(request, project_id):
+    """
+    Vista para gestionar trabajadores asignados a un proyecto
+    """
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar permisos
+    if request.user.role == User.CONSTRUCTOR and project.creado_por != request.user:
+        raise PermissionDenied("No tienes permisos para gestionar trabajadores de este proyecto")
+    
+    if request.method == "POST":
+        # Obtener trabajadores seleccionados
+        selected_workers = request.POST.getlist('workers')
+        
+        # Actualizar trabajadores del proyecto
+        project.workers.set(selected_workers)
+        
+        messages.success(request, f'✅ Trabajadores actualizados exitosamente!')
+        return redirect("projects:project_detail", project_id=project.id)
+    
+    # Obtener todos los trabajadores disponibles
+    all_workers = Worker.objects.all().order_by('name')
+    
+    # Obtener trabajadores actualmente asignados
+    assigned_workers = project.workers.all()
+    
+    context = {
+        'project': project,
+        'all_workers': all_workers,
+        'assigned_workers': assigned_workers,
+    }
+    
+    return render(request, "projects/project_workers.html", context)
