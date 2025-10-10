@@ -17,10 +17,32 @@
     <nav class="nav-inner">
       {% with current=request.resolver_match.url_name %}
         <a class="nav-link {% if current == 'home_jefe' %}active{% endif %}"
-           href="{% url 'home' %}">Inicio</a>
+           href="{% url 'dashboard:home' %}">Inicio</a>
 
         <a class="nav-link" href="{% url 'chatbot:chat' %}">ChatBot</a>
-        <a class="nav-link" href="#">Precios unitarios</a>
+        
+        <!-- Gestión de Presupuesto: SOLO para JEFE -->
+        {% if user.role == 'JEFE' or user.is_superuser %}
+        <div class="nav-item dropdown d-inline-block">
+          <a class="nav-link dropdown-toggle" href="#" id="presupuestoDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-calculator"></i> Presupuesto
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="presupuestoDropdown">
+            <li><a class="dropdown-item" href="{% url 'projects:budget_management' %}"><i class="fas fa-dollar-sign"></i> Gestión de Precios</a></li>
+            <li><a class="dropdown-item" href="{% url 'projects:detailed_project_create' %}"><i class="fas fa-plus-circle"></i> Proyecto Detallado</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'projects:budget_items_list' %}"><i class="fas fa-list"></i> Administrar Ítems</a></li>
+          </ul>
+        </div>
+        {% endif %}
+
+        <!-- Acceso a Proyecto Detallado: CONSTRUCTOR y JEFE -->
+        {% if user.role == 'CONSTRUCTOR' or user.role == 'JEFE' or user.is_superuser %}
+        <a class="nav-link {% if current == 'detailed_project_create' %}active{% endif %}"
+           href="{% url 'projects:detailed_project_create' %}">
+           <i class="fas fa-plus-circle"></i> Proyecto Detallado
+        </a>
+        {% endif %}
 
         {% if user.role == 'CONSTRUCTOR' or user.role == 'JEFE' or user.is_superuser %}
         <a class="nav-link {% if current == 'material_list' %}active{% endif %}"
@@ -33,12 +55,9 @@
         {% endif %}
 
         {% if user.is_authenticated %}
-          <form method="post" action="{% url 'users:logout' %}" style="display:inline">
-            {% csrf_token %}
-            <button type="submit" class="nav-link" style="background:none;border:0;cursor:pointer;color:inherit;">
-              <i class="fas fa-sign-out-alt"></i> Salir
-            </button>
-          </form>
+          <a class="nav-link" href="{% url 'users:logout' %}" title="Cerrar sesión">
+            <i class="fas fa-sign-out-alt"></i> Salir
+          </a>
         {% else %}
           <a class="nav-link right {% if current == 'login' %}active{% endif %}"
              href="{% url 'users:login' %}">Ingresar</a>

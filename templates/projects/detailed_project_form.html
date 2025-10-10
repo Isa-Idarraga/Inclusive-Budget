@@ -1,0 +1,846 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="project-detail-bg py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-inclusive-lg rounded-4 animate-fade-in">
+                    <div class="card-header card-header-inclusive rounded-top-4 border-0">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                <i class="fas fa-calculator text-white fs-4"></i>
+                            </div>
+                            <h2 class="h3 fw-bold mb-0">Crear Proyecto con Presupuesto Detallado</h2>
+                        </div>
+                    </div>
+                    <div class="card-body p-4 bg-gray-green-accent">
+                        <form method="post" enctype="multipart/form-data" id="detailedProjectForm">
+                            {% csrf_token %}
+                            
+                            <!-- Información Básica -->
+                            <div class="mb-5 animate-fade-in">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-info-circle text-inclusive-primary fs-5"></i>
+                                    </div>
+                                    <h4 class="fw-bold text-inclusive-dark mb-0">Información Básica del Proyecto</h4>
+                                </div>
+                                
+                                <div class="alert alert-info mb-4">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Campos obligatorios marcados con</strong> <span class="text-danger">*</span>
+                                    <br><small>Completa la información básica y luego configura el presupuesto detallado por secciones.</small>
+                                </div>
+                                
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ project_form.name.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-building text-inclusive-primary me-2"></i>
+                                                {{ project_form.name.label }} <span class="text-danger">*</span>
+                                            </label>
+                                             {{ project_form.name }}
+                                            {% if project_form.name.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ project_form.name.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ project_form.estado.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-flag text-inclusive-primary me-2"></i>
+                                                {{ project_form.estado.label }}
+                                            </label>
+                                             {{ project_form.estado }}
+                                            {% if project_form.estado.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ project_form.estado.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-12">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ project_form.location_address.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-map-marker-alt text-inclusive-primary me-2"></i>
+                                                {{ project_form.location_address.label }} <span class="text-danger">*</span>
+                                            </label>
+                                             {{ project_form.location_address }}
+                                            {% if project_form.location_address.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ project_form.location_address.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-12">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ project_form.description.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-align-left text-inclusive-primary me-2"></i>
+                                                {{ project_form.description.label }}
+                                            </label>
+                                             {{ project_form.description }}
+                                            {% if project_form.description.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ project_form.description.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-12">
+                                        <div class="accent-green-border rounded-3 p-3">
+                                            <label for="{{ project_form.imagen_proyecto.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                <i class="fas fa-image text-inclusive-primary me-2"></i>
+                                                {{ project_form.imagen_proyecto.label }}
+                                            </label>
+                                             {{ project_form.imagen_proyecto }}
+                                            {% if project_form.imagen_proyecto.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    {{ project_form.imagen_proyecto.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Selección de Trabajadores -->
+                            <div class="mb-5 animate-fade-in">
+                                <div class="d-flex align-items-center mb-4">
+                                    <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                        <i class="fas fa-users text-inclusive-primary fs-5"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h4 class="fw-bold text-inclusive-dark mb-0">Trabajadores del Proyecto</h4>
+                                        <p class="text-muted mb-0">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Opcional - Puedes asignar trabajadores ahora o después
+                                        </p>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#workersSection" aria-expanded="false">
+                                        <i class="fas fa-chevron-down me-1"></i>
+                                        Seleccionar Trabajadores
+                                    </button>
+                                </div>
+                                
+                                <div class="collapse" id="workersSection">
+                                    {% if no_workers %}
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <strong>No hay trabajadores disponibles:</strong> 
+                                            <a href="{% url 'projects:worker_create' %}" class="alert-link">Crear trabajador</a> 
+                                            o continuar sin asignar trabajadores.
+                                        </div>
+                                    {% else %}
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-lightbulb me-2"></i>
+                                            <strong>Consejo:</strong> Selecciona los trabajadores que participarán en este proyecto. 
+                                            Puedes modificar esta asignación más tarde desde el detalle del proyecto.
+                                        </div>
+                                        <div class="row g-3">
+                                            {% for worker in workers %}
+                                                <div class="col-md-6 col-lg-4">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" 
+                                                               name="workers" value="{{ worker.id }}" 
+                                                               id="worker_{{ worker.id }}">
+                                                        <label class="form-check-label" for="worker_{{ worker.id }}">
+                                                            <div class="card h-100">
+                                                                <div class="card-body">
+                                                                    <h6 class="card-title">{{ worker.name }}</h6>
+                                                                    <p class="card-text small text-muted">
+                                                                        <i class="fas fa-id-card me-1"></i>{{ worker.cedula }}<br>
+                                                                        <i class="fas fa-phone me-1"></i>{{ worker.phone }}<br>
+                                                                        <i class="fas fa-briefcase me-1"></i>{{ worker.role.name }}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                                    <!-- Navegación Rápida por Secciones -->
+                                    <div class="mb-5" id="navegacion-rapida">
+                                        <div class="d-flex align-items-center mb-4">
+                                            <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                                <i class="fas fa-list-ol text-inclusive-primary fs-5"></i>
+                                            </div>
+                                            <h3 class="fw-bold text-inclusive-dark mb-0">Navegación Rápida</h3>
+                                        </div>
+                                        
+                                        <div class="row g-2">
+                                            {% for section_form in section_forms %}
+                                                <div class="col-md-6 col-lg-4">
+                                                    <a href="#section-{{ section_form.section.id }}" class="btn btn-outline-primary btn-sm w-100 text-start">
+                                                        <span class="badge bg-inclusive-primary me-2">{{ section_form.section.order }}</span>
+                                                        {{ section_form.section.name|truncatechars:40 }}
+                                                    </a>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                            
+                            <!-- Secciones del Presupuesto -->
+                            {% for section_form in section_forms %}
+                                <div class="mb-5 animate-fade-in" id="section-{{ section_form.section.id }}">
+                                    <div class="d-flex align-items-center mb-4">
+                                        <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                            <span class="fw-bold text-inclusive-primary fs-5">{{ section_form.section.order }}</span>
+                                        </div>
+                                        <div>
+                                            <h4 class="fw-bold text-inclusive-dark mb-0">
+                                                {{ section_form.section.order }}. {{ section_form.section.name }}
+                                            </h4>
+                                            {% if section_form.section.description %}
+                                                <p class="text-muted mb-0">{{ section_form.section.description }}</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    {% if section_form.section.is_percentage %}
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-percentage me-2"></i>
+                                            <strong>Sección Porcentual:</strong> Esta sección se calculará automáticamente como el {{ section_form.section.percentage_value }}% del costo directo.
+                                        </div>
+                                    {% else %}
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Recomendación:</strong> Se sugiere completar al menos 1 ítem por sección para un presupuesto más preciso. 
+                                            Los precios unitarios son de referencia - para cambiarlos usa "Gestión de Precios" en el menú.
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-inclusive">
+                                                    <tr>
+                                                        <th style="width: 5%">#</th>
+                                                        <th style="width: 45%">Descripción</th>
+                                                        <th style="width: 10%">Unidad</th>
+                                                        <th style="width: 15%">Precio Unitario (Referencia)</th>
+                                                        <th style="width: 15%">Cantidad</th>
+                                                        <th style="width: 15%">Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for item in section_form.section.items.all %}
+                                                        {% if item.is_active %}
+                                                        <tr>
+                                                            <td>{{ forloop.counter }}</td>
+                                                            <td>
+                                                                <strong>{{ item.description }}</strong>
+                                                                {% if item.code %}
+                                                                    <br><small class="text-muted">Código: {{ item.code }}</small>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td class="text-center">{{ item.unit }}</td>
+                                                            <td class="text-end">
+                                                                <span class="fw-bold text-inclusive-primary price-display" data-price="{{ item.unit_price }}">
+                                                                    ${{ item.unit_price|floatformat:0 }}
+                                                                </span>
+                                                                <input type="hidden" 
+                                                                       name="price_{{ item.id }}" 
+                                                                       value="{{ item.unit_price }}">
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" 
+                                                                       name="quantity_{{ item.id }}" 
+                                                                       value="0"
+                                                                       class="form-control quantity-input" 
+                                                                       step="0.001" 
+                                                                       min="0"
+                                                                       data-item-id="{{ item.id }}">
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <span class="fw-bold text-inclusive-primary item-total" data-item-id="{{ item.id }}">
+                                                                    $0
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        {% endif %}
+                                                    {% empty %}
+                                                        <tr>
+                                                            <td colspan="6" class="text-center text-muted py-4">
+                                                                <i class="fas fa-info-circle me-2"></i>
+                                                                No hay ítems en esta sección
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <!-- Botón Volver Arriba -->
+                                    <div class="text-center mt-4">
+                                        <a href="#navegacion-rapida" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-arrow-up me-1"></i>
+                                            Volver a Navegación
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            
+                            <!-- Resumen del Presupuesto - Solo mostrar cuando hay datos -->
+                            <div class="mb-5" id="budget-summary-card" style="display: none;">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-calculator me-2"></i>
+                                            Resumen del Presupuesto
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-md-4">
+                                                <h6 class="text-muted">Costo Directo</h6>
+                                                <h4 class="text-success" id="direct-cost">$0</h4>
+                                                <small class="text-muted">Suma de ítems (sin administración)</small>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h6 class="text-muted">Administración (12%)</h6>
+                                                <h4 class="text-warning" id="admin-cost">$0</h4>
+                                                <small class="text-muted">Calculado automáticamente</small>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h6 class="text-muted">Total Presupuesto</h6>
+                                                <h3 class="text-primary fw-bold" id="total-budget">$0</h3>
+                                                <small class="text-muted">Costo directo + administración</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Advertencia sobre campos vacíos -->
+                            <div class="alert alert-warning" id="empty-fields-warning" style="display: none;">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-exclamation-triangle text-warning fs-4 me-3"></i>
+                                    <div>
+                                        <h6 class="mb-1">⚠️ Campos sin completar detectados</h6>
+                                        <p class="mb-0">
+                                            Hay secciones del presupuesto sin cantidades especificadas. 
+                                            Puedes continuar (se guardarán como 0) o revisar las secciones marcadas.
+                                        </p>
+                                        <small class="text-muted">
+                                            Las secciones con cantidades en 0 no afectarán el presupuesto total.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Botones de Acción -->
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="{% url 'projects:project_list' %}" class="btn btn-outline-secondary btn-lg px-4">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Cancelar
+                                </a>
+                                
+                                <div class="d-flex gap-3">
+                                    <button type="button" class="btn btn-outline-info btn-lg px-4" id="validate-form-btn">
+                                        <i class="fas fa-search me-2"></i>
+                                        Validar Formulario
+                                    </button>
+                                    
+                                    <button type="submit" class="btn btn-inclusive-primary btn-lg px-5" id="submit-btn">
+                                        <i class="fas fa-save me-2"></i>
+                                        Crear Proyecto con Presupuesto
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.accent-green-border {
+    border: 2px solid #e8f5e8;
+    background: #f8fdf8;
+    transition: all 0.3s ease;
+}
+
+.accent-green-border:hover {
+    border-color: #28a745;
+    background: #f0f8f0;
+}
+
+.form-control, .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25), 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.form-control:hover, .form-select:hover {
+    border-color: #28a745;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo especial para textarea */
+textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* Estilo para el campo de archivo */
+input[type="file"].form-control {
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border: 2px dashed #28a745;
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+input[type="file"].form-control:hover {
+    border-color: #20c997;
+    background: linear-gradient(135deg, #e8f5e8, #d4edda);
+    transform: translateY(-1px);
+}
+
+input[type="file"].form-control:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+/* Estilo para el botón de selección de archivo */
+input[type="file"]::-webkit-file-upload-button {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    margin-right: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+input[type="file"]::-webkit-file-upload-button:hover {
+    background: linear-gradient(135deg, #218838, #1ea085);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+/* Mejoras adicionales para los campos */
+.form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.75rem;
+}
+
+.form-label i {
+    color: #28a745;
+    margin-right: 0.5rem;
+}
+
+/* Estilo para los campos de cantidad en las tablas */
+.quantity-input {
+    border: 2px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.quantity-input:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    transform: scale(1.02);
+}
+
+/* Animación suave para los campos */
+.form-control, .form-select, .quantity-input {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Efecto de elevación en hover */
+.accent-green-border:hover .form-control,
+.accent-green-border:hover .form-select {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para la selección de trabajadores */
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.form-check-input:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.form-check-label .card {
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.form-check-input:checked + .form-check-label .card {
+    border-color: #28a745;
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+}
+
+.form-check-label:hover .card {
+    border-color: #28a745;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calcular totales automáticamente
+    function calculateItemTotal(itemId) {
+        const quantityInput = document.querySelector(`input[name="quantity_${itemId}"]`);
+        const priceInput = document.querySelector(`input[name="price_${itemId}"]`);
+        const totalSpan = document.querySelector(`.item-total[data-item-id="${itemId}"]`);
+        
+        if (quantityInput && priceInput && totalSpan) {
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            const total = quantity * price;
+            
+            totalSpan.textContent = '$' + total.toLocaleString('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+    }
+    
+    // Agregar event listeners solo a los inputs de cantidad
+    document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const itemId = this.getAttribute('data-item-id');
+            calculateItemTotal(itemId);
+        });
+    });
+    
+    // Calcular totales iniciales
+    document.querySelectorAll('.item-total').forEach(span => {
+        const itemId = span.getAttribute('data-item-id');
+        calculateItemTotal(itemId);
+    });
+    
+    // Formatear todos los precios con separadores de miles
+    const priceElements = document.querySelectorAll('.price-display');
+    
+    priceElements.forEach(function(element) {
+        const price = parseFloat(element.getAttribute('data-price'));
+        if (!isNaN(price)) {
+            const formattedPrice = price.toLocaleString('es-CO');
+            element.textContent = '$' + formattedPrice;
+        }
+    });
+    
+    // Función para calcular el presupuesto total
+    function calculateBudgetSummary() {
+        let costoDirecto = 0;
+        
+        // Sumar todos los totales de ítems (excluyendo sección 21)
+        document.querySelectorAll('.item-total').forEach(span => {
+            const totalText = span.textContent.replace(/[$,.]/g, '');
+            const total = parseFloat(totalText) || 0;
+            
+            // Verificar si NO es de la sección 21 (Administración)
+            const sectionDiv = span.closest('.mb-5[id^="section-"]');
+            let isAdminSection = false;
+            
+            if (sectionDiv) {
+                const sectionHeader = sectionDiv.querySelector('h4');
+                if (sectionHeader) {
+                    const sectionText = sectionHeader.textContent.trim();
+                    isAdminSection = sectionText.includes('21.') && sectionText.includes('ADMINISTRACIÓN');
+                }
+            }
+            
+            if (!isAdminSection) {
+                costoDirecto += total;
+            }
+        });
+        
+        // Calcular administración automática (12% sobre costo directo)
+        const administracionAutomatica = costoDirecto * 0.12;
+        const totalPresupuesto = costoDirecto + administracionAutomatica;
+        
+        // Actualizar la interfaz
+        document.getElementById('direct-cost').textContent = '$' + costoDirecto.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+        
+        document.getElementById('admin-cost').textContent = '$' + administracionAutomatica.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+        
+        document.getElementById('total-budget').textContent = '$' + totalPresupuesto.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+        
+        // ✅ CONTROLAR VISIBILIDAD DEL RESUMEN
+        const budgetSummaryCard = document.getElementById('budget-summary-card');
+        if (budgetSummaryCard) {
+            if (totalPresupuesto > 0) {
+                budgetSummaryCard.style.display = 'block';
+            } else {
+                budgetSummaryCard.style.display = 'none';
+            }
+        }
+        
+        console.log('DEBUG Cálculo:', {
+            costoDirecto: costoDirecto,
+            administracion: administracionAutomatica,
+            total: totalPresupuesto,
+            visible: totalPresupuesto > 0
+        });
+    }
+    
+    // LLAMAR AL CÁLCULO DEL RESUMEN al final de todo
+    setTimeout(function() {
+        // Primero calcular todos los totales de ítems
+        document.querySelectorAll('.item-total').forEach(span => {
+            const itemId = span.getAttribute('data-item-id');
+            calculateItemTotal(itemId);
+        });
+        
+        // Luego calcular el resumen
+        calculateBudgetSummary();
+        console.log('✅ Resumen del presupuesto calculado al cargar');
+    }, 500);
+    
+    // Funcionalidad del botón desplegable de trabajadores
+    const workersToggle = document.querySelector('[data-bs-target="#workersSection"]');
+    const workersSection = document.getElementById('workersSection');
+    
+    if (workersToggle && workersSection) {
+        workersSection.addEventListener('show.bs.collapse', function () {
+            workersToggle.innerHTML = '<i class="fas fa-chevron-up me-1"></i>Ocultar Trabajadores';
+        });
+        
+        workersSection.addEventListener('hide.bs.collapse', function () {
+            workersToggle.innerHTML = '<i class="fas fa-chevron-down me-1"></i>Seleccionar Trabajadores';
+        });
+    }
+    
+    // Función para validar el formulario
+    function validateForm() {
+        const emptySections = [];
+        const emptyFields = [];
+        
+        // Agrupar por secciones
+        const sections = document.querySelectorAll('.mb-5[id^="section-"]');
+        
+        sections.forEach(sectionDiv => {
+            const sectionHeader = sectionDiv.querySelector('h4');
+            const quantityInputs = sectionDiv.querySelectorAll('input[name^="quantity_"]');
+            
+            if (sectionHeader && quantityInputs.length > 0) {
+                const sectionName = sectionHeader.textContent.trim();
+                let hasItems = false;
+                let sectionEmptyFields = [];
+                
+                quantityInputs.forEach(input => {
+                    const value = parseFloat(input.value) || 0;
+                    if (value > 0) {
+                        hasItems = true;
+                    } else {
+                        const row = input.closest('tr');
+                        if (row) {
+                            const description = row.querySelector('td:nth-child(2) strong');
+                            if (description) {
+                                sectionEmptyFields.push({
+                                    section: sectionName,
+                                    item: description.textContent.trim(),
+                                    input: input
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                // Si la sección no tiene ningún ítem con cantidad > 0
+                if (!hasItems && quantityInputs.length > 0) {
+                    emptySections.push({
+                        name: sectionName,
+                        div: sectionDiv,
+                        inputs: quantityInputs
+                    });
+                }
+                
+                emptyFields.push(...sectionEmptyFields);
+            }
+        });
+        
+        return { emptySections, emptyFields };
+    }
+    
+    // Botón de validación
+    document.getElementById('validate-form-btn').addEventListener('click', function() {
+        const validation = validateForm();
+        const warningDiv = document.getElementById('empty-fields-warning');
+        
+        // Limpiar resaltados previos
+        document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+            input.style.border = '';
+            input.style.backgroundColor = '';
+        });
+        
+        if (validation.emptySections.length > 0) {
+            warningDiv.style.display = 'block';
+            warningDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Resaltar secciones vacías
+            validation.emptySections.forEach(section => {
+                section.div.style.border = '3px solid #dc3545';
+                section.div.style.borderRadius = '0.5rem';
+                section.div.style.backgroundColor = '#f8d7da';
+                section.div.style.padding = '1rem';
+            });
+            
+            // Mostrar mensaje sobre secciones vacías
+            const existingDetails = warningDiv.querySelector('.empty-sections-details');
+            if (existingDetails) {
+                existingDetails.remove();
+            }
+            
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'empty-sections-details mt-3';
+            detailsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-circle me-2"></i>Secciones sin ítems (${validation.emptySections.length}):</h6>
+                    ${validation.emptySections.map(section => 
+                        `<small class="d-block">• ${section.name}</small>`
+                    ).join('')}
+                    <hr>
+                    <small><strong>Recomendación:</strong> Agrega al menos 1 ítem por sección para un presupuesto más completo.</small>
+                </div>
+            `;
+            warningDiv.appendChild(detailsDiv);
+            
+        } else if (validation.emptyFields.length > 0) {
+            warningDiv.style.display = 'block';
+            warningDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Mostrar mensaje sobre campos individuales vacíos
+            const existingDetails = warningDiv.querySelector('.empty-fields-details');
+            if (existingDetails) {
+                existingDetails.remove();
+            }
+            
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'empty-fields-details mt-2';
+            detailsDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Campos opcionales vacíos (${validation.emptyFields.length}):</h6>
+                    <small class="text-muted">Todas las secciones tienen al menos 1 ítem, pero hay campos adicionales sin completar.</small>
+                </div>
+            `;
+            warningDiv.appendChild(detailsDiv);
+            
+        } else {
+            warningDiv.style.display = 'none';
+            alert('✅ ¡Excelente! Todas las secciones tienen al menos 1 ítem completado.');
+        }
+    });
+    
+    // Limpiar resaltado cuando se modifique un campo
+    document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+        input.addEventListener('input', function() {
+            if (parseFloat(this.value) > 0) {
+                this.style.border = '';
+                this.style.backgroundColor = '';
+                
+                // Limpiar resaltado de la sección si ahora tiene al menos 1 ítem
+                const sectionDiv = this.closest('.mb-5[id^="section-"]');
+                if (sectionDiv) {
+                    const sectionInputs = sectionDiv.querySelectorAll('input[name^="quantity_"]');
+                    const hasItems = Array.from(sectionInputs).some(inp => parseFloat(inp.value) > 0);
+                    
+                    if (hasItems) {
+                        sectionDiv.style.border = '';
+                        sectionDiv.style.backgroundColor = '';
+                        sectionDiv.style.padding = '';
+                    }
+                }
+            }
+        });
+    });
+    
+    // Validación antes de enviar
+    document.getElementById('detailedProjectForm').addEventListener('submit', function(e) {
+        const validation = validateForm();
+        
+        if (validation.emptySections.length > 0) {
+            e.preventDefault();
+            const proceed = confirm(
+                `⚠️ ATENCIÓN: ${validation.emptySections.length} secciones están completamente vacías.\n\n` +
+                `Secciones vacías: ${validation.emptySections.map(s => s.name.split('.')[1] || s.name).join(', ')}\n\n` +
+                `¿Deseas continuar? Se recomienda completar al menos 1 ítem por sección.`
+            );
+            if (proceed) {
+                // Permitir envío después de confirmación
+                this.removeEventListener('submit', arguments.callee);
+                this.submit();
+            } else {
+                document.getElementById('validate-form-btn').click();
+            }
+        } else if (validation.emptyFields.length > 10) {
+            // Solo advertir si hay muchos campos vacíos
+            const proceed = confirm(
+                `ℹ️ Hay ${validation.emptyFields.length} campos opcionales sin completar.\n\n` +
+                `¿Deseas continuar? Los campos vacíos se guardarán como cantidad 0.`
+            );
+            if (!proceed) {
+                e.preventDefault();
+                document.getElementById('validate-form-btn').click();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

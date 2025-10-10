@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
 from django.contrib import messages
+from django.urls import reverse
 from .models import User
 from django import forms
 from .decorators import role_required
@@ -29,8 +30,10 @@ class UserManagementForm(forms.ModelForm):
 
 def logout_view(request):
     """Vista personalizada de logout que maneja POST y GET"""
-    auth_logout(request)
-    messages.success(request, '✅ Has cerrado sesión exitosamente.')
+    if request.user.is_authenticated:
+        auth_logout(request)
+        login_url = reverse('users:login')
+        return redirect(f"{login_url}?logout=success")
     return redirect('users:login')
 
 

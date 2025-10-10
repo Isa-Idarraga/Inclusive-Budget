@@ -9,6 +9,55 @@
     <a class="btn-hero" href="{% url 'users:user_list' %}">Gestionar Usuarios <span class="chev"></span></a>
   </div>
 
+  <!-- Gestión de Presupuesto -->
+  <div class="container mt-5">
+    <div class="row">
+      <div class="col-12">
+        <h3 class="text-center mb-4">Gestión de Presupuesto</h3>
+        <div class="row g-4 justify-content-center">
+          <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-inclusive">
+              <div class="card-body text-center">
+                <i class="fas fa-dollar-sign text-inclusive-primary fs-1 mb-3"></i>
+                <h5 class="card-title">Gestión de Precios</h5>
+                <p class="card-text">Configurar precios unitarios de todos los ítems del presupuesto</p>
+                <a href="{% url 'projects:budget_management' %}" class="btn btn-inclusive-primary">
+                  <i class="fas fa-cog me-2"></i>Gestionar Precios
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-inclusive">
+              <div class="card-body text-center">
+                <i class="fas fa-plus-circle text-inclusive-primary fs-1 mb-3"></i>
+                <h5 class="card-title">Proyecto Detallado</h5>
+                <p class="card-text">Crear proyecto con presupuesto detallado de 23 secciones</p>
+                <a href="{% url 'projects:detailed_project_create' %}" class="btn btn-inclusive-primary">
+                  <i class="fas fa-plus me-2"></i>Crear Proyecto
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-inclusive">
+              <div class="card-body text-center">
+                <i class="fas fa-tasks text-inclusive-primary fs-1 mb-3"></i>
+                <h5 class="card-title">Administrar Ítems</h5>
+                <p class="card-text">Gestionar todos los ítems individuales del presupuesto</p>
+                <a href="{% url 'projects:budget_items_list' %}" class="btn btn-outline-primary">
+                  <i class="fas fa-list me-2"></i>Administrar
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="hero-logo">
     <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive">
   </div>

@@ -8,15 +8,15 @@ from users.models import User
 def home_router(request):
     u = request.user
     if u.is_superuser:  # si quieres que el superuser vea algo especial, decide aquí
-        return redirect("home_jefe")  # o a "admin:index" si prefieres el admin
+        return redirect("dashboard:home_jefe")  # o a "admin:index" si prefieres el admin
 
     # Nuevos roles
     if u.role == User.JEFE:
-        return redirect("home_jefe")
+        return redirect("dashboard:home_jefe")
     if u.role == User.CONSTRUCTOR:
-        return redirect("home_constructor")
+        return redirect("dashboard:home_constructor")
     if u.role == User.COMERCIAL:
-        return redirect("home_comercial")
+        return redirect("dashboard:home_comercial")
 
     # fallback por si el usuario no tiene rol (o algo raro)
     return redirect("login")

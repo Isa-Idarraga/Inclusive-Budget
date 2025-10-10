@@ -3,28 +3,631 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Login  Presupuestador</title>
+  <title>Inclusive • Presupuestador</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="{% static 'styles.css' %}">
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Bootstrap 5 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </head>
-<body class="page-auth">
-  <div class="auth-box">
-    <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive" class="logo">
-    <h1 class="title">Bienvenido al presupuestador</h1>
+<body class="bg-light">
+  <div class="container-fluid vh-100">
+    <div class="row h-100">
+       <!-- Panel izquierdo con información -->
+       <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center info-panel text-white">
+         <div class="text-center p-5 position-relative">
+           <!-- Partículas flotantes de fondo -->
+           <div class="floating-particles">
+             <div class="particle particle-1"></div>
+             <div class="particle particle-2"></div>
+             <div class="particle particle-3"></div>
+             <div class="particle particle-4"></div>
+             <div class="particle particle-5"></div>
+           </div>
+           
+           <!-- Logo con animación -->
+           <div class="logo-container mb-4">
+             <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive" class="logo-animated" style="max-width: 200px;">
+             <div class="logo-glow"></div>
+           </div>
+           
+           <!-- Título con efecto de escritura -->
+           <h2 class="fw-bold mb-3 title-animated">Sistema de Presupuestos</h2>
+           
+           <!-- Descripción con efecto fade-in -->
+           <p class="lead mb-4 description-animated">Gestiona tus proyectos de construcción de manera eficiente y profesional</p>
+           
+           <!-- Características con animaciones escalonadas -->
+           <div class="row text-center features-container">
+             <div class="col-4">
+               <div class="feature-card feature-card-1">
+                 <div class="feature-icon-wrapper">
+                   <i class="fas fa-calculator fa-2x mb-2 feature-icon"></i>
+                   <div class="icon-pulse"></div>
+                 </div>
+                 <p class="small feature-text">Presupuestos Detallados</p>
+                 <div class="feature-progress">
+                   <div class="progress-bar-animated"></div>
+                 </div>
+               </div>
+             </div>
+             <div class="col-4">
+               <div class="feature-card feature-card-2">
+                 <div class="feature-icon-wrapper">
+                   <i class="fas fa-users fa-2x mb-2 feature-icon"></i>
+                   <div class="icon-pulse"></div>
+                 </div>
+                 <p class="small feature-text">Gestión de Trabajadores</p>
+                 <div class="feature-progress">
+                   <div class="progress-bar-animated"></div>
+                 </div>
+               </div>
+             </div>
+             <div class="col-4">
+               <div class="feature-card feature-card-3">
+                 <div class="feature-icon-wrapper">
+                   <i class="fas fa-chart-line fa-2x mb-2 feature-icon"></i>
+                   <div class="icon-pulse"></div>
+                 </div>
+                 <p class="small feature-text">Seguimiento de Proyectos</p>
+                 <div class="feature-progress">
+                   <div class="progress-bar-animated"></div>
+                 </div>
+               </div>
+             </div>
+           </div>
+           
+         </div>
+       </div>
+      
+      <!-- Panel derecho con formulario -->
+      <div class="col-lg-6 d-flex align-items-center justify-content-center">
+        <div class="w-100" style="max-width: 400px;">
+          <div class="card shadow-lg border-0 rounded-4 login-card">
+            <div class="card-body p-5">
+              <!-- Logo en móvil -->
+              <div class="text-center mb-4 d-lg-none">
+                <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive" style="max-width: 120px;">
+              </div>
+              
+              <h3 class="text-center mb-4 fw-bold text-dark">Bienvenido</h3>
+              <p class="text-center text-muted mb-4">Inicia sesión para acceder al sistema</p>
 
-    <form method="post" class="auth-form" novalidate>
-      {% csrf_token %}
-      {% if form.non_field_errors %}
-        <div class="msg error">{{ form.non_field_errors }}</div>
-      {% endif %}
+               <!-- Mensaje de logout exitoso -->
+               {% if request.GET.logout == 'success' and not form.non_field_errors %}
+                 <div class="alert alert-success d-flex align-items-center mb-4 alert-dismissible" role="alert">
+                   <i class="fas fa-check-circle me-2"></i>
+                   <div class="flex-grow-1">Has cerrado sesión exitosamente.</div>
+                   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                 </div>
+               {% endif %}
 
-      <label class="lbl">ingrese su usuario *</label>
-      {{ form.username }}
-      <label class="lbl">contraseña</label>
-      {{ form.password }}
+              <form method="post" novalidate>
+                {% csrf_token %}
+                
+                 <!-- Errores generales -->
+                 {% if form.non_field_errors %}
+                   <div class="alert alert-danger d-flex align-items-center mb-4 alert-dismissible" role="alert">
+                     <i class="fas fa-exclamation-triangle me-2"></i>
+                     <div class="flex-grow-1">{{ form.non_field_errors }}</div>
+                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                   </div>
+                 {% endif %}
 
-      <button class="btn-primary" type="submit">Continuar</button>
-    </form>
+                <!-- Campo Usuario -->
+                <div class="mb-4">
+                  <label for="{{ form.username.id_for_label }}" class="form-label fw-semibold">
+                    <i class="fas fa-user me-2 text-inclusive-primary"></i>Usuario
+                  </label>
+                  {{ form.username }}
+                  {% if form.username.errors %}
+                    <div class="text-danger small mt-1">
+                      {% for error in form.username.errors %}{{ error }}{% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+
+                <!-- Campo Contraseña -->
+                <div class="mb-4">
+                  <label for="{{ form.password.id_for_label }}" class="form-label fw-semibold">
+                    <i class="fas fa-lock me-2 text-inclusive-primary"></i>Contraseña
+                  </label>
+                  {{ form.password }}
+                  {% if form.password.errors %}
+                    <div class="text-danger small mt-1">
+                      {% for error in form.password.errors %}{{ error }}{% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+
+                <!-- Botón de envío -->
+                <button type="submit" class="btn btn-inclusive-primary w-100 py-3 fw-semibold rounded-3">
+                  <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+                </button>
+              </form>
+
+              <!-- Información adicional -->
+              <div class="text-center mt-4">
+                <small class="text-muted">
+                  <i class="fas fa-shield-alt me-1"></i>
+                  Acceso seguro y protegido
+                </small>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="text-center mt-4">
+            <small class="text-muted footer-text">
+              © 2025 Inclusive • Sistema de Presupuestos
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-</body>
-</html>
+
+  <style>
+    /* Efectos para el card principal */
+    .login-card {
+      backdrop-filter: blur(15px);
+      background: rgba(255, 255, 255, 0.95);
+      border: 3px solid var(--ib-green);
+      border-radius: 20px;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 8px 32px rgba(111, 169, 142, 0.15), 
+                  0 0 0 1px rgba(111, 169, 142, 0.1);
+    }
+    
+    .login-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 20px 40px rgba(111, 169, 142, 0.25),
+                  0 0 0 2px var(--ib-neon);
+      border-color: var(--ib-neon);
+    }
+    
+    /* Efectos para campos de formulario */
+    .form-control {
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      padding: 14px 18px;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-control:hover {
+      border-color: var(--ib-green);
+      border-width: 2px;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(111, 169, 142, 0.1),
+                  inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-control:focus {
+      border-color: var(--ib-green);
+      border-width: 3px;
+      box-shadow: 0 0 0 0.3rem rgba(111, 169, 142, 0.25),
+                  0 4px 12px rgba(111, 169, 142, 0.2),
+                  inset 0 1px 3px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 1);
+    }
+    
+    /* Efectos para labels */
+    .form-label {
+      transition: all 0.3s ease;
+    }
+    
+    .form-label:hover {
+      color: var(--ib-green);
+      transform: translateX(4px);
+    }
+    
+    /* Efectos para iconos */
+    .form-label i {
+      transition: all 0.3s ease;
+    }
+    
+    .form-label:hover i {
+      transform: scale(1.1);
+      color: var(--ib-neon);
+    }
+    
+    /* Efectos para alertas */
+    .alert {
+      border: 3px solid transparent;
+      border-radius: 15px;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .alert:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .alert-success {
+      border-color: var(--ib-green);
+      border-width: 3px;
+      background: linear-gradient(135deg, rgba(111, 169, 142, 0.1), rgba(164, 214, 94, 0.1));
+      box-shadow: 0 2px 8px rgba(111, 169, 142, 0.2);
+    }
+    
+    .alert-danger {
+      border-color: #dc3545;
+      border-width: 3px;
+      background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+      box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+    }
+    
+     /* Efectos para el panel informativo */
+     .info-panel {
+       background: linear-gradient(135deg, var(--ib-green) 0%, var(--ib-neon) 100%);
+       position: relative;
+       overflow: hidden;
+       border: 3px solid var(--ib-green);
+       border-radius: 20px;
+       box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+     }
+     
+     .info-panel::before {
+       content: '';
+       position: absolute;
+       top: -50%;
+       left: -50%;
+       width: 200%;
+       height: 200%;
+       background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+       animation: float 6s ease-in-out infinite;
+     }
+     
+     @keyframes float {
+       0%, 100% { transform: translateY(0px) rotate(0deg); }
+       50% { transform: translateY(-20px) rotate(180deg); }
+     }
+     
+     /* Partículas flotantes */
+     .floating-particles {
+       position: absolute;
+       top: 0;
+       left: 0;
+       width: 100%;
+       height: 100%;
+       pointer-events: none;
+     }
+     
+     .particle {
+       position: absolute;
+       background: rgba(255, 255, 255, 0.3);
+       border-radius: 50%;
+       animation: particleFloat 8s infinite linear;
+     }
+     
+     .particle-1 { width: 8px; height: 8px; top: 20%; left: 10%; animation-delay: 0s; }
+     .particle-2 { width: 12px; height: 12px; top: 60%; left: 80%; animation-delay: 2s; }
+     .particle-3 { width: 6px; height: 6px; top: 30%; left: 70%; animation-delay: 4s; }
+     .particle-4 { width: 10px; height: 10px; top: 80%; left: 20%; animation-delay: 6s; }
+     .particle-5 { width: 14px; height: 14px; top: 10%; left: 50%; animation-delay: 1s; }
+     
+     @keyframes particleFloat {
+       0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+       10% { opacity: 1; }
+       90% { opacity: 1; }
+       100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+     }
+     
+     /* Logo animado */
+     .logo-container {
+       position: relative;
+       display: inline-block;
+     }
+     
+     .logo-animated {
+       animation: logoFloat 3s ease-in-out infinite;
+       filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+     }
+     
+     .logo-glow {
+       position: absolute;
+       top: 50%;
+       left: 50%;
+       transform: translate(-50%, -50%);
+       width: 120%;
+       height: 120%;
+       background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+       border-radius: 50%;
+       animation: logoGlow 2s ease-in-out infinite alternate;
+     }
+     
+     @keyframes logoFloat {
+       0%, 100% { transform: translateY(0px); }
+       50% { transform: translateY(-10px); }
+     }
+     
+     @keyframes logoGlow {
+       0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
+       100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
+     }
+     
+     /* Título con efecto de escritura */
+     .title-animated {
+       background: linear-gradient(45deg, #fff, var(--ib-neon), #fff);
+       background-size: 200% 200%;
+       -webkit-background-clip: text;
+       -webkit-text-fill-color: transparent;
+       background-clip: text;
+       animation: titleShimmer 3s ease-in-out infinite;
+     }
+     
+     @keyframes titleShimmer {
+       0% { background-position: 0% 50%; }
+       50% { background-position: 100% 50%; }
+       100% { background-position: 0% 50%; }
+     }
+     
+     /* Descripción con fade-in */
+     .description-animated {
+       animation: fadeInUp 1s ease-out 0.5s both;
+     }
+     
+     @keyframes fadeInUp {
+       from {
+         opacity: 0;
+         transform: translateY(30px);
+       }
+       to {
+         opacity: 1;
+         transform: translateY(0);
+       }
+     }
+     
+     /* Cards de características */
+     .feature-card {
+       background: rgba(255, 255, 255, 0.1);
+       border: 2px solid rgba(255, 255, 255, 0.2);
+       border-radius: 15px;
+       padding: 20px 15px;
+       margin: 10px 0;
+       backdrop-filter: blur(10px);
+       transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+       position: relative;
+       overflow: hidden;
+     }
+     
+     .feature-card::before {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: -100%;
+       width: 100%;
+       height: 100%;
+       background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+       transition: left 0.6s;
+     }
+     
+     .feature-card:hover::before {
+       left: 100%;
+     }
+     
+     .feature-card:hover {
+       transform: translateY(-10px) scale(1.05);
+       border-color: var(--ib-neon);
+       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+     }
+     
+     .feature-card-1 { animation: slideInLeft 0.8s ease-out 0.2s both; }
+     .feature-card-2 { animation: slideInLeft 0.8s ease-out 0.4s both; }
+     .feature-card-3 { animation: slideInLeft 0.8s ease-out 0.6s both; }
+     
+     @keyframes slideInLeft {
+       from {
+         opacity: 0;
+         transform: translateX(-50px);
+       }
+       to {
+         opacity: 1;
+         transform: translateX(0);
+       }
+     }
+     
+     /* Iconos con pulso */
+     .feature-icon-wrapper {
+       position: relative;
+       display: inline-block;
+     }
+     
+     .feature-icon {
+       transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+       position: relative;
+       z-index: 2;
+     }
+     
+     .icon-pulse {
+       position: absolute;
+       top: 50%;
+       left: 50%;
+       transform: translate(-50%, -50%);
+       width: 60px;
+       height: 60px;
+       background: rgba(255, 255, 255, 0.2);
+       border-radius: 50%;
+       animation: iconPulse 2s ease-in-out infinite;
+     }
+     
+     @keyframes iconPulse {
+       0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.7; }
+       50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.3; }
+       100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.7; }
+     }
+     
+     .feature-icon:hover {
+       transform: translateY(-8px) scale(1.2);
+       color: var(--ib-neon);
+     }
+     
+     /* Barras de progreso animadas */
+     .feature-progress {
+       width: 100%;
+       height: 3px;
+       background: rgba(255, 255, 255, 0.2);
+       border-radius: 2px;
+       margin-top: 10px;
+       overflow: hidden;
+     }
+     
+     .progress-bar-animated {
+       height: 100%;
+       background: linear-gradient(90deg, var(--ib-green), var(--ib-neon));
+       border-radius: 2px;
+       animation: progressFill 2s ease-out 1s both;
+     }
+     
+     @keyframes progressFill {
+       from { width: 0%; }
+       to { width: 100%; }
+     }
+     
+    
+    /* Efectos para el botón */
+    .btn-inclusive-primary {
+      position: relative;
+      overflow: hidden;
+      border: 3px solid var(--ib-green);
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(111, 169, 142, 0.3);
+    }
+    
+    .btn-inclusive-primary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+    
+    .btn-inclusive-primary:hover::before {
+      left: 100%;
+    }
+    
+    .btn-inclusive-primary:hover {
+      border-color: var(--ib-neon);
+      box-shadow: 0 6px 16px rgba(111, 169, 142, 0.4);
+    }
+    
+    /* Efectos para el footer */
+    .footer-text {
+      transition: all 0.3s ease;
+    }
+    
+    .footer-text:hover {
+      color: var(--ib-green);
+      transform: scale(1.05);
+    }
+    
+    /* Responsive */
+    @media (max-width: 991.98px) {
+      .container-fluid {
+        background: linear-gradient(135deg, var(--ib-green) 0%, var(--ib-neon) 100%);
+      }
+      
+      .login-card {
+        margin: 20px;
+        box-shadow: 0 12px 24px rgba(111, 169, 142, 0.2);
+      }
+    }
+    
+    /* Animación de entrada */
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .login-card {
+      animation: slideInUp 0.6s ease-out;
+    }
+    
+    .form-control {
+      animation: slideInUp 0.8s ease-out;
+    }
+    
+     .btn-inclusive-primary {
+       animation: slideInUp 1s ease-out;
+     }
+     
+     /* Animación para ocultar mensajes */
+     .alert-auto-hide {
+       animation: fadeOut 0.5s ease-out 4s forwards;
+     }
+     
+     @keyframes fadeOut {
+       from {
+         opacity: 1;
+         transform: translateY(0);
+       }
+       to {
+         opacity: 0;
+         transform: translateY(-10px);
+         height: 0;
+         margin: 0;
+         padding: 0;
+         overflow: hidden;
+       }
+     }
+   </style>
+   
+   <script>
+     // Ocultar mensajes automáticamente después de 4 segundos
+     document.addEventListener('DOMContentLoaded', function() {
+       const alerts = document.querySelectorAll('.alert');
+       alerts.forEach(function(alert) {
+         alert.classList.add('alert-auto-hide');
+       });
+       
+       // También ocultar mensajes de error de campos individuales
+       const errorMessages = document.querySelectorAll('.text-danger');
+       errorMessages.forEach(function(error) {
+         error.classList.add('alert-auto-hide');
+       });
+       
+       // Limpiar parámetros de URL si hay errores de login
+       const urlParams = new URLSearchParams(window.location.search);
+       if (urlParams.has('logout') && document.querySelector('.alert-danger')) {
+         // Remover el parámetro logout de la URL sin recargar la página
+         urlParams.delete('logout');
+         const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+         window.history.replaceState({}, document.title, newUrl);
+       }
+       
+     });
+     
+     // Función para cerrar mensajes manualmente
+     function closeAlert(button) {
+       const alert = button.closest('.alert');
+       if (alert) {
+         alert.style.transition = 'all 0.3s ease';
+         alert.style.opacity = '0';
+         alert.style.transform = 'translateY(-10px)';
+         alert.style.height = '0';
+         alert.style.margin = '0';
+         alert.style.padding = '0';
+         alert.style.overflow = 'hidden';
+         setTimeout(() => {
+           alert.remove();
+         }, 300);
+       }
+     }
+   </script>
+ </body>
+ </html>

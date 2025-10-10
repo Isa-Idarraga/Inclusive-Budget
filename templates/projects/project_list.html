@@ -494,33 +494,18 @@
                             
                             <!-- Información detallada -->
                             <div class="mb-3">
+                                <!-- Ubicación del proyecto -->
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-map text-inclusive-primary me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.get_ubicacion_proyecto_display|default:"Medellín" }}</small>
-                                </div>
-                                
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-home text-inclusive-neon me-2 small"></i>
+                                    <i class="fas fa-map-marker-alt text-inclusive-primary me-2 small"></i>
                                     <small class="text-inclusive-secondary">
-                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m² • 
-                                        {{ project.get_numero_pisos_display|default:"1 piso" }}
+                                        {% if project.location_address %}
+                                            {{ project.location_address|truncatechars:30 }}
+                                        {% else %}
+                                            {{ project.get_ubicacion_proyecto_display|default:"Medellín" }}
+                                        {% endif %}
                                     </small>
                                 </div>
                                 
-                                {% if project.numero_banos %}
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-bath text-inclusive-bright me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.numero_banos }} baño{{ project.numero_banos|pluralize }}</small>
-                                </div>
-                                {% endif %}
-                                
-                                {% if project.get_acabado_muros_display %}
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-paint-brush text-inclusive-secondary me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.get_acabado_muros_display }}</small>
-                                </div>
-                                {% endif %}
-
                                 <!-- Creado por -->
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fas fa-user-tie text-inclusive-primary me-2 small"></i>
@@ -528,14 +513,41 @@
                                         <strong>Creado por:</strong> {{ project.creado_por.first_name }} {{ project.creado_por.last_name }}
                                     </small>
                                 </div>
+                                
+                                <!-- Fecha de creación -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calendar text-inclusive-secondary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"d M Y" }}</small>
+                                </div>
+                                
+                                <!-- Indicador de presupuesto detallado -->
+                                {% if project.has_detailed_budget_items %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calculator text-inclusive-neon me-2 small"></i>
+                                    <small class="text-inclusive-neon fw-semibold">
+                                        <i class="fas fa-check-circle me-1"></i>Presupuesto Detallado
+                                    </small>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Información técnica (solo si está disponible) -->
+                                {% if project.area_construida_total or project.built_area %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-home text-inclusive-neon me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m²
+                                        {% if project.get_numero_pisos_display %}• {{ project.get_numero_pisos_display }}{% endif %}
+                                    </small>
+                                </div>
+                                {% endif %}
                             </div>
                             
                             <!-- Presupuesto destacado -->
                             <div class="text-center p-3 rounded-3 border-2" style="border-color: var(--inclusive-green-primary); background-color: var(--inclusive-gray-light);">
-                                <small class="text-inclusive-secondary d-block mb-1">Presupuesto</small>
-                                <span class="h6 fw-bold text-inclusive-primary mb-0">
+                                <small class="text-inclusive-secondary d-block mb-1">Presupuesto Estimado</small>
+                                <span class="h6 fw-bold text-inclusive-primary mb-0" data-budget="{{ project.presupuesto|default:0 }}">
                                     {% if project.presupuesto and project.presupuesto > 0 %}
-                                        ${{ project.presupuesto|floatformat:0 }}
+                                        ${{ project.presupuesto|floatformat:0|default:"0" }}
                                     {% else %}
                                         <span class="text-inclusive-bright">Por calcular</span>
                                     {% endif %}
@@ -590,25 +602,17 @@
                             
                             <!-- Información detallada -->
                             <div class="mb-3">
+                                <!-- Ubicación del proyecto -->
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-map text-inclusive-primary me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.get_ubicacion_proyecto_display|default:"Medellín" }}</small>
-                                </div>
-                                
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-home text-inclusive-neon me-2 small"></i>
+                                    <i class="fas fa-map-marker-alt text-inclusive-primary me-2 small"></i>
                                     <small class="text-inclusive-secondary">
-                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m² • 
-                                        {{ project.get_numero_pisos_display|default:"1 piso" }}
+                                        {% if project.location_address %}
+                                            {{ project.location_address|truncatechars:30 }}
+                                        {% else %}
+                                            {{ project.get_ubicacion_proyecto_display|default:"Medellín" }}
+                                        {% endif %}
                                     </small>
                                 </div>
-                                
-                                {% if project.numero_banos %}
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-bath text-inclusive-bright me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.numero_banos }} baño{{ project.numero_banos|pluralize }}</small>
-                                </div>
-                                {% endif %}
                                 
                                 <!-- Creado por -->
                                 <div class="d-flex align-items-center mb-2">
@@ -617,19 +621,41 @@
                                         <strong>Creado por:</strong> {{ project.creado_por.first_name }} {{ project.creado_por.last_name }}
                                     </small>
                                 </div>
-
+                                
+                                <!-- Fecha de creación -->
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fas fa-calendar text-inclusive-secondary me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"M Y" }}</small>
+                                    <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"d M Y" }}</small>
                                 </div>
+                                
+                                <!-- Indicador de presupuesto detallado -->
+                                {% if project.has_detailed_budget_items %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calculator text-inclusive-neon me-2 small"></i>
+                                    <small class="text-inclusive-neon fw-semibold">
+                                        <i class="fas fa-check-circle me-1"></i>Presupuesto Detallado
+                                    </small>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Información técnica (solo si está disponible) -->
+                                {% if project.area_construida_total or project.built_area %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-home text-inclusive-neon me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m²
+                                        {% if project.get_numero_pisos_display %}• {{ project.get_numero_pisos_display }}{% endif %}
+                                    </small>
+                                </div>
+                                {% endif %}
                             </div>
                             
                             <!-- Presupuesto destacado -->
                             <div class="text-center p-3 rounded-3 border-2" style="border-color: var(--inclusive-green-neon); background-color: var(--inclusive-gray-light);">
                                 <small class="text-inclusive-secondary d-block mb-1">Presupuesto Final</small>
-                                <span class="h6 fw-bold text-inclusive-neon mb-0">
+                                <span class="h6 fw-bold text-inclusive-neon mb-0" data-budget="{{ project.presupuesto|default:0 }}">
                                     {% if project.presupuesto and project.presupuesto > 0 %}
-                                        ${{ project.presupuesto|floatformat:0 }}
+                                        ${{ project.presupuesto|floatformat:0|default:"0" }}
                                     {% else %}
                                         <span class="text-inclusive-bright">Calculando...</span>
                                     {% endif %}
@@ -684,25 +710,17 @@
                             
                             <!-- Información detallada -->
                             <div class="mb-3">
+                                <!-- Ubicación del proyecto -->
                                 <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-map text-inclusive-primary me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.get_ubicacion_proyecto_display|default:"Medellín" }}</small>
-                                </div>
-                                
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-home text-inclusive-secondary me-2 small"></i>
+                                    <i class="fas fa-map-marker-alt text-inclusive-primary me-2 small"></i>
                                     <small class="text-inclusive-secondary">
-                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m² • 
-                                        {{ project.get_numero_pisos_display|default:"1 piso" }}
+                                        {% if project.location_address %}
+                                            {{ project.location_address|truncatechars:30 }}
+                                        {% else %}
+                                            {{ project.get_ubicacion_proyecto_display|default:"Medellín" }}
+                                        {% endif %}
                                     </small>
                                 </div>
-                                
-                                {% if project.numero_banos %}
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="fas fa-bath text-inclusive-bright me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.numero_banos }} baño{{ project.numero_banos|pluralize }}</small>
-                                </div>
-                                {% endif %}
                                 
                                 <!-- Creado por -->
                                 <div class="d-flex align-items-center mb-2">
@@ -711,19 +729,41 @@
                                         <strong>Creado por:</strong> {{ project.creado_por.first_name }} {{ project.creado_por.last_name }}
                                     </small>
                                 </div>
-
+                                
+                                <!-- Fecha de creación -->
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fas fa-calendar text-inclusive-secondary me-2 small"></i>
-                                    <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"M Y" }}</small>
+                                    <small class="text-inclusive-secondary">{{ project.fecha_creacion|date:"d M Y" }}</small>
                                 </div>
+                                
+                                <!-- Indicador de presupuesto detallado -->
+                                {% if project.has_detailed_budget_items %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calculator text-inclusive-neon me-2 small"></i>
+                                    <small class="text-inclusive-neon fw-semibold">
+                                        <i class="fas fa-check-circle me-1"></i>Presupuesto Detallado
+                                    </small>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Información técnica (solo si está disponible) -->
+                                {% if project.area_construida_total or project.built_area %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-home text-inclusive-secondary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m²
+                                        {% if project.get_numero_pisos_display %}• {{ project.get_numero_pisos_display }}{% endif %}
+                                    </small>
+                                </div>
+                                {% endif %}
                             </div>
                             
                             <!-- Presupuesto estimado -->
                             <div class="text-center p-3 rounded-3 border-2" style="border-color: var(--inclusive-gray-dark); background-color: var(--inclusive-gray-light);">
                                 <small class="text-inclusive-secondary d-block mb-1">Presupuesto Estimado</small>
-                                <span class="h6 fw-bold text-inclusive-secondary mb-0">
+                                <span class="h6 fw-bold text-inclusive-secondary mb-0" data-budget="{{ project.presupuesto|default:0 }}">
                                     {% if project.presupuesto and project.presupuesto > 0 %}
-                                        ${{ project.presupuesto|floatformat:0 }}
+                                        ${{ project.presupuesto|floatformat:0|default:"0" }}
                                     {% else %}
                                         <span class="text-inclusive-bright">Por calcular</span>
                                     {% endif %}
@@ -880,14 +920,16 @@ document.addEventListener('DOMContentLoaded', function() {
         return num.toString();
     }
     
-    // Formatear presupuestos en las cards
-    document.querySelectorAll('.h6.fw-bold').forEach(element => {
-        const text = element.textContent;
-        if (text.includes('$') && text.includes(',')) {
-            const number = parseInt(text.replace(/[$,]/g, ''));
-            if (!isNaN(number)) {
-                element.textContent = '$' + formatNumber(number);
-            }
+    // Formatear presupuestos en las cards con puntos cada 3 cifras
+    document.querySelectorAll('[data-budget]').forEach(element => {
+        const budget = parseFloat(element.getAttribute('data-budget'));
+        if (budget && budget > 0) {
+            // Formatear con puntos cada 3 cifras
+            const formatted = budget.toLocaleString('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+            element.textContent = '$' + formatted;
         }
     });
     

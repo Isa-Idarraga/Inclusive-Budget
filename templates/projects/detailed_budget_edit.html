@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="project-detail-bg py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-12">
+                <div class="card shadow-inclusive-lg rounded-4 animate-fade-in">
+                    <div class="card-header card-header-inclusive rounded-top-4 border-0">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                    <i class="fas fa-calculator text-white fs-4"></i>
+                                </div>
+                                <div>
+                                    <h2 class="h3 fw-bold mb-0">Presupuesto Detallado</h2>
+                                    <p class="mb-0 text-white-50">{{ project.name }}</p>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="bg-white bg-opacity-20 rounded-3 px-3 py-2">
+                                    <span class="text-white fw-bold fs-5">Total: ${{ total_budget|floatformat:0|default:"0" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-4 bg-gray-green-accent">
+                        <!-- Información de optimización -->
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Vista optimizada:</strong> Se muestran solo las secciones que tienen ítems configurados en este proyecto.
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Cargando {{ section_forms|length }} secciones con ítems configurados...
+                                </small>
+                            </div>
+                        </div>
+                        
+                        {% if section_forms %}
+                        <form method="post" id="budgetForm">
+                            {% csrf_token %}
+                            
+                            <!-- Navegación por Secciones -->
+                            <div class="mb-4">
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for section_form in section_forms %}
+                                        <a href="#section-{{ section_form.section.id }}" class="btn btn-outline-primary btn-sm">
+                                            {{ section_form.section.order }}. {{ section_form.section.name|truncatechars:30 }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <!-- Secciones del Presupuesto -->
+                            {% for section_form in section_forms %}
+                                <div class="mb-5 animate-fade-in" id="section-{{ section_form.section.id }}">
+                                    <div class="d-flex align-items-center mb-4">
+                                        <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                            <span class="fw-bold text-inclusive-primary">{{ section_form.section.order }}</span>
+                                        </div>
+                                        <div>
+                                            <h4 class="fw-bold text-inclusive-dark mb-0">{{ section_form.section.name }}</h4>
+                                            {% if section_form.section.description %}
+                                                <p class="text-muted mb-0">{{ section_form.section.description }}</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    {% if section_form.section.is_percentage %}
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-percentage me-2"></i>
+                                            <strong>Sección Porcentual:</strong> Esta sección se calculará automáticamente como el {{ section_form.section.percentage_value }}% del costo directo.
+                                        </div>
+                                    {% else %}
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-inclusive">
+                                                    <tr>
+                                                        <th style="width: 5%">#</th>
+                                                        <th style="width: 45%">Descripción</th>
+                                                        <th style="width: 10%">Unidad</th>
+                                                        <th style="width: 15%">Precio Unitario</th>
+                                                        <th style="width: 15%">Cantidad</th>
+                                                        <th style="width: 15%">Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for item in section_form.section.items.all %}
+                                                        <tr>
+                                                            <td>{{ forloop.counter }}</td>
+                                                            <td>
+                                                                <strong>{{ item.description }}</strong>
+                                                                {% if item.code %}
+                                                                    <br><small class="text-muted">Código: {{ item.code }}</small>
+                                                                {% endif %}
+                                                            </td>
+                                                            <td class="text-center">{{ item.unit }}</td>
+                                                            <td class="text-end">
+                                                                <span class="fw-bold text-inclusive-primary">
+                                                                    ${{ item.unit_price|floatformat:0 }}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" 
+                                                                       name="quantity_{{ item.id }}" 
+                                                                       value="{% for project_item in project.budget_items.all %}{% if project_item.budget_item.id == item.id %}{{ project_item.quantity|floatformat:3 }}{% endif %}{% endfor %}"
+                                                                       class="form-control quantity-input" 
+                                                                       step="0.001" 
+                                                                       min="0"
+                                                                       data-item-id="{{ item.id }}"
+                                                                       data-unit-price="{{ item.unit_price }}">
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <span class="fw-bold text-inclusive-primary item-total" data-item-id="{{ item.id }}">
+                                                                    $0
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    {% empty %}
+                                                        <tr>
+                                                            <td colspan="6" class="text-center text-muted py-4">
+                                                                <i class="fas fa-info-circle me-2"></i>
+                                                                No hay ítems en esta sección
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                            
+                            <!-- Botones de Acción -->
+                            <div class="d-flex justify-content-between align-items-center mt-5">
+                                <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-outline-secondary btn-lg px-4">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Volver al Proyecto
+                                </a>
+                                
+                                <div class="d-flex gap-3">
+                                    <a href="{% url 'projects:detailed_budget_view' project.id %}" class="btn btn-outline-primary btn-lg px-4">
+                                        <i class="fas fa-eye me-2"></i>
+                                        Ver Presupuesto
+                                    </a>
+                                    
+                                    <button type="submit" class="btn btn-inclusive-primary btn-lg px-5">
+                                        <i class="fas fa-save me-2"></i>
+                                        Guardar Presupuesto
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        {% else %}
+                        <!-- Mensaje cuando no hay secciones configuradas -->
+                        <div class="text-center py-5">
+                            <i class="fas fa-exclamation-triangle text-warning fs-1 mb-3"></i>
+                            <h4 class="text-muted">No hay ítems configurados</h4>
+                            <p class="text-muted">Este proyecto no tiene ítems del presupuesto detallado configurados.</p>
+                            <div class="d-flex gap-3 justify-content-center">
+                                <a href="{% url 'projects:detailed_project_create' %}" class="btn btn-inclusive-primary">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Crear Proyecto Detallado
+                                </a>
+                                <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Volver al Proyecto
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-inclusive {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.table-inclusive th {
+    border: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.item-total {
+    font-size: 1.1rem;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.form-control {
+    border: 2px solid #e9ecef;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-color: #e9ecef;
+    font-weight: 600;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calcular totales automáticamente
+    function calculateItemTotal(itemId) {
+        const quantityInput = document.querySelector(`input[name="quantity_${itemId}"]`);
+        const totalSpan = document.querySelector(`.item-total[data-item-id="${itemId}"]`);
+        
+        if (quantityInput && totalSpan) {
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const unitPrice = parseFloat(quantityInput.getAttribute('data-unit-price')) || 0;
+            const total = quantity * unitPrice;
+            
+            totalSpan.textContent = '$' + total.toLocaleString('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+    }
+    
+    // Agregar event listeners a todos los inputs de cantidad
+    document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const itemId = this.getAttribute('data-item-id');
+            calculateItemTotal(itemId);
+        });
+    });
+    
+    // Calcular totales iniciales
+    document.querySelectorAll('.item-total').forEach(span => {
+        const itemId = span.getAttribute('data-item-id');
+        calculateItemTotal(itemId);
+    });
+});
+</script>
+{% endblock %}
