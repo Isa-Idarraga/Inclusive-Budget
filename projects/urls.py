@@ -36,8 +36,27 @@ urlpatterns = [
     # URLs para consumo diario de materiales (RF17A)
     path('<int:project_id>/consumo/registrar/', views.registrar_consumo_material, name='registrar_consumo_material'),
     path('<int:project_id>/consumo/listar/', views.listar_consumos_proyecto, name='listar_consumos_proyecto'),
+    
+    # URLs para presupuesto detallado
+    path('detailed/create/', views.detailed_project_create, name='detailed_project_create'),
+    path('<int:project_id>/detailed-budget/edit/', views.detailed_budget_edit, name='detailed_budget_edit'),
+    path('<int:project_id>/detailed-budget/view/', views.detailed_budget_view, name='detailed_budget_view'),
+    
+    # URLs para gestión de precios (solo JEFE)
+    path('budget/management/', views.budget_management, name='budget_management'),
+    path('budget/item/<int:item_id>/update/', views.budget_item_update, name='budget_item_update'),
+    
+    # URLs para gestión de ítems del presupuesto
+    path('budget/items/', views.budget_items_list, name='budget_items_list'),
+    path('budget/items/create/', views.budget_item_create, name='budget_item_create'),
+    path('budget/items/<int:item_id>/edit/', views.budget_item_edit, name='budget_item_edit'),
+    path('budget/items/<int:item_id>/delete/', views.budget_item_delete, name='budget_item_delete'),
+    path('budget/items/<int:item_id>/toggle/', views.budget_item_toggle, name='budget_item_toggle'),
     path('<int:project_id>/consumo/api/fecha/', views.obtener_consumos_fecha, name='obtener_consumos_fecha'),
     path('<int:project_id>/consumo/api/mes/', views.obtener_consumos_mes, name='obtener_consumos_mes'),  # RF17C
     path('consumo/<int:consumo_id>/editar/', views.editar_consumo_material, name='editar_consumo_material'),
     path('consumo/<int:consumo_id>/eliminar/', views.eliminar_consumo_material, name='eliminar_consumo_material'),
+    
+    # URL para gestión de trabajadores del proyecto
+    path('<int:project_id>/workers/', views.project_workers, name='project_workers'),
 ]

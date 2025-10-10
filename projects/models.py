@@ -730,6 +730,36 @@ class Project(models.Model):
 
         return int(total)
 
+    def has_detailed_budget_items(self):
+        """
+        Verifica si el proyecto tiene ítems de presupuesto detallado configurados
+        """
+        return self.budget_items.exists()
+
+    def calculate_final_budget(self):
+        """
+        Calcula el presupuesto final del proyecto
+        Si tiene ítems detallados, usa el cálculo detallado
+        Si no, usa el cálculo tradicional
+        """
+        from decimal import Decimal
+        from django.db.models import Sum, Q
+
+        if self.has_detailed_budget_items():
+            # Cálculo detallado con ítems específicos
+            totals = self.budget_items.select_related('budget_item__section').aggregate(
+                costo_directo=Sum('total_price', filter=~Q(budget_item__section__order=21)),
+                administracion_manual=Sum('total_price', filter=Q(budget_item__section__order=21))
+            )
+            costo_directo = totals['costo_directo'] or Decimal('0')
+            administracion_manual = totals['administracion_manual'] or Decimal('0')
+            administracion_automatica = costo_directo * Decimal('0.12')
+            total = costo_directo + administracion_automatica + administracion_manual
+            return total
+        else:
+            # Cálculo tradicional
+            return self.calculate_detailed_budget()
+
  #Modelos de proveeddores entradas y materiales
 
 class EntradaMaterial(models.Model):
@@ -1009,3 +1039,123 @@ class ConsumoMaterial(models.Model):
             except ProyectoMaterial.DoesNotExist:
                 # Si no existe la relación, solo eliminar el consumo
                 super().delete(*args, **kwargs)
+
+
+# SISTEMA DE PRESUPUESTO DETALLADO
+
+class BudgetSection(models.Model):
+    """
+    Secciones del presupuesto detallado (23 secciones)
+    """
+    name = models.CharField(max_length=200, verbose_name="Nombre de la sección")
+    order = models.PositiveIntegerField(verbose_name="Orden", default=0)
+    description = models.TextField(blank=True, verbose_name="Descripción")
+    is_percentage = models.BooleanField(default=False, verbose_name="Es porcentual")
+    percentage_value = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2, 
+        default=0, 
+        verbose_name="Valor porcentual",
+        help_text="Para secciones como Administración (12%)"
+    )
+    
+    class Meta:
+        verbose_name = "Sección de Presupuesto"
+        verbose_name_plural = "Secciones de Presupuesto"
+        ordering = ['order']
+    
+    def __str__(self):
+        return f"{self.order}. {self.name}"
+
+
+class BudgetItem(models.Model):
+    """
+    Ítems individuales dentro de cada sección del presupuesto
+    """
+    section = models.ForeignKey(
+        BudgetSection, 
+        on_delete=models.CASCADE, 
+        related_name="items",
+        verbose_name="Sección"
+    )
+    code = models.CharField(max_length=20, verbose_name="Código", blank=True)
+    description = models.TextField(verbose_name="Descripción del ítem")
+    unit = models.CharField(max_length=20, verbose_name="Unidad")
+    unit_price = models.DecimalField(
+        max_digits=15, 
+        decimal_places=2, 
+        verbose_name="Precio Unitario (COP)",
+        validators=[MinValueValidator(0)]
+    )
+    order = models.PositiveIntegerField(verbose_name="Orden en sección", default=0)
+    is_active = models.BooleanField(default=True, verbose_name="Activo")
+    
+    class Meta:
+        verbose_name = "Ítem de Presupuesto"
+        verbose_name_plural = "Ítems de Presupuesto"
+        ordering = ['section__order', 'order']
+    
+    def __str__(self):
+        return f"{self.section.name} - {self.description[:50]}"
+
+
+class ProjectBudgetItem(models.Model):
+    """
+    Ítems de presupuesto específicos para cada proyecto
+    """
+    project = models.ForeignKey(
+        Project, 
+        on_delete=models.CASCADE, 
+        related_name="budget_items",
+        verbose_name="Proyecto"
+    )
+    budget_item = models.ForeignKey(
+        BudgetItem, 
+        on_delete=models.CASCADE,
+        verbose_name="Ítem de Presupuesto"
+    )
+    quantity = models.DecimalField(
+        max_digits=12, 
+        decimal_places=3, 
+        default=0,
+        verbose_name="Cantidad",
+        validators=[MinValueValidator(0)]
+    )
+    unit_price = models.DecimalField(
+        max_digits=15, 
+        decimal_places=2, 
+        verbose_name="Precio Unitario",
+        validators=[MinValueValidator(0)]
+    )
+    total_price = models.DecimalField(
+        max_digits=15, 
+        decimal_places=2, 
+        default=0,
+        verbose_name="Precio Total",
+        validators=[MinValueValidator(0)]
+    )
+    
+    class Meta:
+        verbose_name = "Ítem de Presupuesto del Proyecto"
+        verbose_name_plural = "Ítems de Presupuesto del Proyecto"
+        unique_together = ['project', 'budget_item']
+    
+    def save(self, *args, **kwargs):
+        from decimal import Decimal
+        
+        # Asegurar que unit_price no sea None
+        if self.unit_price is None:
+            self.unit_price = self.budget_item.unit_price
+        
+        # Asegurar que quantity y unit_price sean Decimal
+        if not isinstance(self.quantity, Decimal):
+            self.quantity = Decimal(str(self.quantity))
+        if not isinstance(self.unit_price, Decimal):
+            self.unit_price = Decimal(str(self.unit_price))
+        
+        # Calcular total_price
+        self.total_price = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.project.name} - {self.budget_item.description[:30]}"

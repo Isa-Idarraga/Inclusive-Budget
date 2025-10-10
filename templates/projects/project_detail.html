@@ -62,48 +62,31 @@
                     </div>
                     <div class="card-body p-0 bg-gray-green-accent">
                         <div class="row g-0">
-                            <!-- Ubicación -->
+                            <!-- Ubicación (dirección real) -->
                             <div class="col-12 p-4 accent-green-border border-bottom">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-map text-inclusive-primary me-3 fs-5"></i>
+                                    <i class="fas fa-map-marker-alt text-inclusive-primary me-3 fs-5"></i>
                                     <div class="flex-fill">
                                         <p class="small text-inclusive-secondary fw-medium mb-1">Ubicación</p>
                                         <p class="text-inclusive-dark fw-semibold mb-0">
-                                            {{ project.get_ubicacion_proyecto_display|default:"Medellín" }}
-                                            {% if project.otra_ubicacion %} - {{ project.otra_ubicacion }}{% endif %}
+                                            {{ project.location_address }}
                                         </p>
                                     </div>
                                 </div>
                             </div>
                             
-                            <!-- Área y Pisos -->
+                            <!-- Descripción -->
+                            {% if project.description %}
                             <div class="col-12 p-4 accent-green-border border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-home text-inclusive-neon me-3 fs-5"></i>
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-align-left text-inclusive-neon me-3 fs-5 mt-1"></i>
                                     <div class="flex-fill">
-                                        <p class="small text-inclusive-secondary fw-medium mb-1">Área Construida y Pisos</p>
-                                        <p class="text-inclusive-dark fw-semibold mb-0">
-                                            {{ project.area_construida_total|default:project.built_area|floatformat:0|default:"0" }}m² • 
-                                            {{ project.get_numero_pisos_display|default:"1 piso" }}
-                                        </p>
+                                        <p class="small text-inclusive-secondary fw-medium mb-1">Descripción</p>
+                                        <p class="text-inclusive-dark mb-0">{{ project.description }}</p>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Detalles de Construcción -->
-                            <div class="col-12 p-4 accent-green-border border-bottom">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-tools text-inclusive-bright me-3 fs-5"></i>
-                                    <div class="flex-fill">
-                                        <p class="small text-inclusive-secondary fw-medium mb-1">Detalles de Construcción</p>
-                                        <p class="text-inclusive-dark fw-semibold mb-0">
-                                            {% if project.numero_banos %}{{ project.numero_banos }} baño{{ project.numero_banos|pluralize }} • {% endif %}
-                                            {{ project.get_acabado_muros_display|default:"Estándar" }} • 
-                                            {{ project.get_tipo_terreno_display|default:"Normal" }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+                            {% endif %}
                             
                             <!-- Fecha de Creación -->
                             <div class="col-12 p-4 accent-green-border border-bottom">
@@ -117,7 +100,7 @@
                             </div>
 
                             <!-- Creado Por -->
-                            <div class="col-12 p-4 accent-green-border rounded-bottom-4">
+                            <div class="col-12 p-4 accent-green-border {% if not project.workers.exists %}rounded-bottom-4{% endif %}">
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-user-tie text-inclusive-neon me-3 fs-5"></i>
                                     <div class="flex-fill">
@@ -129,6 +112,31 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Trabajadores Asignados -->
+                            {% if project.workers.exists %}
+                            <div class="col-12 p-4 accent-green-border rounded-bottom-4">
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-users text-inclusive-primary me-3 fs-5 mt-1"></i>
+                                    <div class="flex-fill">
+                                        <p class="small text-inclusive-secondary fw-medium mb-2">Trabajadores Asignados</p>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            {% for worker in project.workers.all %}
+                                            <div class="d-flex align-items-center bg-light rounded-pill px-3 py-2">
+                                                <i class="fas fa-user text-inclusive-primary me-2"></i>
+                                                <div>
+                                                    <span class="fw-semibold text-inclusive-dark">{{ worker.name }}</span>
+                                                    {% if worker.role %}
+                                                        <br><small class="text-muted">{{ worker.role.name }}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -136,17 +144,62 @@
                 <!-- Section divider -->
                 <div class="section-divider"></div>
 
-                <!-- Dimensiones del Proyecto -->
+                <!-- Resumen del Presupuesto Detallado o Dimensiones -->
                 <div class="card shadow-inclusive-lg rounded-4 animate-fade-in animate-delay-3">
                     <div class="card-header card-header-inclusive rounded-top-4 border-0">
                         <div class="d-flex align-items-center">
                             <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
-                                <i class="fas fa-ruler-combined text-white fs-4"></i>
+                                {% if project.has_detailed_budget_items %}
+                                    <i class="fas fa-calculator text-white fs-4"></i>
+                                {% else %}
+                                    <i class="fas fa-ruler-combined text-white fs-4"></i>
+                                {% endif %}
                             </div>
-                            <h2 class="h3 fw-bold mb-0">Dimensiones del Proyecto</h2>
+                            <h2 class="h3 fw-bold mb-0">
+                                {% if project.has_detailed_budget_items %}
+                                    Resumen del Presupuesto Detallado
+                                {% else %}
+                                    Dimensiones del Proyecto
+                                {% endif %}
+                            </h2>
                         </div>
                     </div>
                     <div class="card-body p-4">
+                        {% if project.has_detailed_budget_items %}
+                            <!-- Mini resumen de secciones principales -->
+                            <div class="alert alert-info mb-4">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Proyecto con presupuesto detallado</strong> - Este proyecto fue creado con el sistema de 23 secciones detalladas.
+                            </div>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center p-3 bg-light rounded-3">
+                                        <i class="fas fa-check-circle text-success fs-4 me-3"></i>
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">Ítems del Presupuesto</h6>
+                                            <p class="mb-0 text-muted">{{ project.budget_items.count }} ítems configurados</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center p-3 bg-light rounded-3">
+                                        <i class="fas fa-list-ol text-primary fs-4 me-3"></i>
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">Secciones Activas</h6>
+                                            <p class="mb-0 text-muted">23 secciones del presupuesto</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 text-center">
+                                <a href="{% url 'projects:detailed_budget_view' project.id %}" class="btn btn-inclusive-primary">
+                                    <i class="fas fa-chart-bar me-2"></i>
+                                    Ver Presupuesto Detallado Completo
+                                </a>
+                            </div>
+                        {% else %}
                         <div class="row g-3">
                             <div class="col-md-6 col-lg-4">
                                 <div class="metric-card-primary p-4 rounded-4">
@@ -232,6 +285,7 @@
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -290,9 +344,27 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="d-grid gap-3">
-                            <a href="{% url 'projects:project_update' project.id %}" class="btn btn-inclusive-primary d-flex align-items-center justify-content-center rounded-3">
-                                <i class="fas fa-edit me-2"></i>
-                                Editar Proyecto
+                            <!-- Botones para Presupuesto Detallado -->
+                            {% if user.role == 'JEFE' or user.role == 'CONSTRUCTOR' or user.is_superuser %}
+                            <a href="{% url 'projects:detailed_budget_edit' project.id %}" class="btn btn-inclusive-warning d-flex align-items-center justify-content-center rounded-3" id="edit-budget-btn">
+                                <i class="fas fa-calculator me-2"></i>
+                                <span class="btn-text">Editar Presupuesto Detallado</span>
+                                <span class="btn-loading" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                    Cargando...
+                                </span>
+                            </a>
+                            
+                            <a href="{% url 'projects:detailed_budget_view' project.id %}" class="btn btn-outline-primary d-flex align-items-center justify-content-center rounded-3">
+                                <i class="fas fa-chart-bar me-2"></i>
+                                Ver Presupuesto Detallado
+                            </a>
+                            {% endif %}
+                            
+                            <!-- Gestión de Trabajadores -->
+                            <a href="{% url 'projects:project_workers' project.id %}" class="btn btn-inclusive-primary d-flex align-items-center justify-content-center rounded-3">
+                                <i class="fas fa-users me-2"></i>
+                                Gestionar Trabajadores
                             </a>
                             
                             <a href="{% url 'projects:project_delete' project.id %}" class="btn btn-inclusive-secondary d-flex align-items-center justify-content-center rounded-3">
@@ -355,5 +427,29 @@ function recalculateFields() {
         button.disabled = false;
     });
 }
+
+// Manejar el botón de editar presupuesto detallado
+document.addEventListener('DOMContentLoaded', function() {
+    const editBudgetBtn = document.getElementById('edit-budget-btn');
+    if (editBudgetBtn) {
+        editBudgetBtn.addEventListener('click', function(e) {
+            const btnText = this.querySelector('.btn-text');
+            const btnLoading = this.querySelector('.btn-loading');
+            
+            if (btnText && btnLoading) {
+                btnText.style.display = 'none';
+                btnLoading.style.display = 'inline';
+                this.style.pointerEvents = 'none';
+                
+                // Timeout de seguridad
+                setTimeout(() => {
+                    btnText.style.display = 'inline';
+                    btnLoading.style.display = 'none';
+                    this.style.pointerEvents = 'auto';
+                }, 10000); // 10 segundos timeout
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

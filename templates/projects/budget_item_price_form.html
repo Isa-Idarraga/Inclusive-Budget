@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<div class="project-detail-bg py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card shadow-inclusive-lg rounded-4 animate-fade-in">
+                    <div class="card-header card-header-inclusive rounded-top-4 border-0">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
+                                    <i class="fas fa-dollar-sign text-white fs-4"></i>
+                                </div>
+                                <div>
+                                    <h2 class="h3 fw-bold mb-0">Actualizar Precio</h2>
+                                    <p class="mb-0 text-white-50">Modificar precio unitario del ítem</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-4 bg-gray-green-accent">
+                        
+                        <!-- Información del ítem -->
+                        <div class="card border-primary mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Información del Ítem
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary bg-opacity-10 rounded-2 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                                <span class="fw-bold text-primary">{{ item.section.order }}</span>
+                                            </div>
+                                            <div>
+                                                <small class="text-muted d-block">Sección</small>
+                                                <strong class="text-primary">{{ item.section.name }}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-secondary bg-opacity-10 rounded-2 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                                <i class="fas fa-tag text-secondary"></i>
+                                            </div>
+                                            <div>
+                                                <small class="text-muted d-block">Código</small>
+                                                <strong class="text-secondary">{{ item.code|default:"Sin código" }}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-start">
+                                            <div class="bg-info bg-opacity-10 rounded-2 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                                <i class="fas fa-align-left text-info"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <small class="text-muted d-block">Descripción</small>
+                                                <strong class="text-dark">{{ item.description }}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-success bg-opacity-10 rounded-2 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                                <i class="fas fa-ruler text-success"></i>
+                                            </div>
+                                            <div>
+                                                <small class="text-muted d-block">Unidad</small>
+                                                <strong class="text-success">{{ item.unit }}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-warning bg-opacity-10 rounded-2 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
+                                                <i class="fas fa-dollar-sign text-warning"></i>
+                                            </div>
+                                            <div>
+                                                <small class="text-muted d-block">Precio Actual</small>
+                                                <strong class="text-warning">${{ item.unit_price|floatformat:0|intcomma }}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <form method="post" id="priceForm">
+                            {% csrf_token %}
+                            
+                            <div class="row g-4">
+                                <!-- Precio Unitario -->
+                                <div class="col-12">
+                                    <label for="{{ form.unit_price.id_for_label }}" class="form-label fw-semibold text-inclusive-primary">
+                                        <i class="fas fa-dollar-sign me-2"></i>{{ form.unit_price.label }}
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        {{ form.unit_price }}
+                                    </div>
+                                    {% if form.unit_price.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.unit_price.errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Estado -->
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        {{ form.is_active }}
+                                        <label class="form-check-label fw-semibold text-inclusive-primary" for="{{ form.is_active.id_for_label }}">
+                                            <i class="fas fa-toggle-on me-2"></i>{{ form.is_active.label }}
+                                        </label>
+                                    </div>
+                                    {% if form.is_active.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.is_active.errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <!-- Información adicional sobre el estado -->
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            {% if item.is_active %}
+                                                <span class="text-success">Este ítem está actualmente <strong>activo</strong> y aparece en los formularios de presupuesto.</span>
+                                            {% else %}
+                                                <span class="text-warning">Este ítem está actualmente <strong>inactivo</strong> y no aparece en los formularios de presupuesto.</span>
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Botones de Acción -->
+                            <div class="d-flex justify-content-between align-items-center mt-5">
+                                <a href="{% url 'projects:budget_management' %}" class="btn btn-outline-secondary btn-lg px-4">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Volver a Gestión
+                                </a>
+                                
+                                <div class="d-flex gap-3">
+                                    <button type="submit" class="btn btn-inclusive-primary btn-lg px-5">
+                                        <i class="fas fa-save me-2"></i>
+                                        Actualizar Ítem
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos generales */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.project-detail-bg {
+    background: linear-gradient(to bottom right, #e0f7fa, #e8f5e9);
+    min-height: 100vh;
+}
+
+.card {
+    border: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-header-inclusive {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 1.5rem;
+    border-bottom: none;
+}
+
+.bg-gray-green-accent {
+    background-color: #f0fdf4;
+}
+
+.text-inclusive-primary {
+    color: #28a745;
+}
+
+/* Estilos para formularios */
+.form-control {
+    border: 2px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    transform: scale(1.02);
+}
+
+.form-control:hover {
+    border-color: #28a745;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para input group */
+.input-group-text {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+    font-weight: 600;
+}
+
+/* Estilo para el switch */
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.form-check-input:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+/* Animaciones */
+.animate-fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+    opacity: 0;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mejoras adicionales para los campos */
+.form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.75rem;
+}
+
+.form-label i {
+    color: #28a745;
+    margin-right: 0.5rem;
+}
+
+/* Efecto de elevación en hover */
+.form-control:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para el switch */
+.form-check-input {
+    width: 3rem;
+    height: 1.5rem;
+    cursor: pointer;
+}
+
+.form-check-label {
+    font-size: 1rem;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Efecto hover para el toggle */
+.form-check-input:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* Estilo para el toggle cuando está activo */
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+/* Estilo para el toggle cuando está inactivo */
+.form-check-input:not(:checked) {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Formatear precio con separadores de miles
+    const priceInput = document.querySelector('input[name="unit_price"]');
+    if (priceInput) {
+        // Asegurar que el valor inicial sea un entero
+        if (priceInput.value && priceInput.value.includes('.')) {
+            priceInput.value = Math.floor(parseFloat(priceInput.value));
+        }
+        
+        priceInput.addEventListener('input', function() {
+            let value = this.value.replace(/[^\d]/g, '');
+            if (value) {
+                this.value = parseInt(value).toLocaleString('es-CO');
+            }
+        });
+        
+        priceInput.addEventListener('blur', function() {
+            let value = this.value.replace(/[^\d]/g, '');
+            if (value) {
+                this.value = parseInt(value);
+            }
+        });
+    }
+    
+    // Manejar el toggle de activo/inactivo
+    const toggleSwitch = document.querySelector('input[name="is_active"]');
+    const toggleLabel = document.querySelector('label[for="' + toggleSwitch.id + '"]');
+    
+    if (toggleSwitch && toggleLabel) {
+        // Función para actualizar el texto del toggle
+        function updateToggleText() {
+            const icon = toggleLabel.querySelector('i');
+            if (toggleSwitch.checked) {
+                icon.className = 'fas fa-toggle-on me-2';
+                toggleLabel.innerHTML = '<i class="fas fa-toggle-on me-2"></i>Activo';
+            } else {
+                icon.className = 'fas fa-toggle-off me-2';
+                toggleLabel.innerHTML = '<i class="fas fa-toggle-off me-2"></i>Inactivo';
+            }
+        }
+        
+        // Actualizar al cargar la página
+        updateToggleText();
+        
+        // Actualizar cuando cambie el toggle
+        toggleSwitch.addEventListener('change', function() {
+            updateToggleText();
+        });
+    }
+    
+    // Validación del formulario
+    const form = document.getElementById('priceForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Validar que el precio sea un número válido
+            const priceInput = document.querySelector('input[name="unit_price"]');
+            if (priceInput) {
+                let value = priceInput.value.replace(/[^\d]/g, '');
+                if (!value || parseInt(value) <= 0) {
+                    e.preventDefault();
+                    alert('Por favor ingresa un precio válido mayor a 0');
+                    priceInput.focus();
+                    return false;
+                }
+                // Enviar el valor sin formato
+                priceInput.value = value;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

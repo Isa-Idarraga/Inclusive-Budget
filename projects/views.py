@@ -3,9 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
-from django.db.models import Q
-from .models import Project, Worker, Role
-from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm
+from django.db.models import Q, Max
+from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
+from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm, DetailedProjectForm, BudgetSectionForm, BudgetManagementForm, BudgetItemCreateForm, BudgetItemEditForm
 import json
 from django.urls import reverse
 from .models import Project, EntradaMaterial
@@ -358,9 +358,14 @@ def project_create(request):
     """
     Vista para crear un nuevo proyecto
     - COMERCIAL: Solo puede crear (después no podrá verlo en la lista)
-    - CONSTRUCTOR: Crea y puede gestionarlo completamente
-    - JEFE: Acceso completo
+    - CONSTRUCTOR: Redirige al formulario detallado
+    - JEFE: Redirige al formulario detallado
     """
+    # Redirigir JEFE y CONSTRUCTOR al formulario detallado
+    if request.user.role in [User.JEFE, User.CONSTRUCTOR]:
+        return redirect("projects:detailed_project_create")
+    
+    # Solo COMERCIAL usa el formulario simple
     workers = Worker.objects.all()
     if request.method == "POST":
         form = ProjectForm(request.POST, request.FILES)
@@ -381,7 +386,7 @@ def project_create(request):
 
                 project.save()
                 project.calculate_legacy_fields()
-                project.presupuesto = project.calculate_detailed_budget()
+                project.presupuesto = project.calculate_final_budget()
                 project.save()
 
                 if selected_workers:
@@ -444,7 +449,7 @@ def project_detail(request, project_id):
     # Calcular presupuesto estimado usando los datos del proyecto
     # Primero recalcular campos heredados para asegurar consistencia
     project.calculate_legacy_fields()
-    estimated_budget = project.calculate_detailed_budget()
+    estimated_budget = project.calculate_final_budget()
     
     context = {
         'project': project,
@@ -478,7 +483,7 @@ def project_update(request, project_id):
                 # Calcular campos heredados automáticamente
                 project.calculate_legacy_fields()
                 # Calcular presupuesto actualizado
-                project.presupuesto = project.calculate_detailed_budget()
+                project.presupuesto = project.calculate_final_budget()
                 # Guardar con los campos calculados
                 project.save()
                 # Actualizar trabajadores asignados
@@ -581,14 +586,6 @@ def update_project_status(request, project_id):
     return JsonResponse({"success": False, "error": "Método no permitido"})
 
 
-def calculate_estimated_budget(project):
-    """
-    Función para calcular el presupuesto estimado usando el nuevo método detallado
-    Usa precios unitarios configurables desde el admin
-    """
-    return project.calculate_detailed_budget()
-
-
 @login_required
 def recalculate_legacy_fields(request, project_id):
     """
@@ -602,8 +599,8 @@ def recalculate_legacy_fields(request, project_id):
             # Calcular campos heredados
             project.calculate_legacy_fields()
 
-            # Calcular presupuesto actualizado
-            project.presupuesto = project.calculate_detailed_budget()
+            # Calcular presupuesto actualizado usando el método correcto
+            project.presupuesto = project.calculate_final_budget()
 
             # Guardar cambios
             project.save()
@@ -1108,3 +1105,577 @@ def eliminar_consumo_material(request, consumo_id):
     # Si no es POST, también redirigir al tablero
     messages.warning(request, 'Método no permitido')
     return redirect('projects:project_board', project_id=project_id)
+
+
+# VISTAS PARA PRESUPUESTO DETALLADO
+
+@role_required(User.CONSTRUCTOR, User.JEFE)
+@login_required
+def detailed_project_create(request):
+    """
+    Vista para crear proyectos con presupuesto detallado completo
+    Solo para CONSTRUCTOR y JEFE
+    """
+    sections = BudgetSection.objects.all().order_by('order')
+    workers = Worker.objects.all()
+    
+    if request.method == "POST":
+        # Procesar formulario básico del proyecto
+        project_form = DetailedProjectForm(request.POST, request.FILES)
+        selected_workers = request.POST.getlist("workers")
+        
+        if project_form.is_valid():
+            try:
+                # Crear el proyecto
+                project = project_form.save(commit=False)
+                project.creado_por = request.user
+                
+                # Establecer valores por defecto para campos obligatorios
+                from decimal import Decimal
+                project.built_area = Decimal("0")
+                project.exterior_area = Decimal("0")
+                project.columns_count = 0
+                project.walls_area = Decimal("0")
+                project.windows_area = Decimal("0")
+                project.doors_count = 0
+                project.doors_height = Decimal("2.1")
+                
+                project.save()
+                
+                # Asignar trabajadores si se seleccionaron
+                if selected_workers:
+                    project.workers.set(selected_workers)
+                
+                # Procesar cada sección del presupuesto (FUNCIONA)
+                print("🔍 DEBUG: Iniciando procesamiento de presupuesto detallado")
+                
+                items_processed = 0
+                for section in sections:
+                    section_form = BudgetSectionForm(section, project, request.POST)
+                    if section_form.is_valid():
+                        section_form.save(project)
+                        items_processed += 1
+                        print(f"✅ Sección procesada: {section.name}")
+                    else:
+                        print(f"❌ Errores en sección {section.name}: {section_form.errors}")
+                
+                print(f"🔍 DEBUG: Total secciones procesadas: {items_processed}")
+                
+                # Calcular presupuesto total usando SOLO la suma de ítems detallados
+                presupuesto_calculado = project.calculate_final_budget()
+                project.presupuesto = presupuesto_calculado
+                project.save()
+                
+                print(f"DEBUG: Presupuesto calculado: ${presupuesto_calculado:,.0f}")
+                print(f"DEBUG: Total ProjectBudgetItems: {project.budget_items.count()}")
+                
+                messages.success(
+                    request,
+                    f'✅ Proyecto "{project.name}" creado exitosamente con presupuesto detallado! '
+                    f'Presupuesto total: ${project.presupuesto:,.0f}'
+                )
+                
+                return redirect("projects:detailed_budget_view", project_id=project.id)
+                
+            except Exception as e:
+                messages.error(request, f"❌ Error al crear el proyecto: {str(e)}")
+        else:
+            messages.error(request, "❌ Por favor corrige los errores en el formulario")
+    else:
+        project_form = DetailedProjectForm()
+    
+    # Preparar formularios para cada sección
+    section_forms = []
+    for section in sections:
+        form = BudgetSectionForm(section, None)  # Sin proyecto aún
+        section_forms.append({
+            'section': section,
+            'form': form
+        })
+
+    return render(
+        request,
+        "projects/detailed_project_form.html",
+        {
+            "project_form": project_form,
+            "section_forms": section_forms,
+            "workers": workers,
+            "no_workers": not workers.exists(),
+        }
+    )
+
+
+@role_required(User.CONSTRUCTOR, User.JEFE)
+@login_required
+def detailed_budget_edit(request, project_id):
+    """
+    NUEVA VISTA SIMPLE: Editar presupuesto detallado
+    """
+    print(f"🔍 DEBUG: ===== INICIANDO detailed_budget_edit =====")
+    print(f"🔍 DEBUG: Proyecto ID: {project_id}")
+    print(f"🔍 DEBUG: Usuario: {request.user}")
+    print(f"🔍 DEBUG: Rol usuario: {request.user.role}")
+    
+    project = get_object_or_404(Project, id=project_id)
+    print(f"🔍 DEBUG: Proyecto encontrado: {project.name}")
+    
+    # Verificar permisos
+    if request.user.role == User.CONSTRUCTOR and project.creado_por != request.user:
+        print(f"🔍 DEBUG: ❌ Permisos denegados")
+        raise PermissionDenied("No tienes permisos para editar este proyecto")
+    
+    print(f"🔍 DEBUG: ✅ Permisos verificados")
+    print(f"🔍 DEBUG: Nueva vista simple para proyecto {project.id}")
+    
+    if request.method == "POST":
+        print("🔍 DEBUG: Procesando formulario POST")
+        
+        # Procesar solo las cantidades que vienen en el POST
+        items_updated = 0
+        for key, value in request.POST.items():
+            if key.startswith('quantity_'):
+                item_id = key.replace('quantity_', '')
+                try:
+                    from decimal import Decimal
+                    quantity = Decimal(str(value)) if value else Decimal('0')
+                    if quantity > 0:
+                        # Obtener el BudgetItem para usar su precio unitario
+                        try:
+                            budget_item = BudgetItem.objects.get(id=item_id)
+                            
+                            # Actualizar o crear ProjectBudgetItem
+                            project_item, created = ProjectBudgetItem.objects.get_or_create(
+                                project=project,
+                                budget_item=budget_item,
+                                defaults={
+                                    'quantity': quantity,
+                                    'unit_price': budget_item.unit_price
+                                }
+                            )
+                            if not created:
+                                project_item.quantity = quantity
+                                project_item.unit_price = budget_item.unit_price
+                                project_item.save()
+                            items_updated += 1
+                            print(f"✅ Actualizado ítem {item_id}: cantidad {quantity}, precio {budget_item.unit_price}")
+                        except BudgetItem.DoesNotExist:
+                            print(f"❌ BudgetItem {item_id} no existe")
+                            continue
+                except (ValueError, ProjectBudgetItem.DoesNotExist):
+                    continue
+        
+        # Recalcular presupuesto
+        presupuesto_calculado = project.calculate_final_budget()
+        project.presupuesto = presupuesto_calculado
+        project.save()
+        
+        print(f"🔍 DEBUG: {items_updated} ítems actualizados")
+        print(f"🔍 DEBUG: Presupuesto recalculado: ${presupuesto_calculado:,.0f}")
+        
+        messages.success(request, f'✅ Presupuesto actualizado! {items_updated} ítems modificados.')
+        return redirect("projects:detailed_budget_view", project_id=project.id)
+    
+    # Obtener TODAS las secciones (las 23)
+    all_sections = BudgetSection.objects.all().order_by('order')
+    
+    # Obtener ítems configurados del proyecto
+    project_items = ProjectBudgetItem.objects.filter(project=project).select_related(
+        'budget_item__section'
+    ).order_by('budget_item__section__order', 'budget_item__order')
+    
+    # Crear diccionario de ítems por ID para búsqueda rápida
+    project_items_dict = {item.budget_item.id: item for item in project_items}
+    
+    # Preparar datos para TODAS las secciones
+    sections_data = {}
+    for section in all_sections:
+        # Obtener todos los ítems de esta sección
+        section_items = BudgetItem.objects.filter(section=section, is_active=True).order_by('order')
+        
+        # Preparar ítems para esta sección
+        items_for_section = []
+        for budget_item in section_items:
+            # Verificar si este ítem está configurado en el proyecto
+            project_item = project_items_dict.get(budget_item.id)
+            
+            if project_item:
+                # Ya está configurado, usar valores del proyecto
+                items_for_section.append({
+                    'budget_item': budget_item,
+                    'project_item': project_item,
+                    'quantity': float(project_item.quantity),
+                    'unit_price': float(project_item.unit_price),
+                    'total_price': float(project_item.total_price),
+                    'is_configured': True
+                })
+                print(f"🔍 DEBUG: Ítem configurado {budget_item.description[:30]}: cantidad={project_item.quantity}, precio={project_item.unit_price}")
+            else:
+                # No está configurado, usar valores por defecto
+                items_for_section.append({
+                    'budget_item': budget_item,
+                    'project_item': None,
+                    'quantity': 0.0,
+                    'unit_price': float(budget_item.unit_price),
+                    'total_price': 0.0,
+                    'is_configured': False
+                })
+                print(f"🔍 DEBUG: Ítem no configurado {budget_item.description[:30]}: precio={budget_item.unit_price}")
+        
+        sections_data[section.id] = {
+            'section': section,
+            'items': items_for_section
+        }
+    
+    print(f"🔍 DEBUG: {len(sections_data)} secciones totales (todas las 23)")
+    print(f"🔍 DEBUG: {len(project_items)} ítems configurados en el proyecto")
+    
+    # Debug: Verificar datos antes de enviar al template
+    print(f"🔍 DEBUG: Datos para el template:")
+    for section_id, data in sections_data.items():
+        print(f"  Sección {data['section'].order} ({data['section'].name}): {len(data['items'])} ítems")
+        for item in data['items']:
+            print(f"    - {item['budget_item'].description[:30]}: cantidad={item['quantity']}, precio={item['unit_price']}, total={item['total_price']}")
+    
+    try:
+        context = {
+            'project': project,
+            'sections_data': sections_data,
+            'total_budget': project.calculate_final_budget()
+        }
+        
+        print(f"🔍 DEBUG: ===== RENDERIZANDO TEMPLATE =====")
+        print(f"🔍 DEBUG: Secciones en context: {len(sections_data)}")
+        print(f"🔍 DEBUG: Presupuesto total: ${project.calculate_final_budget():,.0f}")
+        
+        return render(request, "projects/simple_budget_edit.html", context)
+        
+    except Exception as e:
+        print(f"❌ ERROR en detailed_budget_edit: {str(e)}")
+        print(f"❌ Tipo de error: {type(e).__name__}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        
+        messages.error(request, f"❌ Error al cargar el presupuesto: {str(e)}")
+        return redirect("projects:project_detail", project_id=project.id)
+
+
+@role_required(User.CONSTRUCTOR, User.JEFE)
+@login_required
+def detailed_budget_view(request, project_id):
+    """
+    Vista para ver el presupuesto detallado de un proyecto
+    OPTIMIZADA: Solo carga secciones con ítems configurados
+    """
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar permisos
+    if request.user.role == User.CONSTRUCTOR and project.creado_por != request.user:
+        raise PermissionDenied("No tienes permisos para ver este proyecto")
+    
+    # OPTIMIZACIÓN: Solo cargar secciones que tienen ítems configurados
+    sections = BudgetSection.objects.filter(
+        items__projectbudgetitem__project=project
+    ).distinct().order_by('order')
+    
+    # Obtener todos los ProjectBudgetItem del proyecto de una vez
+    project_items_dict = {
+        item.budget_item_id: item 
+        for item in ProjectBudgetItem.objects.filter(project=project).select_related('budget_item')
+    }
+    
+    section_data = []
+    total_budget = 0
+    
+    for section in sections:
+        items = []
+        section_total = 0
+        
+        # Solo obtener ítems que están configurados en el proyecto
+        section_items = BudgetItem.objects.filter(
+            section=section, 
+            is_active=True,
+            projectbudgetitem__project=project
+        ).order_by('order')
+        
+        for item in section_items:
+            project_item = project_items_dict.get(item.id)
+            item_total = project_item.total_price if project_item else 0
+            
+            items.append({
+                'item': item,
+                'project_item': project_item,
+                'total': item_total
+            })
+            section_total += item_total
+        
+        section_data.append({
+            'section': section,
+            'items': items,
+            'total': section_total
+        })
+        total_budget += section_total
+    
+    # ✅ USAR EL CÁLCULO CORRECTO QUE INCLUYE ADMINISTRACIÓN
+    total_budget = project.calculate_final_budget()
+    
+    context = {
+        'project': project,
+        'section_data': section_data,
+        'total_budget': total_budget
+    }
+    
+    return render(request, "projects/detailed_budget_view.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_management(request):
+    """
+    Vista para gestionar precios unitarios (solo JEFE)
+    """
+    sections = BudgetSection.objects.all().order_by('order')
+    section_data = []
+    
+    for section in sections:
+        items = BudgetItem.objects.filter(section=section).order_by('order')
+        section_data.append({
+            'section': section,
+            'items': items
+        })
+    
+    context = {
+        'section_data': section_data
+    }
+    
+    return render(request, "projects/budget_management.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_update(request, item_id):
+    """
+    Vista para actualizar un ítem del presupuesto (solo JEFE)
+    """
+    item = get_object_or_404(BudgetItem, id=item_id)
+    
+    if request.method == "POST":
+        form = BudgetManagementForm(request.POST, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'✅ Ítem "{item.description[:50]}" actualizado exitosamente!')
+            return redirect("projects:budget_management")
+        else:
+            messages.error(request, "❌ Por favor corrige los errores en el formulario")
+    else:
+        form = BudgetManagementForm(instance=item)
+    
+    context = {
+        'item': item,
+        'form': form,
+        'title': 'Actualizar Precio'
+    }
+    
+    return render(request, "projects/budget_item_price_form.html", context)
+
+
+# VISTAS PARA GESTIÓN DE ÍTEMS DEL PRESUPUESTO
+
+@role_required(User.JEFE)
+@login_required
+def budget_items_list(request):
+    """
+    Vista para listar todos los ítems del presupuesto con opciones de gestión
+    """
+    sections = BudgetSection.objects.all().order_by('order')
+    section_data = []
+    
+    for section in sections:
+        items = BudgetItem.objects.filter(section=section).order_by('order')
+        section_data.append({
+            'section': section,
+            'items': items
+        })
+    
+    context = {
+        'section_data': section_data
+    }
+    
+    return render(request, "projects/budget_items_list.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_create(request):
+    """
+    Vista para crear un nuevo ítem del presupuesto
+    """
+    if request.method == "POST":
+        form = BudgetItemCreateForm(request.POST)
+        if form.is_valid():
+            # Asignar orden automáticamente (siempre al final de la sección)
+            section = form.cleaned_data['section']
+            last_order = BudgetItem.objects.filter(section=section).aggregate(
+                max_order=Max('order')
+            )['max_order'] or 0
+            form.instance.order = last_order + 1
+            
+            form.save()
+            messages.success(request, f'✅ Ítem "{form.instance.description[:50]}" creado exitosamente!')
+            return redirect("projects:budget_items_list")
+        else:
+            messages.error(request, "❌ Por favor corrige los errores en el formulario")
+    else:
+        form = BudgetItemCreateForm()
+    
+    context = {
+        'form': form,
+        'title': 'Crear Nuevo Ítem'
+    }
+    
+    return render(request, "projects/budget_item_form.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_edit(request, item_id):
+    """
+    Vista para editar un ítem del presupuesto
+    """
+    item = get_object_or_404(BudgetItem, id=item_id)
+    
+    if request.method == "POST":
+        form = BudgetItemEditForm(request.POST, instance=item)
+        if form.is_valid():
+            updated_item = form.save()
+            print(f"🔍 DEBUG: Ítem actualizado - ID: {updated_item.id}")
+            print(f"🔍 DEBUG: Precio anterior: {item.unit_price}")
+            print(f"🔍 DEBUG: Precio nuevo: {updated_item.unit_price}")
+            print(f"🔍 DEBUG: Descripción: {updated_item.description}")
+            print(f"🔍 DEBUG: Activo: {updated_item.is_active}")
+            messages.success(request, f'✅ Ítem "{updated_item.description[:50]}" actualizado exitosamente!')
+            return redirect("projects:budget_items_list")
+        else:
+            # Debug: mostrar errores específicos
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
+            messages.error(request, f"❌ Errores en el formulario: {'; '.join(error_messages)}")
+    else:
+        form = BudgetItemEditForm(instance=item)
+    
+    context = {
+        'form': form,
+        'item': item,
+        'title': 'Editar Ítem'
+    }
+    
+    return render(request, "projects/budget_item_form.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_delete(request, item_id):
+    """
+    Vista para eliminar un ítem del presupuesto
+    """
+    try:
+        item = BudgetItem.objects.get(id=item_id)
+    except BudgetItem.DoesNotExist:
+        messages.error(request, f'❌ El ítem con ID {item_id} no existe o ya fue eliminado.')
+        return redirect("projects:budget_items_list")
+    
+    if request.method == "POST":
+        item_name = item.description[:50]
+        item.delete()
+        messages.success(request, f'✅ Ítem "{item_name}" eliminado exitosamente!')
+        return redirect("projects:budget_items_list")
+    
+    context = {
+        'item': item
+    }
+    
+    return render(request, "projects/budget_item_delete_confirm.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_toggle(request, item_id):
+    """
+    Vista para activar/desactivar un ítem del presupuesto
+    """
+    item = get_object_or_404(BudgetItem, id=item_id)
+    
+    if request.method == "POST":
+        item.is_active = not item.is_active
+        item.save()
+        
+        status = "activado" if item.is_active else "desactivado"
+        messages.success(request, f'✅ Ítem "{item.description[:50]}" {status} exitosamente!')
+    
+    return redirect("projects:budget_items_list")
+
+
+def calculate_detailed_budget_total(project):
+    """
+    FUNCIÓN ESPECÍFICA PARA FORMULARIO DETALLADO
+    Suma ítems del presupuesto + administración automática (12%)
+    """
+    from decimal import Decimal
+    
+    costo_directo = Decimal('0')
+    administracion_manual = Decimal('0')
+    
+    # Separar costo directo de administración manual
+    project_items = ProjectBudgetItem.objects.filter(project=project)
+    for item in project_items:
+        # Si es de la sección 21 (Administración), contarlo por separado
+        if item.budget_item.section.order == 21:
+            administracion_manual += item.total_price
+        else:
+            costo_directo += item.total_price
+    
+    # Calcular administración automática (12% sobre costo directo)
+    administracion_automatica = costo_directo * Decimal('0.12')
+    
+    # Total = Costo Directo + Administración Automática + Administración Manual
+    total = costo_directo + administracion_automatica + administracion_manual
+    
+    return total
+
+
+@role_required(User.JEFE, User.CONSTRUCTOR)
+@login_required
+def project_workers(request, project_id):
+    """
+    Vista para gestionar trabajadores asignados a un proyecto
+    """
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar permisos
+    if request.user.role == User.CONSTRUCTOR and project.creado_por != request.user:
+        raise PermissionDenied("No tienes permisos para gestionar trabajadores de este proyecto")
+    
+    if request.method == "POST":
+        # Obtener trabajadores seleccionados
+        selected_workers = request.POST.getlist('workers')
+        
+        # Actualizar trabajadores del proyecto
+        project.workers.set(selected_workers)
+        
+        messages.success(request, f'✅ Trabajadores actualizados exitosamente!')
+        return redirect("projects:project_detail", project_id=project.id)
+    
+    # Obtener todos los trabajadores disponibles
+    all_workers = Worker.objects.all().order_by('name')
+    
+    # Obtener trabajadores actualmente asignados
+    assigned_workers = project.workers.all()
+    
+    context = {
+        'project': project,
+        'all_workers': all_workers,
+        'assigned_workers': assigned_workers,
+    }
+    
+    return render(request, "projects/project_workers.html", context)

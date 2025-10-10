@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Project, UnitPrice
+from .models import Project, UnitPrice, BudgetSection, BudgetItem, ProjectBudgetItem
 
 
 @admin.register(UnitPrice)
@@ -207,3 +207,42 @@ class ProjectAdmin(admin.ModelAdmin):
         )
 
     recalculate_budgets.short_description = "Recalcular presupuestos seleccionados"
+
+
+@admin.register(BudgetSection)
+class BudgetSectionAdmin(admin.ModelAdmin):
+    list_display = ["order", "name", "is_percentage", "percentage_value"]
+    list_editable = ["is_percentage", "percentage_value"]
+    list_display_links = ["name"]
+    ordering = ["order"]
+    search_fields = ["name", "description"]
+
+
+@admin.register(BudgetItem)
+class BudgetItemAdmin(admin.ModelAdmin):
+    list_display = ["section", "code", "description", "unit", "unit_price", "is_active"]
+    list_filter = ["section", "is_active"]
+    list_editable = ["unit_price", "is_active"]
+    list_display_links = ["description"]
+    search_fields = ["description", "code"]
+    ordering = ["section__order", "order"]
+    
+    fieldsets = (
+        ("Información Básica", {
+            "fields": ("section", "code", "description", "unit")
+        }),
+        ("Precios", {
+            "fields": ("unit_price", "is_active")
+        }),
+    )
+
+
+@admin.register(ProjectBudgetItem)
+class ProjectBudgetItemAdmin(admin.ModelAdmin):
+    list_display = ["project", "budget_item", "quantity", "unit_price", "total_price"]
+    list_filter = ["project", "budget_item__section"]
+    search_fields = ["project__name", "budget_item__description"]
+    readonly_fields = ["total_price"]
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('project', 'budget_item', 'budget_item__section')
