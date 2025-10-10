@@ -3,16 +3,17 @@ import os
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
-from groq import Groq  
+# from groq import Groq  # Comentado temporalmente  
 from .services import get_context_data  
 
 # Cliente Groq - hacer opcional para no bloquear el proyecto
 try:
-    groq_api_key = os.getenv("GROQ_API_KEY")
-    if groq_api_key:
-        client = Groq(api_key=groq_api_key)
-    else:
-        client = None
+    # groq_api_key = os.getenv("GROQ_API_KEY")
+    # if groq_api_key:
+    #     client = Groq(api_key=groq_api_key)
+    # else:
+    #     client = None
+    client = None  # Comentado temporalmente
 except Exception as e:
     client = None
     print(f"Warning: Groq client not initialized: {e}")

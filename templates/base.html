@@ -20,7 +20,30 @@
            href="{% url 'home' %}">Inicio</a>
 
         <a class="nav-link" href="{% url 'chatbot:chat' %}">ChatBot</a>
-        <a class="nav-link" href="#">Precios unitarios</a>
+        
+        <!-- Gestión de Presupuesto: SOLO para JEFE -->
+        {% if user.role == 'JEFE' or user.is_superuser %}
+        <div class="nav-item dropdown d-inline-block">
+          <a class="nav-link dropdown-toggle" href="#" id="presupuestoDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-calculator"></i> Presupuesto
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="presupuestoDropdown">
+            <li><a class="dropdown-item" href="{% url 'projects:budget_management' %}"><i class="fas fa-dollar-sign"></i> Gestión de Precios</a></li>
+            <li><a class="dropdown-item" href="{% url 'projects:detailed_project_create' %}"><i class="fas fa-plus-circle"></i> Proyecto Detallado</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'admin:projects_budgetsection_changelist' %}"><i class="fas fa-cog"></i> Administrar Secciones</a></li>
+            <li><a class="dropdown-item" href="{% url 'admin:projects_budgetitem_changelist' %}"><i class="fas fa-list"></i> Administrar Ítems</a></li>
+          </ul>
+        </div>
+        {% endif %}
+
+        <!-- Acceso a Proyecto Detallado: CONSTRUCTOR y JEFE -->
+        {% if user.role == 'CONSTRUCTOR' or user.role == 'JEFE' or user.is_superuser %}
+        <a class="nav-link {% if current == 'detailed_project_create' %}active{% endif %}"
+           href="{% url 'projects:detailed_project_create' %}">
+           <i class="fas fa-plus-circle"></i> Proyecto Detallado
+        </a>
+        {% endif %}
 
         {% if user.role == 'CONSTRUCTOR' or user.role == 'JEFE' or user.is_superuser %}
         <a class="nav-link {% if current == 'material_list' %}active{% endif %}"

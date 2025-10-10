@@ -36,6 +36,15 @@ urlpatterns = [
     # URLs para consumo diario de materiales (RF17A)
     path('<int:project_id>/consumo/registrar/', views.registrar_consumo_material, name='registrar_consumo_material'),
     path('<int:project_id>/consumo/listar/', views.listar_consumos_proyecto, name='listar_consumos_proyecto'),
+    
+    # URLs para presupuesto detallado
+    path('detailed/create/', views.detailed_project_create, name='detailed_project_create'),
+    path('<int:project_id>/detailed-budget/edit/', views.detailed_budget_edit, name='detailed_budget_edit'),
+    path('<int:project_id>/detailed-budget/view/', views.detailed_budget_view, name='detailed_budget_view'),
+    
+    # URLs para gestión de precios (solo JEFE)
+    path('budget/management/', views.budget_management, name='budget_management'),
+    path('budget/item/<int:item_id>/update/', views.budget_item_update, name='budget_item_update'),
     path('<int:project_id>/consumo/api/fecha/', views.obtener_consumos_fecha, name='obtener_consumos_fecha'),
     path('<int:project_id>/consumo/api/mes/', views.obtener_consumos_mes, name='obtener_consumos_mes'),  # RF17C
     path('consumo/<int:consumo_id>/editar/', views.editar_consumo_material, name='editar_consumo_material'),

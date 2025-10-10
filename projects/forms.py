@@ -1,5 +1,5 @@
 from django import forms
-from .models import Project, Role, Worker, EntradaMaterial, ConsumoMaterial
+from .models import Project, Role, Worker, EntradaMaterial, ConsumoMaterial, BudgetSection, BudgetItem, ProjectBudgetItem
 from catalog.models import Material, Supplier
 
 class EntradaMaterialForm(forms.ModelForm):
@@ -625,3 +625,196 @@ class ProjectForm(forms.ModelForm):
         # No asignar doors_height aquí, se manejará en la vista
 
         return cleaned_data
+
+
+# FORMULARIOS PARA PRESUPUESTO DETALLADO
+
+class DetailedProjectForm(forms.ModelForm):
+    """
+    Formulario para crear proyectos con presupuesto detallado
+    Solo para JEFE y CONSTRUCTOR
+    """
+    class Meta:
+        model = Project
+        fields = [
+            # Información básica
+            "name",
+            "location_address", 
+            "description",
+            "estado",
+            "imagen_proyecto",
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingresa el nombre del proyecto'
+            }),
+            'location_address': forms.Textarea(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingresa la dirección del proyecto',
+                'rows': 3
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'placeholder': 'Describe brevemente el proyecto',
+                'rows': 4
+            }),
+            'estado': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'imagen_proyecto': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            })
+        }
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Hacer campos requeridos
+        self.fields["name"].required = True
+        self.fields["location_address"].required = True
+        
+        # Hacer campos opcionales
+        self.fields["description"].required = False
+        self.fields["imagen_proyecto"].required = False
+
+
+class BudgetItemForm(forms.ModelForm):
+    """
+    Formulario para editar un ítem del presupuesto
+    """
+    class Meta:
+        model = ProjectBudgetItem
+        fields = ["quantity", "unit_price"]
+        widgets = {
+            "quantity": forms.NumberInput(attrs={
+                "class": "form-control",
+                "step": "0.001",
+                "min": "0"
+            }),
+            "unit_price": forms.NumberInput(attrs={
+                "class": "form-control",
+                "step": "0.01",
+                "min": "0"
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["quantity"].label = "Cantidad"
+        self.fields["unit_price"].label = "Precio Unitario (COP)"
+
+
+class BudgetSectionForm(forms.Form):
+    """
+    Formulario para manejar una sección completa del presupuesto
+    """
+    def __init__(self, section, project=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.section = section
+        self.project = project
+        
+        # Obtener ítems de la sección
+        items = BudgetItem.objects.filter(section=section, is_active=True).order_by('order')
+        
+        for item in items:
+            # Para proyectos existentes, obtener datos guardados
+            if project and project.pk:
+                try:
+                    project_item = ProjectBudgetItem.objects.get(
+                        project=project,
+                        budget_item=item
+                    )
+                    initial_quantity = project_item.quantity
+                    initial_price = project_item.unit_price
+                except ProjectBudgetItem.DoesNotExist:
+                    initial_quantity = 0
+                    initial_price = item.unit_price
+            else:
+                # Para proyectos nuevos, usar valores por defecto
+                initial_quantity = 0
+                initial_price = item.unit_price
+            
+            # Crear solo campos de cantidad (los precios son fijos)
+            self.fields[f'quantity_{item.id}'] = forms.DecimalField(
+                initial=initial_quantity,
+                max_digits=12,
+                decimal_places=3,
+                min_value=0,
+                required=False,
+                widget=forms.NumberInput(attrs={
+                    "class": "form-control quantity-input",
+                    "step": "0.001",
+                    "min": "0",
+                    "data-item-id": item.id
+                })
+            )
+    
+    def save(self, project):
+        """Guardar los datos del formulario en el proyecto"""
+        if not project:
+            return
+            
+        items_saved = 0
+        for field_name, value in self.cleaned_data.items():
+            if field_name.startswith('quantity_'):
+                item_id = field_name.replace('quantity_', '')
+                try:
+                    item = BudgetItem.objects.get(id=item_id)
+                    # Para el formulario de creación, usar el precio del ítem por defecto
+                    # Los precios se envían como campos hidden, no editables
+                    unit_price = item.unit_price
+                    
+                    # Solo crear/actualizar si hay cantidad > 0
+                    if value and float(value) > 0:
+                        project_item, created = ProjectBudgetItem.objects.get_or_create(
+                            project=project,
+                            budget_item=item,
+                            defaults={
+                                'quantity': value,
+                                'unit_price': unit_price
+                            }
+                        )
+                        
+                        if not created:
+                            project_item.quantity = value
+                            project_item.unit_price = unit_price
+                            project_item.save()
+                        
+                        items_saved += 1
+                        print(f"DEBUG: Guardado {item.code} - Cantidad: {value} - Precio: ${unit_price}")
+                        
+                except BudgetItem.DoesNotExist:
+                    continue
+        
+        print(f"DEBUG: Total ítems guardados en sección {self.section.name}: {items_saved}")
+
+
+class BudgetManagementForm(forms.ModelForm):
+    """
+    Formulario para gestionar precios unitarios (solo JEFE)
+    """
+    class Meta:
+        model = BudgetItem
+        fields = ["unit_price", "is_active"]
+        widgets = {
+            "unit_price": forms.NumberInput(attrs={
+                "class": "form-control",
+                "step": "1",
+                "min": "0"
+            }),
+            "is_active": forms.CheckboxInput(attrs={
+                "class": "form-check-input",
+                "style": "display: none;"  # Ocultar el renderizado automático
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["unit_price"].label = "Precio Unitario (COP)"
+        self.fields["is_active"].label = "Activo"
+        
+        # Formatear el precio sin decimales
+        if self.instance and self.instance.pk:
+            self.fields["unit_price"].initial = int(self.instance.unit_price)
