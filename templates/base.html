@@ -55,12 +55,9 @@
         {% endif %}
 
         {% if user.is_authenticated %}
-          <form method="post" action="{% url 'users:logout' %}" style="display:inline">
-            {% csrf_token %}
-            <button type="submit" class="nav-link" style="background:none;border:0;cursor:pointer;color:inherit;">
-              <i class="fas fa-sign-out-alt"></i> Salir
-            </button>
-          </form>
+          <a class="nav-link" href="{% url 'users:logout' %}" title="Cerrar sesión">
+            <i class="fas fa-sign-out-alt"></i> Salir
+          </a>
         {% else %}
           <a class="nav-link right {% if current == 'login' %}active{% endif %}"
              href="{% url 'users:login' %}">Ingresar</a>
