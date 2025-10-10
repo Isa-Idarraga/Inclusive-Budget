@@ -45,6 +45,13 @@ urlpatterns = [
     # URLs para gestión de precios (solo JEFE)
     path('budget/management/', views.budget_management, name='budget_management'),
     path('budget/item/<int:item_id>/update/', views.budget_item_update, name='budget_item_update'),
+    
+    # URLs para gestión de ítems del presupuesto
+    path('budget/items/', views.budget_items_list, name='budget_items_list'),
+    path('budget/items/create/', views.budget_item_create, name='budget_item_create'),
+    path('budget/items/<int:item_id>/edit/', views.budget_item_edit, name='budget_item_edit'),
+    path('budget/items/<int:item_id>/delete/', views.budget_item_delete, name='budget_item_delete'),
+    path('budget/items/<int:item_id>/toggle/', views.budget_item_toggle, name='budget_item_toggle'),
     path('<int:project_id>/consumo/api/fecha/', views.obtener_consumos_fecha, name='obtener_consumos_fecha'),
     path('<int:project_id>/consumo/api/mes/', views.obtener_consumos_mes, name='obtener_consumos_mes'),  # RF17C
     path('consumo/<int:consumo_id>/editar/', views.editar_consumo_material, name='editar_consumo_material'),

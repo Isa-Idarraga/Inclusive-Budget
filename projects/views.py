@@ -3,9 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Max
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
-from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm, DetailedProjectForm, BudgetSectionForm, BudgetManagementForm
+from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm, DetailedProjectForm, BudgetSectionForm, BudgetManagementForm, BudgetItemCreateForm, BudgetItemEditForm
 import json
 from django.urls import reverse
 from .models import Project, EntradaMaterial
@@ -1471,10 +1471,135 @@ def budget_item_update(request, item_id):
     
     context = {
         'item': item,
-        'form': form
+        'form': form,
+        'title': 'Actualizar Precio'
+    }
+    
+    return render(request, "projects/budget_item_price_form.html", context)
+
+
+# VISTAS PARA GESTIÓN DE ÍTEMS DEL PRESUPUESTO
+
+@role_required(User.JEFE)
+@login_required
+def budget_items_list(request):
+    """
+    Vista para listar todos los ítems del presupuesto con opciones de gestión
+    """
+    sections = BudgetSection.objects.all().order_by('order')
+    section_data = []
+    
+    for section in sections:
+        items = BudgetItem.objects.filter(section=section).order_by('order')
+        section_data.append({
+            'section': section,
+            'items': items
+        })
+    
+    context = {
+        'section_data': section_data
+    }
+    
+    return render(request, "projects/budget_items_list.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_create(request):
+    """
+    Vista para crear un nuevo ítem del presupuesto
+    """
+    if request.method == "POST":
+        form = BudgetItemCreateForm(request.POST)
+        if form.is_valid():
+            # Asignar orden automáticamente (siempre al final de la sección)
+            section = form.cleaned_data['section']
+            last_order = BudgetItem.objects.filter(section=section).aggregate(
+                max_order=Max('order')
+            )['max_order'] or 0
+            form.instance.order = last_order + 1
+            
+            form.save()
+            messages.success(request, f'✅ Ítem "{form.instance.description[:50]}" creado exitosamente!')
+            return redirect("projects:budget_items_list")
+        else:
+            messages.error(request, "❌ Por favor corrige los errores en el formulario")
+    else:
+        form = BudgetItemCreateForm()
+    
+    context = {
+        'form': form,
+        'title': 'Crear Nuevo Ítem'
     }
     
     return render(request, "projects/budget_item_form.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_edit(request, item_id):
+    """
+    Vista para editar un ítem del presupuesto
+    """
+    item = get_object_or_404(BudgetItem, id=item_id)
+    
+    if request.method == "POST":
+        form = BudgetItemEditForm(request.POST, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'✅ Ítem "{item.description[:50]}" actualizado exitosamente!')
+            return redirect("projects:budget_items_list")
+        else:
+            messages.error(request, "❌ Por favor corrige los errores en el formulario")
+    else:
+        form = BudgetItemEditForm(instance=item)
+    
+    context = {
+        'form': form,
+        'item': item,
+        'title': 'Editar Ítem'
+    }
+    
+    return render(request, "projects/budget_item_form.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_delete(request, item_id):
+    """
+    Vista para eliminar un ítem del presupuesto
+    """
+    item = get_object_or_404(BudgetItem, id=item_id)
+    
+    if request.method == "POST":
+        item_name = item.description[:50]
+        item.delete()
+        messages.success(request, f'✅ Ítem "{item_name}" eliminado exitosamente!')
+        return redirect("projects:budget_items_list")
+    
+    context = {
+        'item': item
+    }
+    
+    return render(request, "projects/budget_item_delete_confirm.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def budget_item_toggle(request, item_id):
+    """
+    Vista para activar/desactivar un ítem del presupuesto
+    """
+    item = get_object_or_404(BudgetItem, id=item_id)
+    
+    if request.method == "POST":
+        item.is_active = not item.is_active
+        item.save()
+        
+        status = "activado" if item.is_active else "desactivado"
+        messages.success(request, f'✅ Ítem "{item.description[:50]}" {status} exitosamente!')
+    
+    return redirect("projects:budget_items_list")
 
 
 def calculate_detailed_budget_total(project):

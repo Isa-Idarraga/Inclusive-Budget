@@ -799,14 +799,12 @@ class BudgetManagementForm(forms.ModelForm):
         model = BudgetItem
         fields = ["unit_price", "is_active"]
         widgets = {
-            "unit_price": forms.NumberInput(attrs={
+            "unit_price": forms.TextInput(attrs={
                 "class": "form-control",
-                "step": "1",
-                "min": "0"
+                "placeholder": "Precio en COP (sin decimales)"
             }),
             "is_active": forms.CheckboxInput(attrs={
-                "class": "form-check-input",
-                "style": "display: none;"  # Ocultar el renderizado automático
+                "class": "form-check-input"
             })
         }
     
@@ -818,3 +816,94 @@ class BudgetManagementForm(forms.ModelForm):
         # Formatear el precio sin decimales
         if self.instance and self.instance.pk:
             self.fields["unit_price"].initial = int(self.instance.unit_price)
+    
+    def clean_unit_price(self):
+        unit_price = self.cleaned_data.get('unit_price')
+        if unit_price:
+            # Convertir a entero si es posible
+            try:
+                # Remover cualquier formato de miles
+                clean_value = str(unit_price).replace(',', '').replace('.', '')
+                return int(clean_value)
+            except (ValueError, TypeError):
+                raise forms.ValidationError("Por favor ingresa un precio válido (solo números enteros)")
+        return unit_price
+
+
+class BudgetItemCreateForm(forms.ModelForm):
+    class Meta:
+        model = BudgetItem
+        fields = ["section", "code", "description", "unit", "unit_price", "is_active"]
+        widgets = {
+            "section": forms.Select(attrs={
+                "class": "form-select"
+            }),
+            "code": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej: 1.1, 2.3, etc."
+            }),
+            "description": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 3,
+                "placeholder": "Descripción detallada del ítem"
+            }),
+            "unit": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej: m², gl, und, etc."
+            }),
+            "unit_price": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Precio en COP (ej: 1500000)"
+            }),
+            "is_active": forms.CheckboxInput(attrs={
+                "class": "form-check-input"
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["section"].label = "Sección"
+        self.fields["code"].label = "Código"
+        self.fields["description"].label = "Descripción"
+        self.fields["unit"].label = "Unidad"
+        self.fields["unit_price"].label = "Precio Unitario (COP)"
+        self.fields["is_active"].label = "Activo"
+        
+        # Ordenar secciones por número
+        self.fields["section"].queryset = BudgetSection.objects.all().order_by('order')
+
+
+class BudgetItemEditForm(forms.ModelForm):
+    class Meta:
+        model = BudgetItem
+        fields = ["code", "description", "unit", "unit_price", "order", "is_active"]
+        widgets = {
+            "code": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej: 1.1, 2.3, etc."
+            }),
+            "description": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 3,
+                "placeholder": "Descripción detallada del ítem"
+            }),
+            "unit": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej: m², gl, und, etc."
+            }),
+            "unit_price": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Precio en COP (ej: 1500000)"
+            }),
+            "is_active": forms.CheckboxInput(attrs={
+                "class": "form-check-input"
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["code"].label = "Código"
+        self.fields["description"].label = "Descripción"
+        self.fields["unit"].label = "Unidad"
+        self.fields["unit_price"].label = "Precio Unitario (COP)"
+        self.fields["is_active"].label = "Activo"
