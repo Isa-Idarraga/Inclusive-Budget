@@ -1546,11 +1546,21 @@ def budget_item_edit(request, item_id):
     if request.method == "POST":
         form = BudgetItemEditForm(request.POST, instance=item)
         if form.is_valid():
-            form.save()
-            messages.success(request, f'✅ Ítem "{item.description[:50]}" actualizado exitosamente!')
+            updated_item = form.save()
+            print(f"🔍 DEBUG: Ítem actualizado - ID: {updated_item.id}")
+            print(f"🔍 DEBUG: Precio anterior: {item.unit_price}")
+            print(f"🔍 DEBUG: Precio nuevo: {updated_item.unit_price}")
+            print(f"🔍 DEBUG: Descripción: {updated_item.description}")
+            print(f"🔍 DEBUG: Activo: {updated_item.is_active}")
+            messages.success(request, f'✅ Ítem "{updated_item.description[:50]}" actualizado exitosamente!')
             return redirect("projects:budget_items_list")
         else:
-            messages.error(request, "❌ Por favor corrige los errores en el formulario")
+            # Debug: mostrar errores específicos
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
+            messages.error(request, f"❌ Errores en el formulario: {'; '.join(error_messages)}")
     else:
         form = BudgetItemEditForm(instance=item)
     
@@ -1569,7 +1579,11 @@ def budget_item_delete(request, item_id):
     """
     Vista para eliminar un ítem del presupuesto
     """
-    item = get_object_or_404(BudgetItem, id=item_id)
+    try:
+        item = BudgetItem.objects.get(id=item_id)
+    except BudgetItem.DoesNotExist:
+        messages.error(request, f'❌ El ítem con ID {item_id} no existe o ya fue eliminado.')
+        return redirect("projects:budget_items_list")
     
     if request.method == "POST":
         item_name = item.description[:50]

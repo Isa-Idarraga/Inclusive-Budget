@@ -876,7 +876,7 @@ class BudgetItemCreateForm(forms.ModelForm):
 class BudgetItemEditForm(forms.ModelForm):
     class Meta:
         model = BudgetItem
-        fields = ["code", "description", "unit", "unit_price", "order", "is_active"]
+        fields = ["code", "description", "unit", "unit_price", "is_active"]
         widgets = {
             "code": forms.TextInput(attrs={
                 "class": "form-control",
@@ -893,7 +893,8 @@ class BudgetItemEditForm(forms.ModelForm):
             }),
             "unit_price": forms.TextInput(attrs={
                 "class": "form-control",
-                "placeholder": "Precio en COP (ej: 1500000)"
+                "placeholder": "Precio en COP (ej: 1500000)",
+                "type": "text"
             }),
             "is_active": forms.CheckboxInput(attrs={
                 "class": "form-check-input"
@@ -907,3 +908,31 @@ class BudgetItemEditForm(forms.ModelForm):
         self.fields["unit"].label = "Unidad"
         self.fields["unit_price"].label = "Precio Unitario (COP)"
         self.fields["is_active"].label = "Activo"
+        
+        # Formatear el precio sin decimales si existe
+        if self.instance and self.instance.unit_price:
+            self.initial['unit_price'] = str(int(self.instance.unit_price))
+    
+    def clean_unit_price(self):
+        unit_price = self.cleaned_data.get('unit_price')
+        if unit_price:
+            # Limpiar el valor de comas y puntos
+            clean_value = str(unit_price).replace(',', '').replace('.', '')
+            try:
+                return int(clean_value)
+            except (ValueError, TypeError):
+                raise forms.ValidationError("Por favor ingresa un precio válido (solo números enteros)")
+        return unit_price
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Si no tiene order, asignar el siguiente número en la sección
+        if not instance.order:
+            from django.db.models import Max
+            last_order = BudgetItem.objects.filter(section=instance.section).aggregate(
+                max_order=Max('order')
+            )['max_order'] or 0
+            instance.order = last_order + 1
+        if commit:
+            instance.save()
+        return instance

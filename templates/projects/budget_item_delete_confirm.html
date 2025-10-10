@@ -44,17 +44,25 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-6">
-                                        <strong>Sección:</strong><br>
-                                        <span class="badge bg-primary fs-6">{{ item.section.order }}. {{ item.section.name }}</span>
+                                    <div class="col-md-6 mb-4">
+                                        <div class="mb-3">
+                                            <strong>Sección:</strong>
+                                        </div>
+                                        <div class="mt-2">
+                                            <span class="badge bg-primary fs-6">{{ item.section.order }}. {{ item.section.name }}</span>
+                                        </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <strong>Código:</strong><br>
-                                        {% if item.code %}
-                                            <span class="badge bg-secondary">{{ item.code }}</span>
-                                        {% else %}
-                                            <span class="text-muted">Sin código</span>
-                                        {% endif %}
+                                    <div class="col-md-6 mb-4">
+                                        <div class="mb-3">
+                                            <strong>Código:</strong>
+                                        </div>
+                                        <div class="mt-2">
+                                            {% if item.code %}
+                                                <span class="badge bg-secondary">{{ item.code }}</span>
+                                            {% else %}
+                                                <span class="text-muted">Sin código</span>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
                                 <hr>
@@ -65,21 +73,33 @@
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-4">
-                                        <strong>Unidad:</strong><br>
-                                        <span class="badge bg-info">{{ item.unit }}</span>
+                                    <div class="col-md-4 mb-4">
+                                        <div class="mb-3">
+                                            <strong>Unidad:</strong>
+                                        </div>
+                                        <div class="mt-2">
+                                            <span class="badge bg-info">{{ item.unit }}</span>
+                                        </div>
                                     </div>
-                                    <div class="col-md-4">
-                                        <strong>Precio:</strong><br>
-                                        <span class="fw-bold text-success">${{ item.unit_price|floatformat:0|intcomma }}</span>
+                                    <div class="col-md-4 mb-4">
+                                        <div class="mb-3">
+                                            <strong>Precio:</strong>
+                                        </div>
+                                        <div class="mt-2">
+                                            <span class="fw-bold text-success">${{ item.unit_price|floatformat:0|intcomma }}</span>
+                                        </div>
                                     </div>
-                                    <div class="col-md-4">
-                                        <strong>Estado:</strong><br>
-                                        {% if item.is_active %}
-                                            <span class="badge bg-success">Activo</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Inactivo</span>
-                                        {% endif %}
+                                    <div class="col-md-4 mb-4">
+                                        <div class="mb-3">
+                                            <strong>Estado:</strong>
+                                        </div>
+                                        <div class="mt-2">
+                                            {% if item.is_active %}
+                                                <span class="badge bg-success">Activo</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactivo</span>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
