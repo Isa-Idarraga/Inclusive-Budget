@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<section class="hero">
+  <h1 class="hero-title">Hola Usuario Comercial 💼<br>Crea presupuestos rápidos</h1>
+  <div class="hero-buttons">
+    <a class="btn-hero" href="{% url 'projects:project_create' %}">Crear Presupuesto <span class="chev"></span></a>
+  </div>
+
+  <div class="hero-logo">
+    <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive">
+  </div>
+
+  <div style="margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px; max-width: 600px; margin-left: auto; margin-right: auto;">
+    <h4>📝 Información importante:</h4>
+    <p><strong>Como usuario comercial:</strong></p>
+    <ul style="text-align: left; margin: 1rem 0;">
+      <li>✅ Puedes crear presupuestos para nuevos proyectos</li>
+      <li>❌ No puedes ver la lista de proyectos creados</li>
+      <li>ℹ️ Los proyectos creados serán gestionados por el equipo constructor</li>
+    </ul>
+    <p style="margin-top: 1rem;"><em>Tu función es generar presupuestos rápidos para clientes potenciales.</em></p>
+  </div>
+</section>
+{% endblock %}
+
