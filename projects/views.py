@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Count
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
 from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm, DetailedProjectForm, BudgetSectionForm, BudgetManagementForm, BudgetItemCreateForm, BudgetItemEditForm
 import json
@@ -104,27 +104,21 @@ def project_list(request):
     - CONSTRUCTOR: Ve todos los proyectos (solo edita los suyos)
     - JEFE: Ve y puede editar todos los proyectos
     """
-    # Obtener parámetros de búsqueda desde la URL
+    # Obtener parámetros de búsqueda
     search_query = request.GET.get("search", "")
     status_filter = request.GET.get("status", "")
-    ubicacion_filter = request.GET.get("ubicacion", "")
-    pisos_filter = request.GET.get("pisos", "")
-    acabados_filter = request.GET.get("acabados", "")
-    area_min_filter = request.GET.get("area_min", "")
-    area_max_filter = request.GET.get("area_max", "")
-    presupuesto_min_filter = request.GET.get("presupuesto_min", "")
-    presupuesto_max_filter = request.GET.get("presupuesto_max", "")
-    terreno_filter = request.GET.get("terreno", "")
-    acceso_filter = request.GET.get("acceso", "")
-    banos_filter = request.GET.get("banos", "")
+    trabajadores_filter = request.GET.get("trabajadores", "")
+    creador_filter = request.GET.get("creador", "")
     fecha_desde_filter = request.GET.get("fecha_desde", "")
     fecha_hasta_filter = request.GET.get("fecha_hasta", "")
-    creador_filter = request.GET.get("creador", "")
+    ubicacion_filter = request.GET.get("ubicacion", "")
+    presupuesto_min_filter = request.GET.get("presupuesto_min", "")
+    presupuesto_max_filter = request.GET.get("presupuesto_max", "")
 
     # TODOS los usuarios ven TODOS los proyectos
     projects = Project.objects.all()
 
-    # Filtro por búsqueda - PostgreSQL: LIKE queries para búsqueda de texto
+    # Filtro por búsqueda - Buscar en nombre, descripción y ubicación
     if search_query:
         projects = projects.filter(
             Q(name__icontains=search_query)  # Buscar en nombre
@@ -132,71 +126,26 @@ def project_list(request):
             | Q(location_address__icontains=search_query)  # Buscar en dirección
         )
 
-    # Filtro por estado - PostgreSQL: WHERE estado = [status_filter]
+    # Filtro por estado
     if status_filter:
         projects = projects.filter(estado=status_filter)
 
-    # Filtro por ubicación
-    if ubicacion_filter:
-        projects = projects.filter(ubicacion_proyecto=ubicacion_filter)
+    # Filtro por número de trabajadores
+    if trabajadores_filter:
+        if trabajadores_filter == "0":
+            projects = projects.filter(workers__isnull=True)
+        elif trabajadores_filter == "1-3":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=1, worker_count__lte=3)
+        elif trabajadores_filter == "4-6":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=4, worker_count__lte=6)
+        elif trabajadores_filter == "7+":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=7)
 
-    # Filtro por número de pisos
-    if pisos_filter:
-        projects = projects.filter(numero_pisos=pisos_filter)
-
-    # Filtro por nivel de acabados
-    if acabados_filter:
-        projects = projects.filter(acabado_muros=acabados_filter)
-
-    # Filtro por área mínima
-    if area_min_filter:
+    # Filtro por creador
+    if creador_filter:
         try:
-            area_min = float(area_min_filter)
-            projects = projects.filter(area_construida_total__gte=area_min)
-        except ValueError:
-            pass
-
-    # Filtro por área máxima
-    if area_max_filter:
-        try:
-            area_max = float(area_max_filter)
-            projects = projects.filter(area_construida_total__lte=area_max)
-        except ValueError:
-            pass
-
-    # Filtro por presupuesto mínimo
-    if presupuesto_min_filter:
-        try:
-            presupuesto_min = float(presupuesto_min_filter)
-            projects = projects.filter(presupuesto__gte=presupuesto_min)
-        except ValueError:
-            pass
-
-    # Filtro por presupuesto máximo
-    if presupuesto_max_filter:
-        try:
-            presupuesto_max = float(presupuesto_max_filter)
-            projects = projects.filter(presupuesto__lte=presupuesto_max)
-        except ValueError:
-            pass
-
-    # Filtro por tipo de terreno
-    if terreno_filter:
-        projects = projects.filter(tipo_terreno=terreno_filter)
-
-    # Filtro por acceso a obra
-    if acceso_filter:
-        projects = projects.filter(acceso_obra=acceso_filter)
-
-    # Filtro por número de baños
-    if banos_filter:
-        try:
-            banos_count = int(banos_filter)
-            if banos_count == 3:
-                # Para 3+, filtrar por 3 o más
-                projects = projects.filter(numero_banos__gte=3)
-            else:
-                projects = projects.filter(numero_banos=banos_count)
+            creador_id = int(creador_filter)
+            projects = projects.filter(creado_por_id=creador_id)
         except ValueError:
             pass
 
@@ -208,45 +157,44 @@ def project_list(request):
     if fecha_hasta_filter:
         projects = projects.filter(fecha_creacion__lte=fecha_hasta_filter)
 
-    # Filtro por creador
-    if creador_filter:
+    # Filtro por ubicación (búsqueda de texto en dirección)
+    if ubicacion_filter:
+        projects = projects.filter(location_address__icontains=ubicacion_filter)
+        print(f"DEBUG: Filtro ubicación aplicado: {ubicacion_filter}")
+
+    # Filtro por presupuesto mínimo
+    if presupuesto_min_filter:
         try:
-            creador_id = int(creador_filter)
-            projects = projects.filter(creado_por_id=creador_id)
-        except ValueError:
-            pass
+            # Limpiar puntos y convertir a float
+            presupuesto_min_clean = presupuesto_min_filter.replace('.', '').replace(',', '')
+            presupuesto_min = float(presupuesto_min_clean)
+            if presupuesto_min > 0:
+                projects = projects.filter(presupuesto__gte=presupuesto_min)
+                print(f"DEBUG: Filtro presupuesto mínimo aplicado: {presupuesto_min}")
+        except (ValueError, AttributeError) as e:
+            print(f"DEBUG: Error en filtro presupuesto mínimo: {e}")
 
-    # Agrupar por estado para mostrar en secciones separadas
-    # PostgreSQL: Múltiples consultas SELECT con filtros diferentes
-    projects_en_proceso = projects.filter(estado="en_proceso")
-    projects_terminados = projects.filter(estado="terminado")
-    projects_futuros = projects.filter(estado="futuro")
+    # Filtro por presupuesto máximo
+    if presupuesto_max_filter:
+        try:
+            # Limpiar puntos y convertir a float
+            presupuesto_max_clean = presupuesto_max_filter.replace('.', '').replace(',', '')
+            presupuesto_max = float(presupuesto_max_clean)
+            if presupuesto_max > 0:
+                projects = projects.filter(presupuesto__lte=presupuesto_max)
+                print(f"DEBUG: Filtro presupuesto máximo aplicado: {presupuesto_max}")
+        except (ValueError, AttributeError) as e:
+            print(f"DEBUG: Error en filtro presupuesto máximo: {e}")
 
-    # Obtener lista de creadores únicos para el filtro
+    # Separar proyectos por estado
+    projects_en_proceso = projects.filter(estado='en_proceso')
+    projects_terminados = projects.filter(estado='terminado')
+    projects_futuros = projects.filter(estado='futuro')
+
+    # Obtener lista de creadores para el filtro
     creadores = User.objects.filter(
         id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
     ).order_by('first_name', 'last_name')
-
-    # Verificar si hay filtros activos
-    has_active_filters = any(
-        [
-            search_query,
-            status_filter,
-            ubicacion_filter,
-            pisos_filter,
-            acabados_filter,
-            area_min_filter,
-            area_max_filter,
-            presupuesto_min_filter,
-            presupuesto_max_filter,
-            terreno_filter,
-            acceso_filter,
-            banos_filter,
-            fecha_desde_filter,
-            fecha_hasta_filter,
-            creador_filter,
-        ]
-    )
 
     context = {
         "projects_en_proceso": projects_en_proceso,
@@ -254,21 +202,14 @@ def project_list(request):
         "projects_futuros": projects_futuros,
         "search_query": search_query,
         "status_filter": status_filter,
-        "ubicacion_filter": ubicacion_filter,
-        "pisos_filter": pisos_filter,
-        "acabados_filter": acabados_filter,
-        "area_min_filter": area_min_filter,
-        "area_max_filter": area_max_filter,
-        "presupuesto_min_filter": presupuesto_min_filter,
-        "presupuesto_max_filter": presupuesto_max_filter,
-        "terreno_filter": terreno_filter,
-        "acceso_filter": acceso_filter,
-        "banos_filter": banos_filter,
+        "trabajadores_filter": trabajadores_filter,
+        "creador_filter": creador_filter,
         "fecha_desde_filter": fecha_desde_filter,
         "fecha_hasta_filter": fecha_hasta_filter,
-        "creador_filter": creador_filter,
+        "ubicacion_filter": ubicacion_filter,
+        "presupuesto_min_filter": presupuesto_min_filter,
+        "presupuesto_max_filter": presupuesto_max_filter,
         "creadores": creadores,
-        "has_active_filters": has_active_filters,
     }
 
     return render(request, "projects/project_list.html", context)
