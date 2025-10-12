@@ -752,14 +752,14 @@ def borrar_entrada_material(request, entrada_id):
 
 # ===== VISTAS PARA CONSUMO DIARIO DE MATERIALES (RF17A) =====
 
-@login_required
+@project_owner_or_jefe_required
 def registrar_consumo_material(request, project_id):
     """
     Vista para registrar el consumo diario de materiales (RF17A)
     Con validación de stock insuficiente (RF17D)
     Se accede desde el calendario al seleccionar una fecha
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
 
     # Obtener fecha seleccionada del parámetro GET o usar hoy
     from django.utils import timezone
@@ -832,13 +832,13 @@ def registrar_consumo_material(request, project_id):
     return render(request, 'projects/registrar_consumo_material.html', context)
 
 
-@login_required
+@project_owner_or_jefe_required
 def listar_consumos_proyecto(request, project_id):
     """
     Vista para listar todos los consumos de un proyecto
     Permite filtrar por fecha, material, actividad
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
 
     # Obtener parámetros de filtro
     fecha_desde = request.GET.get('fecha_desde', '')
@@ -881,13 +881,13 @@ def listar_consumos_proyecto(request, project_id):
     return render(request, 'projects/listar_consumos.html', context)
 
 
-@login_required
+@project_owner_or_jefe_required
 def obtener_consumos_fecha(request, project_id):
     """
     API endpoint para obtener consumos de una fecha específica (para el calendario)
     Retorna JSON con los consumos de la fecha
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
     fecha = request.GET.get('fecha')
 
     if not fecha:
@@ -915,13 +915,13 @@ def obtener_consumos_fecha(request, project_id):
     })
 
 
-@login_required
+@project_owner_or_jefe_required
 def obtener_consumos_mes(request, project_id):
     """
     API endpoint para obtener todos los consumos de un mes específico (RF17C)
     Retorna JSON con los consumos agrupados por fecha para el calendario
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
     mes = request.GET.get('mes')
     anio = request.GET.get('anio')
 
@@ -979,12 +979,13 @@ def editar_consumo_material(request, consumo_id):
     Vista para editar un consumo existente
     """
     from .models import ConsumoMaterial
-    consumo = get_object_or_404(
-        ConsumoMaterial,
-        id=consumo_id,
-        proyecto__creado_por=request.user
-    )
+    consumo = get_object_or_404(ConsumoMaterial, id=consumo_id)
     project = consumo.proyecto
+    
+    # Verificar permisos: JEFE o creador del proyecto
+    if request.user.role != 'JEFE' and not request.user.is_superuser:
+        if project.creado_por != request.user:
+            raise PermissionDenied("No tienes permisos para editar consumos de este proyecto")
 
     if request.method == 'POST':
         form = ConsumoMaterialForm(request.POST, instance=consumo, proyecto=project)
@@ -1014,12 +1015,14 @@ def eliminar_consumo_material(request, consumo_id):
     Vista para eliminar un consumo de material
     """
     from .models import ConsumoMaterial
-    consumo = get_object_or_404(
-        ConsumoMaterial,
-        id=consumo_id,
-        proyecto__creado_por=request.user
-    )
-    project_id = consumo.proyecto.id
+    consumo = get_object_or_404(ConsumoMaterial, id=consumo_id)
+    project = consumo.proyecto
+    project_id = project.id
+    
+    # Verificar permisos: JEFE o creador del proyecto
+    if request.user.role != 'JEFE' and not request.user.is_superuser:
+        if project.creado_por != request.user:
+            raise PermissionDenied("No tienes permisos para eliminar consumos de este proyecto")
 
     if request.method == 'POST':
         try:
