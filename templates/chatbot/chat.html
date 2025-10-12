@@ -7,7 +7,12 @@
 <div class="container py-5" style="max-width: 950px;">
   <h2 class="fw-bold mb-4 text-center">Asistente de Presupuestos</h2>
 
-  <div id="chat-box" class="chat-box p-4 border rounded-4 bg-light mb-3 shadow-sm"></div>
+  <div id="chat-box" class="chat-box p-4 border rounded-4 bg-light mb-3 shadow-sm">
+    <div class="text-muted small mb-3 text-center">
+      💬 Escribe <b>“crear presupuesto”</b> para iniciar uno nuevo.<br>
+      ⛔ Escribe <b>“cancelar”</b> para detenerlo.
+    </div>
+  </div>
 
   <form id="chat-form" class="d-flex gap-2">
     <input 
@@ -53,13 +58,14 @@ document.getElementById("chat-form").addEventListener("submit", async function(e
 
     if (data.success && data.messages) {
       conversationId = data.conversation_id;
+      data.messages.forEach(msg => appendMessage(msg.role, msg.content));
 
-      // Evita duplicados (solo muestra respuestas del bot)
-      data.messages
-        .filter(msg => msg.role === "assistant")
-        .forEach(msg => appendMessage("assistant", msg.content));
+      // 🔹 Si hay opciones (choices del formulario), las mostramos como botones
+      if (data.options && data.options.length > 0) {
+        appendOptions(data.options);
+      }
     } else {
-      appendMessage("assistant", "No se pudo procesar tu mensaje.");
+      appendMessage("assistant", "⚠️ No se pudo procesar tu mensaje.");
     }
 
   } catch (error) {
@@ -104,6 +110,28 @@ function appendTyping() {
 function removeTyping() {
   const typing = document.getElementById("typing-indicator");
   if (typing) typing.remove();
+}
+
+// 🔹 Mostrar opciones como botones debajo del mensaje
+function appendOptions(options) {
+  const chatBox = document.getElementById("chat-box");
+  const container = document.createElement("div");
+  container.classList.add("d-flex", "flex-wrap", "gap-2", "mb-3");
+
+  options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.classList.add("btn", "btn-outline-dark", "btn-sm", "rounded-pill");
+    btn.textContent = opt;
+    btn.onclick = () => {
+      document.getElementById("user-input").value = opt;
+      document.getElementById("chat-form").dispatchEvent(new Event("submit"));
+      container.remove(); // quitar los botones al elegir
+    };
+    container.appendChild(btn);
+  });
+
+  chatBox.appendChild(container);
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 </script>
 {% endblock %}
