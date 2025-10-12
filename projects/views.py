@@ -9,7 +9,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
 import io
-from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
+from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem, ConsumoMaterial, ProyectoMaterial
 from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm, DetailedProjectForm, BudgetSectionForm, BudgetManagementForm, BudgetItemCreateForm, BudgetItemEditForm
 import json
 from django.urls import reverse
@@ -110,27 +110,21 @@ def project_list(request):
     - CONSTRUCTOR: Ve todos los proyectos (solo edita los suyos)
     - JEFE: Ve y puede editar todos los proyectos
     """
-    # Obtener parámetros de búsqueda desde la URL
+    # Obtener parámetros de búsqueda
     search_query = request.GET.get("search", "")
     status_filter = request.GET.get("status", "")
-    ubicacion_filter = request.GET.get("ubicacion", "")
-    pisos_filter = request.GET.get("pisos", "")
-    acabados_filter = request.GET.get("acabados", "")
-    area_min_filter = request.GET.get("area_min", "")
-    area_max_filter = request.GET.get("area_max", "")
-    presupuesto_min_filter = request.GET.get("presupuesto_min", "")
-    presupuesto_max_filter = request.GET.get("presupuesto_max", "")
-    terreno_filter = request.GET.get("terreno", "")
-    acceso_filter = request.GET.get("acceso", "")
-    banos_filter = request.GET.get("banos", "")
+    trabajadores_filter = request.GET.get("trabajadores", "")
+    creador_filter = request.GET.get("creador", "")
     fecha_desde_filter = request.GET.get("fecha_desde", "")
     fecha_hasta_filter = request.GET.get("fecha_hasta", "")
-    creador_filter = request.GET.get("creador", "")
+    ubicacion_filter = request.GET.get("ubicacion", "")
+    presupuesto_min_filter = request.GET.get("presupuesto_min", "")
+    presupuesto_max_filter = request.GET.get("presupuesto_max", "")
 
     # TODOS los usuarios ven TODOS los proyectos
     projects = Project.objects.all()
 
-    # Filtro por búsqueda - PostgreSQL: LIKE queries para búsqueda de texto
+    # Filtro por búsqueda - Buscar en nombre, descripción y ubicación
     if search_query:
         projects = projects.filter(
             Q(name__icontains=search_query)  # Buscar en nombre
@@ -138,71 +132,26 @@ def project_list(request):
             | Q(location_address__icontains=search_query)  # Buscar en dirección
         )
 
-    # Filtro por estado - PostgreSQL: WHERE estado = [status_filter]
+    # Filtro por estado
     if status_filter:
         projects = projects.filter(estado=status_filter)
 
-    # Filtro por ubicación
-    if ubicacion_filter:
-        projects = projects.filter(ubicacion_proyecto=ubicacion_filter)
+    # Filtro por número de trabajadores
+    if trabajadores_filter:
+        if trabajadores_filter == "0":
+            projects = projects.filter(workers__isnull=True)
+        elif trabajadores_filter == "1-3":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=1, worker_count__lte=3)
+        elif trabajadores_filter == "4-6":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=4, worker_count__lte=6)
+        elif trabajadores_filter == "7+":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=7)
 
-    # Filtro por número de pisos
-    if pisos_filter:
-        projects = projects.filter(numero_pisos=pisos_filter)
-
-    # Filtro por nivel de acabados
-    if acabados_filter:
-        projects = projects.filter(acabado_muros=acabados_filter)
-
-    # Filtro por área mínima
-    if area_min_filter:
+    # Filtro por creador
+    if creador_filter:
         try:
-            area_min = float(area_min_filter)
-            projects = projects.filter(area_construida_total__gte=area_min)
-        except ValueError:
-            pass
-
-    # Filtro por área máxima
-    if area_max_filter:
-        try:
-            area_max = float(area_max_filter)
-            projects = projects.filter(area_construida_total__lte=area_max)
-        except ValueError:
-            pass
-
-    # Filtro por presupuesto mínimo
-    if presupuesto_min_filter:
-        try:
-            presupuesto_min = float(presupuesto_min_filter)
-            projects = projects.filter(presupuesto__gte=presupuesto_min)
-        except ValueError:
-            pass
-
-    # Filtro por presupuesto máximo
-    if presupuesto_max_filter:
-        try:
-            presupuesto_max = float(presupuesto_max_filter)
-            projects = projects.filter(presupuesto__lte=presupuesto_max)
-        except ValueError:
-            pass
-
-    # Filtro por tipo de terreno
-    if terreno_filter:
-        projects = projects.filter(tipo_terreno=terreno_filter)
-
-    # Filtro por acceso a obra
-    if acceso_filter:
-        projects = projects.filter(acceso_obra=acceso_filter)
-
-    # Filtro por número de baños
-    if banos_filter:
-        try:
-            banos_count = int(banos_filter)
-            if banos_count == 3:
-                # Para 3+, filtrar por 3 o más
-                projects = projects.filter(numero_banos__gte=3)
-            else:
-                projects = projects.filter(numero_banos=banos_count)
+            creador_id = int(creador_filter)
+            projects = projects.filter(creado_por_id=creador_id)
         except ValueError:
             pass
 
@@ -214,45 +163,44 @@ def project_list(request):
     if fecha_hasta_filter:
         projects = projects.filter(fecha_creacion__lte=fecha_hasta_filter)
 
-    # Filtro por creador
-    if creador_filter:
+    # Filtro por ubicación (búsqueda de texto en dirección)
+    if ubicacion_filter:
+        projects = projects.filter(location_address__icontains=ubicacion_filter)
+        print(f"DEBUG: Filtro ubicación aplicado: {ubicacion_filter}")
+
+    # Filtro por presupuesto mínimo
+    if presupuesto_min_filter:
         try:
-            creador_id = int(creador_filter)
-            projects = projects.filter(creado_por_id=creador_id)
-        except ValueError:
-            pass
+            # Limpiar puntos y convertir a float
+            presupuesto_min_clean = presupuesto_min_filter.replace('.', '').replace(',', '')
+            presupuesto_min = float(presupuesto_min_clean)
+            if presupuesto_min > 0:
+                projects = projects.filter(presupuesto__gte=presupuesto_min)
+                print(f"DEBUG: Filtro presupuesto mínimo aplicado: {presupuesto_min}")
+        except (ValueError, AttributeError) as e:
+            print(f"DEBUG: Error en filtro presupuesto mínimo: {e}")
 
-    # Agrupar por estado para mostrar en secciones separadas
-    # PostgreSQL: Múltiples consultas SELECT con filtros diferentes
-    projects_en_proceso = projects.filter(estado="en_proceso")
-    projects_terminados = projects.filter(estado="terminado")
-    projects_futuros = projects.filter(estado="futuro")
+    # Filtro por presupuesto máximo
+    if presupuesto_max_filter:
+        try:
+            # Limpiar puntos y convertir a float
+            presupuesto_max_clean = presupuesto_max_filter.replace('.', '').replace(',', '')
+            presupuesto_max = float(presupuesto_max_clean)
+            if presupuesto_max > 0:
+                projects = projects.filter(presupuesto__lte=presupuesto_max)
+                print(f"DEBUG: Filtro presupuesto máximo aplicado: {presupuesto_max}")
+        except (ValueError, AttributeError) as e:
+            print(f"DEBUG: Error en filtro presupuesto máximo: {e}")
 
-    # Obtener lista de creadores únicos para el filtro
+    # Separar proyectos por estado
+    projects_en_proceso = projects.filter(estado='en_proceso')
+    projects_terminados = projects.filter(estado='terminado')
+    projects_futuros = projects.filter(estado='futuro')
+
+    # Obtener lista de creadores para el filtro
     creadores = User.objects.filter(
         id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
     ).order_by('first_name', 'last_name')
-
-    # Verificar si hay filtros activos
-    has_active_filters = any(
-        [
-            search_query,
-            status_filter,
-            ubicacion_filter,
-            pisos_filter,
-            acabados_filter,
-            area_min_filter,
-            area_max_filter,
-            presupuesto_min_filter,
-            presupuesto_max_filter,
-            terreno_filter,
-            acceso_filter,
-            banos_filter,
-            fecha_desde_filter,
-            fecha_hasta_filter,
-            creador_filter,
-        ]
-    )
 
     context = {
         "projects_en_proceso": projects_en_proceso,
@@ -260,21 +208,14 @@ def project_list(request):
         "projects_futuros": projects_futuros,
         "search_query": search_query,
         "status_filter": status_filter,
-        "ubicacion_filter": ubicacion_filter,
-        "pisos_filter": pisos_filter,
-        "acabados_filter": acabados_filter,
-        "area_min_filter": area_min_filter,
-        "area_max_filter": area_max_filter,
-        "presupuesto_min_filter": presupuesto_min_filter,
-        "presupuesto_max_filter": presupuesto_max_filter,
-        "terreno_filter": terreno_filter,
-        "acceso_filter": acceso_filter,
-        "banos_filter": banos_filter,
+        "trabajadores_filter": trabajadores_filter,
+        "creador_filter": creador_filter,
         "fecha_desde_filter": fecha_desde_filter,
         "fecha_hasta_filter": fecha_hasta_filter,
-        "creador_filter": creador_filter,
+        "ubicacion_filter": ubicacion_filter,
+        "presupuesto_min_filter": presupuesto_min_filter,
+        "presupuesto_max_filter": presupuesto_max_filter,
         "creadores": creadores,
-        "has_active_filters": has_active_filters,
     }
 
     return render(request, "projects/project_list.html", context)
@@ -818,14 +759,14 @@ def borrar_entrada_material(request, entrada_id):
 
 # ===== VISTAS PARA CONSUMO DIARIO DE MATERIALES (RF17A) =====
 
-@login_required
+@project_owner_or_jefe_required
 def registrar_consumo_material(request, project_id):
     """
     Vista para registrar el consumo diario de materiales (RF17A)
     Con validación de stock insuficiente (RF17D)
     Se accede desde el calendario al seleccionar una fecha
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
 
     # Obtener fecha seleccionada del parámetro GET o usar hoy
     from django.utils import timezone
@@ -898,13 +839,13 @@ def registrar_consumo_material(request, project_id):
     return render(request, 'projects/registrar_consumo_material.html', context)
 
 
-@login_required
+@project_owner_or_jefe_required
 def listar_consumos_proyecto(request, project_id):
     """
     Vista para listar todos los consumos de un proyecto
     Permite filtrar por fecha, material, actividad
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
 
     # Obtener parámetros de filtro
     fecha_desde = request.GET.get('fecha_desde', '')
@@ -947,13 +888,13 @@ def listar_consumos_proyecto(request, project_id):
     return render(request, 'projects/listar_consumos.html', context)
 
 
-@login_required
+@project_owner_or_jefe_required
 def obtener_consumos_fecha(request, project_id):
     """
     API endpoint para obtener consumos de una fecha específica (para el calendario)
     Retorna JSON con los consumos de la fecha
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
     fecha = request.GET.get('fecha')
 
     if not fecha:
@@ -981,13 +922,13 @@ def obtener_consumos_fecha(request, project_id):
     })
 
 
-@login_required
+@project_owner_or_jefe_required
 def obtener_consumos_mes(request, project_id):
     """
     API endpoint para obtener todos los consumos de un mes específico (RF17C)
     Retorna JSON con los consumos agrupados por fecha para el calendario
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
     mes = request.GET.get('mes')
     anio = request.GET.get('anio')
 
@@ -1045,12 +986,13 @@ def editar_consumo_material(request, consumo_id):
     Vista para editar un consumo existente
     """
     from .models import ConsumoMaterial
-    consumo = get_object_or_404(
-        ConsumoMaterial,
-        id=consumo_id,
-        proyecto__creado_por=request.user
-    )
+    consumo = get_object_or_404(ConsumoMaterial, id=consumo_id)
     project = consumo.proyecto
+    
+    # Verificar permisos: JEFE o creador del proyecto
+    if request.user.role != 'JEFE' and not request.user.is_superuser:
+        if project.creado_por != request.user:
+            raise PermissionDenied("No tienes permisos para editar consumos de este proyecto")
 
     if request.method == 'POST':
         form = ConsumoMaterialForm(request.POST, instance=consumo, proyecto=project)
@@ -1080,12 +1022,14 @@ def eliminar_consumo_material(request, consumo_id):
     Vista para eliminar un consumo de material
     """
     from .models import ConsumoMaterial
-    consumo = get_object_or_404(
-        ConsumoMaterial,
-        id=consumo_id,
-        proyecto__creado_por=request.user
-    )
-    project_id = consumo.proyecto.id
+    consumo = get_object_or_404(ConsumoMaterial, id=consumo_id)
+    project = consumo.proyecto
+    project_id = project.id
+    
+    # Verificar permisos: JEFE o creador del proyecto
+    if request.user.role != 'JEFE' and not request.user.is_superuser:
+        if project.creado_por != request.user:
+            raise PermissionDenied("No tienes permisos para eliminar consumos de este proyecto")
 
     if request.method == 'POST':
         try:
@@ -2069,12 +2013,11 @@ def export_budget_to_excel(request, project_id):
 
 
 # Función para exportar gastos diarios a Excel
-@role_required(['JEFE'])
-@login_required
+@project_owner_or_jefe_required
 def export_gastos_to_excel(request, project_id):
     """
     Vista para exportar gastos diarios de materiales a Excel
-    Solo accesible para JEFE
+    Accesible para JEFE o dueño del proyecto
     Permite filtrar por día, mes o proyecto completo
     """
     project = get_object_or_404(Project, id=project_id)
@@ -2115,7 +2058,15 @@ def export_gastos_to_excel(request, project_id):
                 fecha_consumo__month=month
             )
             fecha_mes = date(year, month, 1)
-            periodo_texto = f"Mes {fecha_mes.strftime('%B %Y')}"
+            
+            # Nombres de meses en español
+            meses_es = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+            mes_nombre = meses_es.get(month, 'Mes')
+            periodo_texto = f"Mes {mes_nombre} {year}"
         except (ValueError, IndexError):
             periodo_texto = "Mes (formato inválido)"
     else:
@@ -2191,15 +2142,8 @@ def export_gastos_to_excel(request, project_id):
     total_general = 0
     
     for consumo in consumos:
-        # Obtener costo unitario
-        try:
-            proyecto_material = ProyectoMaterial.objects.get(
-                proyecto=project,
-                material=consumo.material
-            )
-            costo_unitario = float(proyecto_material.costo_unitario or 0)
-        except ProyectoMaterial.DoesNotExist:
-            costo_unitario = 0
+        # Obtener costo unitario del material
+        costo_unitario = float(consumo.material.unit_cost or 0)
         
         costo_total = float(consumo.cantidad_consumida) * costo_unitario
         total_general += costo_total
@@ -2316,5 +2260,425 @@ def export_gastos_to_excel(request, project_id):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     messages.success(request, f'✅ Gastos exportados exitosamente: {filename}')
+    
+    return response
+
+
+@login_required
+@project_owner_or_jefe_required
+def export_comparativo_to_excel(request, project_id):
+    """
+    Exporta reporte comparativo de presupuesto vs gasto real a Excel
+    RF: Como Jefe de obra, quiero exportar un reporte comparativo para analizar desviaciones financieras
+    """
+    from collections import defaultdict
+    from decimal import Decimal
+    from django.db.models import Sum, F
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from openpyxl.utils import get_column_letter
+    import io
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    print(f"🔍 DEBUG Export Comparativo - Iniciando para proyecto: {project.name}")
+    
+    # ===== OBTENER DATOS DEL PRESUPUESTO =====
+    presupuesto_items = ProjectBudgetItem.objects.filter(
+        project=project
+    ).select_related('budget_item', 'budget_item__section').order_by(
+        'budget_item__section__order', 'budget_item__order'
+    )
+    
+    # Agrupar presupuesto por sección
+    presupuesto_por_seccion = defaultdict(lambda: {
+        'items': [],
+        'total_presupuestado': Decimal('0'),
+        'seccion_nombre': '',
+        'seccion_order': 0
+    })
+    
+    total_presupuesto_proyecto = Decimal('0')
+    
+    for item in presupuesto_items:
+        seccion_key = item.budget_item.section.name
+        seccion_data = presupuesto_por_seccion[seccion_key]
+        
+        seccion_data['seccion_nombre'] = item.budget_item.section.name
+        seccion_data['seccion_order'] = item.budget_item.section.order
+        seccion_data['items'].append({
+            'descripcion': item.budget_item.description,
+            'cantidad': item.quantity,
+            'precio_unitario': item.unit_price,
+            'total': item.total_price
+        })
+        seccion_data['total_presupuestado'] += item.total_price
+        total_presupuesto_proyecto += item.total_price
+    
+    print(f"🔍 DEBUG - Total presupuesto proyecto: ${total_presupuesto_proyecto:,.2f}")
+    print(f"🔍 DEBUG - Secciones de presupuesto encontradas: {len(presupuesto_por_seccion)}")
+    
+    # ===== OBTENER DATOS DE GASTOS REALES =====
+    consumos = ConsumoMaterial.objects.filter(
+        proyecto=project
+    ).select_related('material', 'material__unit')
+    
+    # Agrupar gastos por componente/actividad
+    gastos_por_componente = defaultdict(lambda: {
+        'items': [],
+        'total_gastado': Decimal('0')
+    })
+    
+    total_gastos_proyecto = Decimal('0')
+    
+    for consumo in consumos:
+        componente = consumo.componente_actividad or 'Sin especificar'
+        costo_unitario = getattr(consumo.material, 'unit_cost', None) or Decimal('0')
+        costo_total = consumo.cantidad_consumida * costo_unitario
+        
+        gastos_por_componente[componente]['items'].append({
+            'material': consumo.material.name,
+            'cantidad': consumo.cantidad_consumida,
+            'costo_unitario': costo_unitario,
+            'costo_total': costo_total,
+            'fecha': consumo.fecha_consumo
+        })
+        gastos_por_componente[componente]['total_gastado'] += costo_total
+        total_gastos_proyecto += costo_total
+    
+    print(f"🔍 DEBUG - Total gastos proyecto: ${total_gastos_proyecto:,.2f}")
+    print(f"🔍 DEBUG - Componentes de gasto encontrados: {len(gastos_por_componente)}")
+    
+    # ===== CREAR WORKBOOK =====
+    workbook = openpyxl.Workbook()
+    workbook.remove(workbook.active)
+    
+    # ===== CONFIGURACIÓN DE ESTILOS =====
+    font_title = Font(name='Calibri', size=16, bold=True, color='FFFFFF')
+    font_header = Font(name='Calibri', size=12, bold=True, color='FFFFFF')
+    font_subheader = Font(name='Calibri', size=11, bold=True, color='2F5233')
+    font_data = Font(name='Calibri', size=11)
+    font_total = Font(name='Calibri', size=12, bold=True)
+    font_deviation_positive = Font(name='Calibri', size=11, bold=True, color='D32F2F')  # Rojo para sobrecostos
+    font_deviation_negative = Font(name='Calibri', size=11, bold=True, color='388E3C')  # Verde para ahorros
+    
+    fill_title = PatternFill(start_color='2F5233', end_color='2F5233', fill_type='solid')
+    fill_header = PatternFill(start_color='4F7942', end_color='4F7942', fill_type='solid')
+    fill_section = PatternFill(start_color='E8F5E8', end_color='E8F5E8', fill_type='solid')
+    fill_total = PatternFill(start_color='BBDEFB', end_color='BBDEFB', fill_type='solid')
+    fill_overbudget = PatternFill(start_color='FFEBEE', end_color='FFEBEE', fill_type='solid')  # Rojo claro
+    fill_underbudget = PatternFill(start_color='E8F5E8', end_color='E8F5E8', fill_type='solid')  # Verde claro
+    
+    border_thin = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    
+    # ===== HOJA 1: COMPARATIVO POR SECCIONES =====
+    ws_comparativo = workbook.create_sheet("Comparativo Presupuesto")
+    
+    # Título principal
+    ws_comparativo.merge_cells('A1:H1')
+    ws_comparativo['A1'] = f"COMPARATIVO PRESUPUESTO VS GASTO REAL - {project.name.upper()}"
+    ws_comparativo['A1'].font = font_title
+    ws_comparativo['A1'].fill = fill_title
+    ws_comparativo['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Información del reporte
+    ws_comparativo.merge_cells('A2:H2')
+    ws_comparativo['A2'] = f"Generado: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
+    ws_comparativo['A2'].font = Font(name='Calibri', size=10, color='666666')
+    ws_comparativo['A2'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Encabezados
+    headers = [
+        'Sección/Componente', 'Presupuesto Proyectado', 'Gasto Real', 
+        'Desviación ($)', 'Desviación (%)', 'Estado', 'Items Presupuesto', 'Items Gastados'
+    ]
+    
+    header_row = 4
+    for col, header in enumerate(headers, 1):
+        cell = ws_comparativo.cell(row=header_row, column=col)
+        cell.value = header
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.border = border_thin
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    current_row = header_row + 1
+    
+    # ===== MAPEO INTELIGENTE SECCIONES VS COMPONENTES =====
+    # Crear mapeo aproximado basado en palabras clave
+    mapeo_seccion_componente = {
+        'cimentación': ['cimentacion', 'cimientos', 'zapata', 'fundacion'],
+        'estructura': ['estructura', 'viga', 'columna', 'concreto', 'acero'],
+        'muros': ['muro', 'pared', 'mamposteria', 'ladrillo', 'bloque'],
+        'cubierta': ['cubierta', 'techo', 'teja', 'impermeabilizacion'],
+        'pisos': ['piso', 'acabados', 'ceramica', 'baldosa'],
+        'instalaciones': ['instalacion', 'electrica', 'hidrosanitaria', 'fontaneria', 'electricidad'],
+        'carpinteria': ['puerta', 'ventana', 'marco', 'carpinteria'],
+        'pintura': ['pintura', 'acabados'],
+        'varios': ['varios', 'miscelaneos', 'otros']
+    }
+    
+    def encontrar_seccion_para_componente(componente):
+        """Encuentra la sección de presupuesto más apropiada para un componente de gasto"""
+        componente_lower = componente.lower()
+        for seccion_nombre, seccion_data in presupuesto_por_seccion.items():
+            seccion_lower = seccion_nombre.lower()
+            # Buscar coincidencia directa
+            if any(palabra in componente_lower for palabra in seccion_lower.split()):
+                return seccion_nombre
+        
+        # Buscar por mapeo de palabras clave
+        for patron, palabras_clave in mapeo_seccion_componente.items():
+            if any(palabra in componente_lower for palabra in palabras_clave):
+                # Buscar sección que contenga el patrón
+                for seccion_nombre in presupuesto_por_seccion.keys():
+                    if patron in seccion_nombre.lower():
+                        return seccion_nombre
+        
+        return None
+    
+    # ===== PROCESAR DATOS PARA EL COMPARATIVO =====
+    comparativo_data = []
+    secciones_procesadas = set()
+    
+    # 1. Procesar secciones del presupuesto
+    for seccion_nombre, seccion_data in sorted(presupuesto_por_seccion.items(), 
+                                               key=lambda x: x[1]['seccion_order']):
+        presupuestado = seccion_data['total_presupuestado']
+        
+        # Buscar gastos relacionados con esta sección
+        gastos_relacionados = Decimal('0')
+        componentes_relacionados = []
+        
+        for componente, gasto_data in gastos_por_componente.items():
+            seccion_encontrada = encontrar_seccion_para_componente(componente)
+            if seccion_encontrada == seccion_nombre:
+                gastos_relacionados += gasto_data['total_gastado']
+                componentes_relacionados.append(componente)
+        
+        # Marcar componentes como procesados
+        for comp in componentes_relacionados:
+            secciones_procesadas.add(comp)
+        
+        # Calcular desviaciones
+        desviacion_abs = gastos_relacionados - presupuestado
+        desviacion_pct = (desviacion_abs / presupuestado * 100) if presupuestado > 0 else 0
+        
+        estado = "SOBRE PRESUPUESTO" if desviacion_abs > 0 else "DENTRO PRESUPUESTO" if desviacion_abs == 0 else "BAJO PRESUPUESTO"
+        
+        comparativo_data.append({
+            'nombre': seccion_nombre,
+            'presupuestado': presupuestado,
+            'gastado': gastos_relacionados,
+            'desviacion_abs': desviacion_abs,
+            'desviacion_pct': desviacion_pct,
+            'estado': estado,
+            'items_presupuesto': len(seccion_data['items']),
+            'items_gastados': len(componentes_relacionados),
+            'tipo': 'seccion'
+        })
+    
+    # 2. Procesar componentes de gasto sin sección asignada
+    for componente, gasto_data in gastos_por_componente.items():
+        if componente not in secciones_procesadas:
+            gastado = gasto_data['total_gastado']
+            
+            comparativo_data.append({
+                'nombre': f"[GASTO SIN PRESUPUESTO] {componente}",
+                'presupuestado': Decimal('0'),
+                'gastado': gastado,
+                'desviacion_abs': gastado,
+                'desviacion_pct': 100 if gastado > 0 else 0,  # 100% desviación si no estaba presupuestado
+                'estado': "SIN PRESUPUESTO",
+                'items_presupuesto': 0,
+                'items_gastados': len(gasto_data['items']),
+                'tipo': 'gasto_extra'
+            })
+    
+    # ===== ESCRIBIR DATOS EN LA HOJA =====
+    for data in comparativo_data:
+        # Determinar estilo según el estado
+        if data['tipo'] == 'gasto_extra':
+            fill_row = fill_overbudget
+            font_desviacion = font_deviation_positive
+        elif data['desviacion_abs'] > 0:
+            fill_row = fill_overbudget
+            font_desviacion = font_deviation_positive
+        elif data['desviacion_abs'] < 0:
+            fill_row = fill_underbudget
+            font_desviacion = font_deviation_negative
+        else:
+            fill_row = None
+            font_desviacion = font_data
+        
+        row_data = [
+            data['nombre'],
+            float(data['presupuestado']),
+            float(data['gastado']),
+            float(data['desviacion_abs']),
+            float(data['desviacion_pct']),
+            data['estado'],
+            data['items_presupuesto'],
+            data['items_gastados']
+        ]
+        
+        for col, value in enumerate(row_data, 1):
+            cell = ws_comparativo.cell(row=current_row, column=col)
+            cell.value = value
+            cell.border = border_thin
+            
+            # Aplicar formato específico
+            if col in [2, 3, 4]:  # Presupuestado, Gastado, Desviación $
+                cell.number_format = '"$"#,##0.00'
+                cell.alignment = Alignment(horizontal='right')
+            elif col == 5:  # Desviación %
+                cell.number_format = '0.00"%"'
+                cell.alignment = Alignment(horizontal='right')
+                cell.font = font_desviacion
+            elif col in [7, 8]:  # Contadores
+                cell.alignment = Alignment(horizontal='center')
+            else:
+                cell.alignment = Alignment(horizontal='left')
+            
+            # Aplicar fondo si es necesario
+            if fill_row and col <= 8:
+                cell.fill = fill_row
+            
+            cell.font = font_data
+        
+        current_row += 1
+    
+    # ===== FILA DE TOTALES =====
+    total_row = current_row + 1
+    
+    # Calcular totales
+    total_presupuestado_final = sum(item['presupuestado'] for item in comparativo_data 
+                                    if item['tipo'] == 'seccion')
+    total_gastado_final = sum(item['gastado'] for item in comparativo_data)
+    desviacion_total = total_gastado_final - total_presupuestado_final
+    desviacion_pct_total = (desviacion_total / total_presupuestado_final * 100) if total_presupuestado_final > 0 else 0
+    
+    # Aplicar totales
+    ws_comparativo.merge_cells(f'A{total_row}:A{total_row}')
+    cell_total_label = ws_comparativo[f'A{total_row}']
+    cell_total_label.value = "TOTALES GENERALES"
+    cell_total_label.font = font_total
+    cell_total_label.fill = fill_total
+    cell_total_label.alignment = Alignment(horizontal='center', vertical='center')
+    cell_total_label.border = border_thin
+    
+    totales_data = [
+        None,  # Ya asignado arriba
+        float(total_presupuestado_final),
+        float(total_gastado_final),
+        float(desviacion_total),
+        float(desviacion_pct_total),
+        "SOBRE PRESUPUESTO" if desviacion_total > 0 else "DENTRO PRESUPUESTO" if desviacion_total == 0 else "BAJO PRESUPUESTO",
+        sum(item['items_presupuesto'] for item in comparativo_data),
+        sum(item['items_gastados'] for item in comparativo_data)
+    ]
+    
+    for col, value in enumerate(totales_data[1:], 2):  # Empezar desde columna 2
+        cell = ws_comparativo.cell(row=total_row, column=col)
+        cell.value = value
+        cell.font = font_total
+        cell.fill = fill_total
+        cell.border = border_thin
+        
+        if col in [2, 3, 4]:  # Montos
+            cell.number_format = '"$"#,##0.00'
+            cell.alignment = Alignment(horizontal='right')
+        elif col == 5:  # Porcentaje
+            cell.number_format = '0.00"%"'
+            cell.alignment = Alignment(horizontal='right')
+        elif col in [7, 8]:  # Contadores
+            cell.alignment = Alignment(horizontal='center')
+        else:
+            cell.alignment = Alignment(horizontal='center')
+    
+    # ===== AJUSTAR ANCHOS DE COLUMNAS =====
+    column_widths = [35, 18, 18, 18, 15, 20, 15, 15]
+    for col, width in enumerate(column_widths, 1):
+        ws_comparativo.column_dimensions[get_column_letter(col)].width = width
+    
+    # ===== HOJA 2: RESUMEN EJECUTIVO =====
+    ws_resumen = workbook.create_sheet("Resumen Ejecutivo")
+    
+    # Título del resumen
+    ws_resumen.merge_cells('A1:D1')
+    ws_resumen['A1'] = f"RESUMEN EJECUTIVO - {project.name.upper()}"
+    ws_resumen['A1'].font = font_title
+    ws_resumen['A1'].fill = fill_title
+    ws_resumen['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Métricas clave
+    metricas_data = [
+        ["MÉTRICAS FINANCIERAS", ""],
+        ["Presupuesto inicial:", f"${total_presupuestado_final:,.2f}"],
+        ["Gasto real acumulado:", f"${total_gastado_final:,.2f}"],
+        ["Desviación total:", f"${desviacion_total:,.2f}"],
+        ["Desviación porcentual:", f"{desviacion_pct_total:.2f}%"],
+        ["", ""],
+        ["ANÁLISIS POR ESTADO", ""],
+        ["Secciones sobre presupuesto:", len([d for d in comparativo_data if d['desviacion_abs'] > 0])],
+        ["Secciones bajo presupuesto:", len([d for d in comparativo_data if d['desviacion_abs'] < 0])],
+        ["Gastos sin presupuesto:", len([d for d in comparativo_data if d['tipo'] == 'gasto_extra'])],
+        ["", ""],
+        ["INFORMACIÓN DEL REPORTE", ""],
+        ["Fecha de generación:", timezone.now().strftime('%d/%m/%Y %H:%M')],
+        ["Generado por:", request.user.get_full_name() or request.user.username],
+        ["Total de ítems presupuestados:", sum(item['items_presupuesto'] for item in comparativo_data)],
+        ["Total de registros de gasto:", sum(item['items_gastados'] for item in comparativo_data)]
+    ]
+    
+    for row, (label, value) in enumerate(metricas_data, 3):
+        if label == "MÉTRICAS FINANCIERAS" or label == "ANÁLISIS POR ESTADO" or label == "INFORMACIÓN DEL REPORTE":
+            # Encabezado de sección
+            ws_resumen.merge_cells(f'A{row}:D{row}')
+            cell = ws_resumen[f'A{row}']
+            cell.value = label
+            cell.font = font_subheader
+            cell.fill = fill_section
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border_thin
+        elif label:  # Solo si tiene contenido
+            ws_resumen.cell(row=row, column=1, value=label).font = Font(bold=True)
+            ws_resumen.cell(row=row, column=2, value=value)
+    
+    # Ajustar anchos
+    ws_resumen.column_dimensions['A'].width = 25
+    ws_resumen.column_dimensions['B'].width = 20
+    ws_resumen.column_dimensions['C'].width = 15
+    ws_resumen.column_dimensions['D'].width = 15
+    
+    # ===== PREPARAR RESPUESTA =====
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    
+    print(f"🔍 DEBUG Export Comparativo - RESUMEN FINAL:")
+    print(f"  - Total presupuestado: ${total_presupuestado_final:,.2f}")
+    print(f"  - Total gastado: ${total_gastado_final:,.2f}")
+    print(f"  - Desviación: ${desviacion_total:,.2f} ({desviacion_pct_total:.2f}%)")
+    print(f"  - Secciones procesadas: {len(comparativo_data)}")
+    
+    # Generar nombre del archivo
+    project_name_clean = "".join(c for c in project.name if c.isalnum() or c in (' ', '_')).strip()
+    project_name_clean = project_name_clean.replace(' ', '_')
+    fecha_actual = timezone.now().strftime('%Y-%m-%d')
+    filename = f"Comparativo_{project_name_clean}_{fecha_actual}.xlsx"
+    
+    print(f"🔍 DEBUG Export Comparativo - Archivo generado: {filename}")
+    
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    messages.success(request, f'✅ Reporte comparativo exportado exitosamente: {filename}')
     
     return response

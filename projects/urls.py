@@ -65,4 +65,7 @@ urlpatterns = [
     
     # URL para exportar gastos diarios a Excel (solo JEFE)
     path('<int:project_id>/export-gastos-excel/', views.export_gastos_to_excel, name='export_gastos_to_excel'),
+    
+    # URL para exportar reporte comparativo a Excel (solo JEFE)
+    path('<int:project_id>/export-comparativo-excel/', views.export_comparativo_to_excel, name='export_comparativo_to_excel'),
 ]

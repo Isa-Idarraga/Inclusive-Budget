@@ -15,8 +15,8 @@
         <a class="btn btn-outline-dark" href="{{ charts_url|default:'#' }}">Ver gráficos</a>
         <a class="btn btn-outline-secondary" href="{{ add_purchases_url|default:'#' }}"> Agregar compras</a>
         
-        <!-- Menú de exportaciones - Solo para JEFE -->
-        {% if user.role == 'JEFE' %}
+        <!-- Menú de exportaciones - Para JEFE o dueño del proyecto -->
+        {% if user.role == 'JEFE' or project.creado_por == user %}
         <div class="btn-group" role="group">
           <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="fas fa-file-excel me-1"></i>Exportar Excel
@@ -25,6 +25,11 @@
             <li>
               <a class="dropdown-item" href="{% url 'projects:export_budget_to_excel' project.id %}">
                 <i class="fas fa-calculator me-2 text-primary"></i>Presupuesto detallado
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="{% url 'projects:export_comparativo_to_excel' project.id %}">
+                <i class="fas fa-chart-line me-2 text-danger"></i>Comparativo presupuesto vs gasto
               </a>
             </li>
             <li><hr class="dropdown-divider"></li>
