@@ -59,7 +59,7 @@
                                             <p class="card-text text-muted small">{{ section.section.description|truncatechars:100 }}</p>
                                             <div class="progress" style="height: 4px;">
                                                 <div class="progress-bar" role="progressbar" 
-                                                     style="width: {% if total_budget > 0 %}{{ section.total|floatformat:2 }}{% else %}0{% endif %}%"
+                                                     style="width: 0%"
                                                      data-section-total="{{ section.total }}" 
                                                      data-total-budget="{{ total_budget }}"></div>
                                             </div>
@@ -273,6 +273,15 @@
                                     Editar Presupuesto
                                 </a>
                                 
+                                <!-- Botón de exportar a Excel - Solo para JEFE -->
+                                {% if user.role == 'JEFE' %}
+                                <a href="{% url 'projects:export_budget_to_excel' project.id %}" class="btn btn-success btn-lg px-4" 
+                                   title="Exportar presupuesto detallado a Excel">
+                                    <i class="fas fa-file-excel me-2"></i>
+                                    Exportar Excel
+                                </a>
+                                {% endif %}
+                                
                                 <button onclick="window.print()" class="btn btn-outline-primary btn-lg px-4">
                                     <i class="fas fa-print me-2"></i>
                                     Imprimir
@@ -408,6 +417,18 @@ function calculateAdministrationSummary() {
         administracionAutomatica: administracionAutomatica,
         administracionManual: administracionManual,
         total: totalPresupuesto
+    });
+    
+    // Calcular porcentajes para las barras de progreso de secciones
+    const progressBars = document.querySelectorAll('.progress-bar[data-section-total]');
+    progressBars.forEach(function(bar) {
+        const sectionTotal = parseFloat(bar.getAttribute('data-section-total') || 0);
+        const totalBudget = parseFloat(bar.getAttribute('data-total-budget') || 0);
+        
+        if (totalBudget > 0) {
+            const percentage = (sectionTotal / totalBudget) * 100;
+            bar.style.width = Math.min(percentage, 100) + '%';
+        }
     });
 }
 </script>
