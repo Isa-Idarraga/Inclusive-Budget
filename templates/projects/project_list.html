@@ -3,133 +3,113 @@
 
 {% block extra_css %}
 <style>
-    /* Estilos para filtros avanzados */
-    .form-control-inclusive:focus,
-    .form-select-inclusive:focus {
+    /* Estilos para filtros simplificados */
+    .search-container {
+        background: linear-gradient(135deg, var(--inclusive-light) 0%, var(--inclusive-gray-light) 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .search-input {
+        border: 2px solid var(--inclusive-gray-light);
+        border-radius: 15px;
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input:focus {
+        border-color: var(--inclusive-green-primary);
+        box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+        outline: none;
+    }
+    
+    .filter-select {
+        border: 2px solid var(--inclusive-gray-light);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        width: 100%;
+        margin-bottom: 1.5rem;
+        min-height: 48px;
+    }
+    
+    .filter-select:focus {
+        border-color: var(--inclusive-green-primary);
+        box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+        outline: none;
+    }
+    
+    /* Asegurar que los campos no se sobrepongan */
+    .form-label {
+        display: block;
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+    
+    /* Espaciado adicional para evitar sobreposición */
+    .col-md-3, .col-md-6 {
+        margin-bottom: 1rem;
+    }
+    
+    /* Asegurar que los campos tengan suficiente espacio vertical */
+    .row.g-3 {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Responsive para formulario */
+    @media (max-width: 768px) {
+        .col-md-3 {
+            margin-bottom: 1rem;
+        }
+        
+        .filter-select {
+            margin-bottom: 0.5rem;
+        }
+    }
+    
+    /* Espaciado adicional entre filas */
+    .row.g-3 {
+        margin-bottom: 1rem;
+    }
+    
+    /* Estilos para campos de presupuesto */
+    .budget-input {
+        font-family: 'Courier New', monospace;
+        font-weight: 500;
+    }
+    
+    .budget-input:focus {
         border-color: var(--inclusive-green-primary);
         box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
     }
     
-    .form-control-inclusive,
-    .form-select-inclusive {
-        border: 2px solid var(--inclusive-gray-light);
+    .project-card-hover {
         transition: all 0.3s ease;
     }
     
-    .form-control-inclusive:hover,
-    .form-select-inclusive:hover {
-        border-color: var(--inclusive-green-secondary);
+    .project-card-hover:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
     }
     
-    /* Animaciones para filtros */
-    .filter-card {
-        transition: all 0.3s ease;
-    }
-    
-    .filter-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    }
-    
-    /* Badges de filtros activos */
-    .filter-badge {
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-    
-    .filter-badge:hover {
-        transform: scale(1.05);
-        background-color: var(--inclusive-green-neon) !important;
-    }
-    
-    /* Contador de resultados */
-    .results-counter {
-        animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
-    
-    /* Responsive para filtros */
-    @media (max-width: 768px) {
-        .filter-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    @media (min-width: 769px) and (max-width: 1200px) {
-        .filter-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-    
-    @media (min-width: 1201px) {
-        .filter-grid {
-            grid-template-columns: repeat(4, 1fr);
-        }
-    }
-    
-    /* Estilos para campos de rango */
-    .range-inputs {
-        position: relative;
-    }
-    
-    .range-inputs::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 20px;
-        height: 2px;
-        background-color: var(--inclusive-gray-medium);
-    }
-    
-    /* Tooltips personalizados */
-    .custom-tooltip {
-        position: relative;
-        cursor: help;
-    }
-    
-    .custom-tooltip::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: var(--inclusive-dark);
+    .status-badge-progress {
+        background: linear-gradient(135deg, #4CAF50, #45a049);
         color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        white-space: nowrap;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.3s ease;
-        z-index: 1000;
     }
     
-    .custom-tooltip:hover::after {
-        opacity: 1;
-        visibility: visible;
+    .status-badge-complete {
+        background: linear-gradient(135deg, #FF9800, #F57C00);
+        color: white;
     }
     
-    /* Estilos para filtros desplegables */
-    #filtersContainer {
-        transition: all 0.3s ease;
-    }
-    
-    /* Botón toggle con transición simple */
-    #toggleFiltersBtn {
-        transition: all 0.3s ease;
-    }
-    
-    #toggleFiltersBtn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    .status-badge-future {
+        background: linear-gradient(135deg, #9E9E9E, #757575);
+        color: white;
     }
 </style>
 {% endblock %}
@@ -137,305 +117,207 @@
 {% block content %}
 <div class="project-detail-bg py-5">
     <div class="container">
-        <!-- Header con filtros avanzados -->
-        <div class="mb-5 animate-fade-in">
+        <!-- Header con búsqueda simplificada -->
+        <div class="search-container">
             <div class="text-center mb-4">
-                <h4 class="text-inclusive-secondary mb-3 fw-semibold">Filtros de Búsqueda</h4>
-                <p class="text-inclusive-secondary small">Encuentra rápidamente los proyectos que necesitas</p>
-                
-                <!-- Barra de búsqueda rápida siempre visible -->
-                <div class="row justify-content-center mb-4">
-                    <div class="col-md-8 col-lg-6">
-                        <form method="get" action="{% url 'projects:project_list' %}" class="d-flex">
+                <h2 class="text-inclusive-dark mb-3 fw-bold">
+                    <i class="fas fa-building me-2"></i>
+                    Lista de Proyectos
+                </h2>
+                <p class="text-inclusive-secondary">Gestiona y visualiza todos tus proyectos de construcción</p>
+            </div>
+            
+            <!-- Búsqueda y filtros básicos -->
+            <form method="get" action="{% url 'projects:project_list' %}" id="filtersForm">
+                <!-- Fila 1: Búsqueda principal -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
                             <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-inclusive-primary text-white">
+                                <i class="fas fa-search"></i>
+                            </span>
                                 <input type="text" 
                                        name="search" 
-                                       class="form-control form-control-inclusive rounded-start-pill" 
-                                       placeholder="🔍 Buscar por nombre, descripción o dirección..."
-                                       value="{{ search_query }}"
+                                   class="form-control search-input" 
+                                   placeholder="Buscar por nombre, descripción o ubicación..."
+                                   value="{{ search_query|default:'' }}"
                                        aria-label="Buscar proyectos">
-                                <button type="submit" class="btn btn-inclusive-primary rounded-end-pill px-4">
-                                    <i class="fas fa-search"></i>
-                                </button>
                             </div>
-                        </form>
                     </div>
+                    
+                    <div class="col-md-2">
+                        <select name="status" class="form-select filter-select">
+                            <option value="">Todos los estados</option>
+                            <option value="futuro" {% if status_filter == 'futuro' %}selected{% endif %}>Futuro</option>
+                            <option value="en_proceso" {% if status_filter == 'en_proceso' %}selected{% endif %}>En Proceso</option>
+                            <option value="terminado" {% if status_filter == 'terminado' %}selected{% endif %}>Terminado</option>
+                        </select>
                 </div>
                 
-                <!-- Botón para mostrar/ocultar filtros -->
-                <div class="text-center mb-3">
-                    <button type="button" class="btn btn-outline-inclusive-primary btn-lg px-4" id="toggleFiltersBtn" onclick="toggleFilters()">
-                        <i class="fas fa-filter me-2"></i>
-                        <span id="toggleText">Mostrar Filtros Avanzados</span>
-                        <i class="fas fa-chevron-down ms-2" id="toggleIcon"></i>
-                        {% if has_active_filters %}
-                        <span class="badge bg-inclusive-neon text-inclusive-dark ms-2">
-                            <i class="fas fa-check me-1"></i>Activos
-                        </span>
-                        {% endif %}
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-inclusive-primary btn-lg w-100">
+                            <i class="fas fa-search me-2"></i>Buscar
                     </button>
-                </div>
-                
-                <!-- Información sobre filtros -->
-                <div class="alert alert-info border-0 bg-inclusive-light text-inclusive-dark mt-3" style="max-width: 600px; margin: 0 auto;">
-                    <div class="d-flex align-items-start">
-                        <i class="fas fa-lightbulb text-inclusive-primary mt-1 me-3"></i>
-                        <div class="text-start">
-                            <strong>💡 Consejos de uso:</strong>
-                            <ul class="mb-0 mt-2 small">
-                                <li>Usa la barra de búsqueda para encontrar proyectos rápidamente</li>
-                                <li>Haz clic en "Mostrar Filtros Avanzados" para opciones más específicas</li>
-                                <li>Puedes combinar múltiples filtros para resultados más precisos</li>
-                                <li>Los filtros se aplican automáticamente al cambiar los valores</li>
-                                <li>Usa rangos de área y presupuesto para encontrar proyectos similares</li>
-                                <li>Los filtros de fecha te ayudan a encontrar proyectos por período</li>
-                            </ul>
-                        </div>
-                    </div>
                 </div>
             </div>
             
-            <!-- Formulario de filtros (inicialmente oculto) -->
-            <div id="filtersContainer" style="display: none;">
-                <form method="get" action="{% url 'projects:project_list' %}" id="filtersForm">
-                    <div class="card shadow-inclusive-lg rounded-4 border-0">
-                        <div class="card-body p-4">
-                            <div class="row g-3">
-                                <!-- Filtros principales -->
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="status" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-tasks me-2"></i>Estado
+                <!-- Botón para mostrar/ocultar filtros adicionales -->
+                <div class="text-center mb-3">
+                    <button type="button" class="btn btn-outline-inclusive-primary" id="toggleAdvancedFilters">
+                        <i class="fas fa-filter me-2"></i>
+                        <span id="toggleAdvancedText">Mostrar Filtros Avanzados</span>
+                        <i class="fas fa-chevron-down ms-2" id="toggleAdvancedIcon"></i>
+                    </button>
+                </div>
+                
+                <!-- Filtros adicionales (inicialmente ocultos) -->
+                <div id="advancedFilters" style="display: none;">
+                    <!-- Fila 2: Filtros adicionales -->
+                    <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold text-inclusive-primary">
+                            <i class="fas fa-users me-2"></i>Trabajadores
                                     </label>
-                                    <select id="status" name="status" class="form-select form-select-inclusive">
-                                        <option value="">Todos los estados</option>
-                                        <option value="futuro" {% if status_filter == 'futuro' %}selected{% endif %}>🕐 Futuro</option>
-                                        <option value="en_proceso" {% if status_filter == 'en_proceso' %}selected{% endif %}>⚡ En Proceso</option>
-                                        <option value="terminado" {% if status_filter == 'terminado' %}selected{% endif %}>✅ Terminado</option>
+                        <select name="trabajadores" class="form-select filter-select">
+                            <option value="">Cualquier cantidad</option>
+                            <option value="0" {% if trabajadores_filter == '0' %}selected{% endif %}>Sin trabajadores</option>
+                            <option value="1-3" {% if trabajadores_filter == '1-3' %}selected{% endif %}>1-3 trabajadores</option>
+                            <option value="4-6" {% if trabajadores_filter == '4-6' %}selected{% endif %}>4-6 trabajadores</option>
+                            <option value="7+" {% if trabajadores_filter == '7+' %}selected{% endif %}>7+ trabajadores</option>
                                     </select>
-                                </div>
+                        </div>
                                 
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="ubicacion" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-map-marker-alt me-2"></i>Ubicación
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold text-inclusive-primary">
+                            <i class="fas fa-user-tie me-2"></i>Creado por
                                     </label>
-                                    <select id="ubicacion" name="ubicacion" class="form-select form-select-inclusive">
-                                        <option value="">Todas las ubicaciones</option>
-                                        <option value="medellin" {% if ubicacion_filter == 'medellin' %}selected{% endif %}>🏙️ Medellín</option>
-                                        <option value="bogota" {% if ubicacion_filter == 'bogota' %}selected{% endif %}>🏛️ Bogotá</option>
-                                        <option value="cali" {% if ubicacion_filter == 'cali' %}selected{% endif %}>🌴 Cali</option>
-                                        <option value="otra" {% if ubicacion_filter == 'otra' %}selected{% endif %}>📍 Otra</option>
+                        <select name="creador" class="form-select filter-select">
+                            <option value="">Todos los usuarios</option>
+                            {% for creador in creadores %}
+                            <option value="{{ creador.id }}" {% if creador_filter == creador.id|stringformat:"s" %}selected{% endif %}>
+                                {{ creador.first_name }} {{ creador.last_name }}
+                            </option>
+                            {% endfor %}
                                     </select>
+                    </div>
+                                
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold text-inclusive-primary">
+                            <i class="fas fa-calendar me-2"></i>Fecha desde
+                                    </label>
+                        <input type="date" 
+                               name="fecha_desde" 
+                               class="form-control filter-select"
+                               value="{{ fecha_desde_filter|default:'' }}">
+            </div>
+            
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold text-inclusive-primary">
+                            <i class="fas fa-calendar me-2"></i>Fecha hasta
+                                    </label>
+                        <input type="date" 
+                               name="fecha_hasta" 
+                               class="form-control filter-select"
+                               value="{{ fecha_hasta_filter|default:'' }}">
+                    </div>
                                 </div>
                                 
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="pisos" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-building me-2"></i>Número de Pisos
-                                    </label>
-                                    <select id="pisos" name="pisos" class="form-select form-select-inclusive">
-                                        <option value="">Todos los pisos</option>
-                                        <option value="1" {% if pisos_filter == '1' %}selected{% endif %}>🏠 1 piso</option>
-                                        <option value="2" {% if pisos_filter == '2' %}selected{% endif %}>🏢 2 pisos</option>
-                                        <option value="3_mas" {% if pisos_filter == '3_mas' %}selected{% endif %}>🏗️ 3 o más</option>
-                                    </select>
-                                </div>
+                <!-- Fila 3: Filtro de ubicación -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-inclusive-primary">
+                            <i class="fas fa-map-marker-alt me-2"></i>Ubicación del proyecto
+                        </label>
+                        <input type="text" 
+                               name="ubicacion" 
+                               class="form-control filter-select"
+                               placeholder="Ej: Medellín, Bogotá, Cali..."
+                               value="{{ ubicacion_filter|default:'' }}"
+                               title="Buscar por ciudad, barrio o dirección">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <!-- Espacio vacío para mantener el layout -->
+                    </div>
+                </div>
                                 
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="acabados" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-paint-brush me-2"></i>Nivel de Acabados
-                                    </label>
-                                    <select id="acabados" name="acabados" class="form-select form-select-inclusive">
-                                        <option value="">Todos los acabados</option>
-                                        <option value="basico" {% if acabados_filter == 'basico' %}selected{% endif %}>🎨 Básico</option>
-                                        <option value="estandar" {% if acabados_filter == 'estandar' %}selected{% endif %}>✨ Estándar</option>
-                                        <option value="premium" {% if acabados_filter == 'premium' %}selected{% endif %}>💎 Premium</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="creador" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-user-tie me-2"></i>Creado Por
-                                    </label>
-                                    <select id="creador" name="creador" class="form-select form-select-inclusive">
-                                        <option value="">Todos los creadores</option>
-                                        {% for creador in creadores %}
-                                        <option value="{{ creador.id }}" {% if creador_filter == creador.id|stringformat:"s" %}selected{% endif %}>
-                                            👤 {{ creador.first_name }} {{ creador.last_name }} ({{ creador.get_role_display }})
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-
-                                <!-- Filtros de rango -->
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="area_min" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-ruler-combined me-2"></i>Área mínima (m²)
-                                    </label>
-                                    <input type="number" 
-                                           id="area_min" 
-                                           name="area_min" 
-                                           class="form-control form-control-inclusive" 
-                                           placeholder="0"
-                                           value="{{ area_min_filter|default:'' }}"
-                                           min="0">
-                                </div>
-                                
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="area_max" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-ruler-combined me-2"></i>Área máxima (m²)
-                                    </label>
-                                    <input type="number" 
-                                           id="area_max" 
-                                           name="area_max" 
-                                           class="form-control form-control-inclusive" 
-                                           placeholder="1000"
-                                           value="{{ area_max_filter|default:'' }}"
-                                           min="0">
-                                </div>
-                                
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="presupuesto_min" class="form-label fw-semibold text-inclusive-primary">
+                <!-- Fila 4: Filtros de presupuesto -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-inclusive-primary">
                                         <i class="fas fa-dollar-sign me-2"></i>Presupuesto mínimo
                                     </label>
-                                    <input type="number" 
-                                           id="presupuesto_min" 
+                        <input type="text" 
                                            name="presupuesto_min" 
-                                           class="form-control form-control-inclusive" 
+                               class="form-control filter-select budget-input"
                                            placeholder="0"
                                            value="{{ presupuesto_min_filter|default:'' }}"
-                                           min="0">
+                               data-type="budget">
                                 </div>
                                 
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="presupuesto_max" class="form-label fw-semibold text-inclusive-primary">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-inclusive-primary">
                                         <i class="fas fa-dollar-sign me-2"></i>Presupuesto máximo
                                     </label>
-                                    <input type="number" 
-                                           id="presupuesto_max" 
+                        <input type="text" 
                                            name="presupuesto_max" 
-                                           class="form-control form-control-inclusive" 
-                                           placeholder="1000000000"
+                               class="form-control filter-select budget-input"
+                               placeholder="1.000.000.000"
                                            value="{{ presupuesto_max_filter|default:'' }}"
-                                           min="0">
+                               data-type="budget">
                                 </div>
-                                
-                                <!-- Filtros adicionales -->
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="terreno" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-mountain me-2"></i>Tipo de Terreno
-                                    </label>
-                                    <select id="terreno" name="terreno" class="form-select form-select-inclusive">
-                                        <option value="">Todos los terrenos</option>
-                                        <option value="blando" {% if terreno_filter == 'blando' %}selected{% endif %}>🌱 Blando</option>
-                                        <option value="normal" {% if terreno_filter == 'normal' %}selected{% endif %}>🏔️ Normal</option>
-                                        <option value="rocoso" {% if terreno_filter == 'rocoso' %}selected{% endif %}>🗿 Rocoso</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="acceso" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-road me-2"></i>Acceso a Obra
-                                    </label>
-                                    <select id="acceso" name="acceso" class="form-select form-select-inclusive">
-                                        <option value="">Todos los accesos</option>
-                                        <option value="facil" {% if acceso_filter == 'facil' %}selected{% endif %}>🚗 Fácil</option>
-                                        <option value="medio" {% if acceso_filter == 'medio' %}selected{% endif %}>⚠️ Medio</option>
-                                        <option value="dificil" {% if acceso_filter == 'dificil' %}selected{% endif %}>🚧 Difícil</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="banos" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-bath me-2"></i>Número de Baños
-                                    </label>
-                                    <select id="banos" name="banos" class="form-select form-select-inclusive">
-                                        <option value="">Cualquier cantidad</option>
-                                        <option value="1" {% if banos_filter == '1' %}selected{% endif %}>🚿 1 baño</option>
-                                        <option value="2" {% if banos_filter == '2' %}selected{% endif %}>🚿🚿 2 baños</option>
-                                        <option value="3" {% if banos_filter == '3' %}selected{% endif %}>🚿🚿🚿 3+ baños</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="fecha_desde" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-calendar me-2"></i>Fecha desde
-                                    </label>
-                                    <input type="date" 
-                                           id="fecha_desde" 
-                                           name="fecha_desde" 
-                                           class="form-control form-control-inclusive"
-                                           value="{{ fecha_desde_filter|default:'' }}">
-                                </div>
-                                
-                                <div class="col-md-6 col-lg-3">
-                                    <label for="fecha_hasta" class="form-label fw-semibold text-inclusive-primary">
-                                        <i class="fas fa-calendar me-2"></i>Fecha hasta
-                                    </label>
-                                    <input type="date" 
-                                           id="fecha_hasta" 
-                                           name="fecha_hasta" 
-                                           class="form-control form-control-inclusive"
-                                           value="{{ fecha_hasta_filter|default:'' }}">
-                                </div>
-                            </div>
-                            
-                            <!-- Botones de acción -->
-                            <div class="row mt-4">
-                                <div class="col-12 text-center">
-                                    <button type="submit" class="btn btn-inclusive-primary btn-lg px-5 me-3">
-                                        <i class="fas fa-search me-2"></i>Aplicar Filtros
-                                    </button>
-                                    <a href="{% url 'projects:project_list' %}" class="btn btn-outline-inclusive-secondary btn-lg px-4">
-                                        <i class="fas fa-times me-2"></i>Limpiar Filtros
-                                    </a>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </form>
                 
-                <!-- Resumen de filtros activos -->
-                {% if has_active_filters %}
-                <div class="mt-3 text-center">
-                    <div class="d-inline-flex align-items-center bg-inclusive-light px-4 py-3 rounded-pill shadow-sm">
+            <!-- Filtros activos -->
+            {% if search_query or status_filter or trabajadores_filter or creador_filter or fecha_desde_filter or fecha_hasta_filter or ubicacion_filter or presupuesto_min_filter or presupuesto_max_filter %}
+                <div class="mt-4 text-center">
+                <div class="d-inline-flex align-items-center bg-inclusive-light px-4 py-2 rounded-pill">
                         <i class="fas fa-filter text-inclusive-primary me-2"></i>
-                        <small class="text-inclusive-secondary fw-semibold me-2">
-                            Filtros aplicados:
-                        </small>
+                    <span class="text-inclusive-secondary fw-semibold me-2">Filtros activos:</span>
                         <div class="d-flex flex-wrap gap-1 justify-content-center">
-                            {% if search_query %}<span class="badge bg-inclusive-primary px-2 py-1">{{ search_query }}</span>{% endif %}
-                            {% if status_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ status_filter|title }}</span>{% endif %}
-                            {% if ubicacion_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ ubicacion_filter|title }}</span>{% endif %}
-                            {% if pisos_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ pisos_filter|title }}</span>{% endif %}
-                            {% if acabados_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ acabados_filter|title }}</span>{% endif %}
-                            {% if area_min_filter or area_max_filter %}<span class="badge bg-inclusive-primary px-2 py-1">Área: {{ area_min_filter|default:"0" }}-{{ area_max_filter|default:"∞" }}m²</span>{% endif %}
-                            {% if presupuesto_min_filter or presupuesto_max_filter %}<span class="badge bg-inclusive-primary px-2 py-1">Presupuesto: ${{ presupuesto_min_filter|default:"0" }}-${{ presupuesto_max_filter|default:"∞" }}</span>{% endif %}
-                            {% if terreno_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ terreno_filter|title }}</span>{% endif %}
-                            {% if acceso_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ acceso_filter|title }}</span>{% endif %}
-                            {% if banos_filter %}<span class="badge bg-inclusive-primary px-2 py-1">{{ banos_filter|title }}</span>{% endif %}
-                            {% if fecha_desde_filter or fecha_hasta_filter %}<span class="badge bg-inclusive-primary px-2 py-1">Fecha: {{ fecha_desde_filter|default:"∞" }} - {{ fecha_hasta_filter|default:"∞" }}</span>{% endif %}
+                        {% if search_query %}
+                            <span class="badge bg-inclusive-primary me-1">{{ search_query }}</span>
+                        {% endif %}
+                        {% if status_filter %}
+                            <span class="badge bg-inclusive-primary me-1">{{ status_filter|title }}</span>
+                        {% endif %}
+                        {% if trabajadores_filter %}
+                            <span class="badge bg-inclusive-primary me-1">{{ trabajadores_filter }} trabajadores</span>
+                        {% endif %}
+                        {% if creador_filter %}
+                            <span class="badge bg-inclusive-primary me-1">Creado por: {{ creador_filter }}</span>
+                        {% endif %}
+                        {% if fecha_desde_filter %}
+                            <span class="badge bg-inclusive-primary me-1">Desde: {{ fecha_desde_filter }}</span>
+                        {% endif %}
+                        {% if fecha_hasta_filter %}
+                            <span class="badge bg-inclusive-primary me-1">Hasta: {{ fecha_hasta_filter }}</span>
+                        {% endif %}
+                        {% if ubicacion_filter %}
+                            <span class="badge bg-inclusive-primary me-1">📍 {{ ubicacion_filter }}</span>
+                        {% endif %}
+                        {% if presupuesto_min_filter or presupuesto_max_filter %}
+                            <span class="badge bg-inclusive-primary me-1">Presupuesto: ${{ presupuesto_min_filter|default:"0" }}-${{ presupuesto_max_filter|default:"∞" }}</span>
+                        {% endif %}
                         </div>
+                    <a href="{% url 'projects:project_list' %}" class="btn btn-sm btn-outline-inclusive-secondary ms-2">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
                     </div>
                 </div>
                 {% endif %}
-                
-                <!-- Contador de resultados -->
-                {% if has_active_filters %}
-                <div class="mt-3 text-center">
-                    <div class="d-inline-flex align-items-center bg-inclusive-primary text-white px-4 py-2 rounded-pill">
-                        <i class="fas fa-chart-bar me-2"></i>
-                        <span class="fw-semibold">
-                            Resultados: {{ projects_en_proceso.count|add:projects_terminados.count|add:projects_futuros.count }} proyecto{{ projects_en_proceso.count|add:projects_terminados.count|add:projects_futuros.count|pluralize }}
-                        </span>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
         </div>
         
+        <!-- Espaciador adicional entre filtros y proyectos -->
+        <div class="mt-5 mb-4"></div>
+        
         <!-- Sin resultados -->
-        {% if has_active_filters and projects_en_proceso.count == 0 and projects_terminados.count == 0 and projects_futuros.count == 0 %}
-        <div class="text-center py-5 animate-fade-in">
-            <div class="card shadow-inclusive-lg rounded-4 border-0">
+        {% if search_query or status_filter %}
+            {% if projects_en_proceso.count == 0 and projects_terminados.count == 0 and projects_futuros.count == 0 %}
+            <div class="text-center py-5">
+                <div class="card shadow-lg rounded-4 border-0">
                 <div class="card-body p-5">
                     <div class="mb-4">
                         <i class="fas fa-search text-inclusive-secondary display-1"></i>
@@ -451,11 +333,12 @@
                 </div>
             </div>
         </div>
-        {% else %}
+            {% endif %}
+        {% endif %}
 
         <!-- Proyectos en Proceso -->
         {% if projects_en_proceso %}
-        <div class="mb-5 position-relative animate-fade-in animate-delay-1">
+        <div class="mb-6 position-relative animate-fade-in animate-delay-1">
             <div class="position-absolute top-0 start-0" style="z-index: 10;">
                 <div class="bg-inclusive-primary text-white px-4 py-3 rounded-end-4 shadow-inclusive border-3" style="border-color: var(--inclusive-green-neon);">
                     <h2 class="h5 fw-bold mb-0">
@@ -529,7 +412,7 @@
                                     </small>
                                 </div>
                                 {% endif %}
-                                
+
                                 <!-- Información técnica (solo si está disponible) -->
                                 {% if project.area_construida_total or project.built_area %}
                                 <div class="d-flex align-items-center mb-2">
@@ -561,9 +444,9 @@
        </div>
        {% endif %}
 
-       <!-- Proyectos Terminados -->
+        <!-- Proyectos Terminados -->
         {% if projects_terminados %}
-        <div class="mb-5 position-relative animate-fade-in animate-delay-2">
+        <div class="mb-6 position-relative animate-fade-in animate-delay-2">
             <div class="position-absolute top-0 start-0" style="z-index: 10;">
                 <div class="bg-inclusive-neon text-inclusive-dark px-4 py-3 rounded-end-4 shadow-inclusive border-3" style="border-color: var(--inclusive-green-primary);">
                     <h2 class="h5 fw-bold mb-0">
@@ -637,7 +520,7 @@
                                     </small>
                                 </div>
                                 {% endif %}
-                                
+
                                 <!-- Información técnica (solo si está disponible) -->
                                 {% if project.area_construida_total or project.built_area %}
                                 <div class="d-flex align-items-center mb-2">
@@ -669,9 +552,9 @@
        </div>
        {% endif %}
 
-       <!-- Proyectos Futuros -->
+        <!-- Proyectos Futuros -->
         {% if projects_futuros %}
-        <div class="mb-5 position-relative animate-fade-in animate-delay-3">
+        <div class="mb-6 position-relative animate-fade-in animate-delay-3">
             <div class="position-absolute top-0 start-0" style="z-index: 10;">
                 <div class="bg-inclusive-secondary text-white px-4 py-3 rounded-end-4 shadow-inclusive border-3" style="border-color: var(--inclusive-gray-dark);">
                     <h2 class="h5 fw-bold mb-0">
@@ -745,7 +628,7 @@
                                     </small>
                                 </div>
                                 {% endif %}
-                                
+
                                 <!-- Información técnica (solo si está disponible) -->
                                 {% if project.area_construida_total or project.built_area %}
                                 <div class="d-flex align-items-center mb-2">
@@ -800,108 +683,18 @@
             <i class="fas fa-plus fs-4"></i>
         </a>
     </div>
-        {% endif %}
 </div>
 
-<!-- Formulario oculto para búsqueda -->
-<form method="get" id="searchForm" class="d-none">
-    <input type="text" name="search" value="{{ search_query }}">
-    <button type="submit"></button>
-</form>
-
 <script>
-// Función para mostrar/ocultar filtros (disponible globalmente)
-function toggleFilters() {
-    console.log('toggleFilters ejecutada'); // Debug
-    const filtersContainer = document.getElementById('filtersContainer');
-    const toggleText = document.getElementById('toggleText');
-    const toggleIcon = document.getElementById('toggleIcon');
-    
-    console.log('filtersContainer:', filtersContainer); // Debug
-    console.log('toggleText:', toggleText); // Debug
-    console.log('toggleIcon:', toggleIcon); // Debug
-    
-    if (filtersContainer.style.display === 'none' || filtersContainer.style.display === '') {
-        // Mostrar filtros
-        console.log('Mostrando filtros...'); // Debug
-        filtersContainer.style.display = 'block';
-        toggleText.textContent = 'Ocultar Filtros Avanzados';
-        toggleIcon.className = 'fas fa-chevron-up ms-2';
-    } else {
-        // Ocultar filtros
-        console.log('Ocultando filtros...'); // Debug
-        filtersContainer.style.display = 'none';
-        toggleText.textContent = 'Mostrar Filtros Avanzados';
-        toggleIcon.className = 'fas fa-chevron-down ms-2';
-    }
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Función para aplicar filtros automáticamente
-    function autoApplyFilters() {
-        const form = document.getElementById('filtersForm');
-        const formData = new FormData(form);
-        const params = new URLSearchParams();
-        
-        // Solo incluir campos que tengan valor
-        for (let [key, value] of formData.entries()) {
-            if (value && value.trim() !== '') {
-                params.append(key, value);
-            }
-        }
-        
-        // Redirigir con los filtros aplicados
-        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-        window.location.href = url;
-    }
-    
-    // Aplicar filtros automáticamente al cambiar selects
-    document.querySelectorAll('select').forEach(select => {
-        select.addEventListener('change', function() {
-            // Pequeño delay para evitar múltiples redirecciones
-            setTimeout(autoApplyFilters, 300);
-        });
-    });
-    
-    // Aplicar filtros al presionar Enter en campos de texto
-    document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]').forEach(input => {
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                autoApplyFilters();
-            }
-        });
-    });
-    
-    // Aplicar filtros al perder el foco en campos numéricos y de fecha
-    document.querySelectorAll('input[type="number"], input[type="date"]').forEach(input => {
-        input.addEventListener('blur', function() {
-            if (this.value && this.value.trim() !== '') {
-                setTimeout(autoApplyFilters, 500);
-            }
-        });
-    });
-    
-    // Botón de aplicar filtros
-    document.querySelector('button[type="submit"]').addEventListener('click', function(e) {
-        e.preventDefault();
-        autoApplyFilters();
-    });
-    
-    // Botón de limpiar filtros
-    document.querySelector('a[href="{% url "projects:project_list" %}"]').addEventListener('click', function(e) {
-        e.preventDefault();
-        window.location.href = this.href;
-    });
-    
     // Efectos hover para las cards de proyectos
     document.querySelectorAll('.project-card-hover').forEach((card, index) => {
         // Añadir delay de animación escalonado
         card.style.animationDelay = `${index * 100}ms`;
         
         card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-12px) scale(1.02)';
-            this.style.boxShadow = '0 20px 40px rgba(0,0,0,0.15)';
+            this.style.transform = 'translateY(-8px) scale(1.02)';
+            this.style.boxShadow = '0 15px 35px rgba(0,0,0,0.15)';
         });
         
         card.addEventListener('mouseleave', function() {
@@ -909,16 +702,6 @@ document.addEventListener('DOMContentLoaded', function() {
             this.style.boxShadow = '';
         });
     });
-    
-    // Función para formatear números grandes
-    function formatNumber(num) {
-        if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + 'M';
-        } else if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'K';
-        }
-        return num.toString();
-    }
     
     // Formatear presupuestos en las cards con puntos cada 3 cifras
     document.querySelectorAll('[data-budget]').forEach(element => {
@@ -933,45 +716,58 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Tooltip para filtros complejos
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
+    // Toggle para filtros avanzados
+    const toggleAdvancedBtn = document.getElementById('toggleAdvancedFilters');
+    const advancedFilters = document.getElementById('advancedFilters');
+    const toggleAdvancedText = document.getElementById('toggleAdvancedText');
+    const toggleAdvancedIcon = document.getElementById('toggleAdvancedIcon');
     
-    // Animación de carga para filtros
-    function showLoading() {
-        const submitBtn = document.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Aplicando...';
-        submitBtn.disabled = true;
-        
-        setTimeout(() => {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }, 1000);
+    if (toggleAdvancedBtn && advancedFilters) {
+        toggleAdvancedBtn.addEventListener('click', function() {
+            if (advancedFilters.style.display === 'none' || advancedFilters.style.display === '') {
+                advancedFilters.style.display = 'block';
+                toggleAdvancedText.textContent = 'Ocultar Filtros Avanzados';
+                toggleAdvancedIcon.className = 'fas fa-chevron-up ms-2';
+            } else {
+                advancedFilters.style.display = 'none';
+                toggleAdvancedText.textContent = 'Mostrar Filtros Avanzados';
+                toggleAdvancedIcon.className = 'fas fa-chevron-down ms-2';
+            }
+        });
     }
     
-    // Mostrar loading al aplicar filtros
-    document.querySelector('button[type="submit"]').addEventListener('click', showLoading);
-    
-    // Validación de rangos
-    document.querySelectorAll('input[type="number"]').forEach(input => {
-        input.addEventListener('input', function() {
-            const min = this.getAttribute('min');
-            const value = parseFloat(this.value);
-            
-            if (min && value < parseFloat(min)) {
-                this.setCustomValidity(`El valor mínimo es ${min}`);
-            } else {
-                this.setCustomValidity('');
+    // Auto-submit del formulario al cambiar cualquier filtro
+    const form = document.getElementById('filtersForm');
+    if (form) {
+        // Auto-submit al cambiar selects
+        form.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', function() {
+                setTimeout(() => form.submit(), 300);
+            });
+        });
+        
+        // Auto-submit al presionar Enter en campos de texto
+        form.querySelectorAll('input[type="text"]').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    form.submit();
+                }
+            });
+        });
+        
+        // Auto-submit al perder el foco en campos numéricos, de fecha y presupuesto
+        form.querySelectorAll('input[type="number"], input[type="date"], .budget-input').forEach(input => {
+            input.addEventListener('blur', function() {
+                if (this.value && this.value.trim() !== '') {
+                    setTimeout(() => form.submit(), 500);
             }
         });
     });
     
     // Validación de fechas
-    const fechaDesde = document.getElementById('fecha_desde');
-    const fechaHasta = document.getElementById('fecha_hasta');
+        const fechaDesde = form.querySelector('input[name="fecha_desde"]');
+        const fechaHasta = form.querySelector('input[name="fecha_hasta"]');
     
     if (fechaDesde && fechaHasta) {
         fechaDesde.addEventListener('change', function() {
@@ -981,29 +777,66 @@ document.addEventListener('DOMContentLoaded', function() {
         fechaHasta.addEventListener('change', function() {
             fechaDesde.max = this.value;
         });
+        }
     }
-
-    // Mostrar filtros automáticamente si hay filtros activos
-    function autoShowFiltersIfNeeded() {
-        const filtersContainer = document.getElementById('filtersContainer');
-        const toggleText = document.getElementById('toggleText');
-        const toggleIcon = document.getElementById('toggleIcon');
-        
-        // Verificar si hay filtros activos en la URL
+    
+    // Mostrar filtros avanzados automáticamente si hay filtros activos
+    function autoShowAdvancedFilters() {
         const urlParams = new URLSearchParams(window.location.search);
-        const hasActiveFilters = Array.from(urlParams.entries()).some(([key, value]) => 
-            value && value.trim() !== '' && key !== 'page'
+        const hasAdvancedFilters = Array.from(urlParams.entries()).some(([key, value]) => 
+            value && value.trim() !== '' && 
+            ['trabajadores', 'creador', 'fecha_desde', 'fecha_hasta', 'area_min', 'area_max', 'presupuesto_min', 'presupuesto_max'].includes(key)
         );
         
-        if (hasActiveFilters) {
-            filtersContainer.style.display = 'block';
-            toggleText.textContent = 'Ocultar Filtros Avanzados';
-            toggleIcon.className = 'fas fa-chevron-up ms-2';
+        if (hasAdvancedFilters && advancedFilters) {
+            advancedFilters.style.display = 'block';
+            toggleAdvancedText.textContent = 'Ocultar Filtros Avanzados';
+            toggleAdvancedIcon.className = 'fas fa-chevron-up ms-2';
         }
     }
 
     // Ejecutar auto-show al cargar la página
-    autoShowFiltersIfNeeded();
+    autoShowAdvancedFilters();
+    
+    // Formateo de campos de presupuesto con puntos cada 3 cifras
+    function formatBudgetInput(input) {
+        let value = input.value.replace(/[^\d]/g, ''); // Solo números
+        if (value && value.length > 0) {
+            try {
+                // Formatear con puntos cada 3 cifras
+                const number = parseInt(value);
+                if (!isNaN(number)) {
+                    const formatted = number.toLocaleString('es-CO');
+                    input.value = formatted;
+                }
+            } catch (e) {
+                console.log('Error formateando número:', e);
+            }
+        }
+    }
+    
+    // Aplicar formateo a campos de presupuesto
+    document.querySelectorAll('.budget-input').forEach(input => {
+        // Formatear al escribir
+        input.addEventListener('input', function() {
+            formatBudgetInput(this);
+        });
+        
+        // Formatear al cargar la página
+        if (this.value) {
+            formatBudgetInput(this);
+        }
+    });
+    
+    // Limpiar puntos antes de enviar el formulario
+    form.addEventListener('submit', function(e) {
+        document.querySelectorAll('.budget-input').forEach(input => {
+            if (input.value) {
+                // Remover puntos y enviar solo números
+                input.value = input.value.replace(/\./g, '');
+            }
+        });
+    });
 });
 </script>
 {% endblock %}
