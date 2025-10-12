@@ -110,10 +110,10 @@ class Project(models.Model):
 
     # 1. Datos generales
     UBICACION_CHOICES = [
-        ("medellin", "Medellín"),
-        ("bogota", "Bogotá"),
-        ("cali", "Cali"),
-        ("otra", "Otra (especificar)"),
+        ("Medellin", "Medellín"),
+        ("Bogota", "Bogotá"),
+        ("Cali", "Cali"),
+        ("Otra", "Otra (especificar)"),
     ]
 
     PISOS_CHOICES = [
@@ -537,6 +537,11 @@ class Project(models.Model):
         on_delete=models.CASCADE,  # Si se elimina el usuario, se elimina el proyecto
         verbose_name="Creado por",
     )
+    created_by_ai = models.BooleanField(
+        default=False,
+        verbose_name="Creado por IA",
+        help_text="Indica si este proyecto fue generado automáticamente por el chatbot IA"
+    )   
 
     # ===== FECHAS =====
     # PostgreSQL: TIMESTAMP - Fecha y hora de creación (se establece automáticamente)
