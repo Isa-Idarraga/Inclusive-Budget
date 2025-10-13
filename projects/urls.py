@@ -59,4 +59,13 @@ urlpatterns = [
     
     # URL para gestión de trabajadores del proyecto
     path('<int:project_id>/workers/', views.project_workers, name='project_workers'),
+    
+    # URL para exportar presupuesto a Excel (solo JEFE)
+    path('<int:project_id>/export-budget-excel/', views.export_budget_to_excel, name='export_budget_to_excel'),
+    
+    # URL para exportar gastos diarios a Excel (solo JEFE)
+    path('<int:project_id>/export-gastos-excel/', views.export_gastos_to_excel, name='export_gastos_to_excel'),
+    
+    # URL para exportar reporte comparativo a Excel (solo JEFE)
+    path('<int:project_id>/export-comparativo-excel/', views.export_comparativo_to_excel, name='export_comparativo_to_excel'),
 ]
