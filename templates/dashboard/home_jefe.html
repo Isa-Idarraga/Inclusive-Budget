@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 {% block content %}
 <section class="hero">
   <h1 class="hero-title">Hola Jefe 👑<br>¿Desea iniciar un nuevo proyecto?</h1>
@@ -62,4 +63,143 @@
     <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive">
   </div>
 </section>
+<!-- KPIs section -->
+<div class="container mt-5">
+  <h3 class="text-center mb-4">Dashboard - Indicadores Clave</h3>
+  <div class="row g-4">
+    <div class="col-md-4">
+      <div class="card p-3 shadow-inclusive">
+        <h5>Avance presupuestario consolidado</h5>
+        <div class="progress" style="height: 28px">
+          {% with pct=porcentaje_avance|default:0 %}
+          <div class="progress-bar bg-inclusive-primary" role="progressbar" style="width: {{ pct }}%;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">{{ pct }}%</div>
+          {% endwith %}
+        </div>
+        <p class="small mt-2">Basado en suma de presupuestos y gastado.</p>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card p-3 shadow-inclusive">
+        <h5>Resumen financiero consolidado</h5>
+        <p><strong>Presupuesto total:</strong> ${{ resumen_financiero.total_presupuesto|floatformat:0|intcomma }}</p>
+        <p><strong>Gastado total:</strong> ${{ resumen_financiero.total_gastado|floatformat:0|intcomma }}</p>
+  <p><strong>Saldo:</strong> ${{ resumen_financiero.saldo|floatformat:0|intcomma }}</p>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card p-3 shadow-inclusive">
+        <h5>Materiales con stock bajo (≤ {{ material_threshold }}% de presentación)</h5>
+        <ul class="list-unstyled small">
+          {% for m in materiales_bajo_stock %}
+            <li>{{ m.sku }} — {{ m.name }}: {{ m.stock }} {{ m.unit.symbol }}</li>
+          {% empty %}
+            <li>No hay materiales por debajo del umbral.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card p-3 shadow-inclusive">
+        <h5>Proyectos con desviación ≥ {{ desviacion_threshold }}%</h5>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Proyecto</th>
+                <th>Presupuesto</th>
+                <th>Gastado</th>
+                <th>% Gastado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in proyectos_desviacion %}
+                <tr>
+                  <td>{{ p.name }}</td>
+                  <td>${{ p.presupuesto|floatformat:0|intcomma }}</td>
+                  <td>${{ p.gastado|floatformat:0|intcomma }}</td>
+                  <td>{{ p.porcentaje|floatformat:2 }}%</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4">No hay proyectos con desviación significativa.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const dataUrl = '{% url "dashboard:kpis_data" %}';
+    fetch(dataUrl)
+      .then(r => r.json())
+      .then(payload => {
+        // Update financial summary
+        const totalPresupuesto = payload.resumen_financiero.total_presupuesto || 0;
+        const totalGastado = payload.resumen_financiero.total_gastado || 0;
+        // Pie/doughnut chart for consolidated finances
+        const ctxFin = document.createElement('canvas');
+        ctxFin.id = 'chartFin';
+        document.querySelector('.card.p-3.shadow-inclusive').appendChild(ctxFin);
+        new Chart(ctxFin, {
+          type: 'doughnut',
+          data: {
+            labels: ['Presupuesto', 'Gastado'],
+            datasets: [{
+              data: [totalPresupuesto, totalGastado],
+              backgroundColor: ['#4e73df', '#e74a3b']
+            }]
+          },
+        });
+
+        // Projects bar chart (presupuesto vs gastado)
+        if (payload.proyectos && payload.proyectos.length){
+          const labels = payload.proyectos.map(p => p.name);
+          const presupuestos = payload.proyectos.map(p => p.presupuesto);
+          const gastados = payload.proyectos.map(p => p.gastado);
+
+          const container = document.createElement('div');
+          container.className = 'mt-4';
+          const canvas = document.createElement('canvas');
+          container.appendChild(canvas);
+          document.querySelector('.container.mt-5').appendChild(container);
+
+          new Chart(canvas, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [
+                { label: 'Presupuesto', data: presupuestos, backgroundColor: '#4e73df' },
+                { label: 'Gastado', data: gastados, backgroundColor: '#e74a3b' },
+              ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+          });
+        }
+
+        // Populate materials list dynamically (optional enhancement)
+        if (payload.materiales && payload.materiales.length){
+          const listEl = document.querySelector('.card.p-3.shadow-inclusive ul.list-unstyled');
+          if (listEl){
+            listEl.innerHTML = '';
+            payload.materiales.slice(0,20).forEach(m => {
+              const li = document.createElement('li');
+              li.textContent = `${m.sku} — ${m.name}: ${m.stock} ${m.unit}`;
+              listEl.appendChild(li);
+            });
+          }
+        }
+      })
+      .catch(err => console.error('Error cargando KPIs:', err));
+  });
+</script>
 {% endblock %}
