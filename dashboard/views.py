@@ -11,6 +11,7 @@ from django.views.decorators.http import require_GET
 from django.http import JsonResponse
 from decimal import Decimal
 from .kpis import compute_kpis_from_django
+from projects.models import ProyectoMaterial
 
 
 @login_required
@@ -62,40 +63,56 @@ def kpis(request):
     proyectos = Project.objects.filter(~Q(estado="futuro"))
 
     # Resumen financiero consolidado
+    # Use the stored presupuesto field for total_presupuesto but prefer the computed
+    # presupuesto_gastado_calculado per project to reflect entradas/consumos.
     resumen = proyectos.aggregate(
         total_presupuesto=Sum("presupuesto"),
-        total_gastado=Sum("presupuesto_gastado"),
     )
 
     total_presupuesto = resumen.get("total_presupuesto") or 0
-    total_gastado = resumen.get("total_gastado") or 0
-
+    # Sum calculated spent per project to reflect actual entradas/consumos
+    total_gastado = 0
+    for p in proyectos:
+        try:
+            total_gastado += float(getattr(p, 'presupuesto_gastado_calculado', None) or getattr(p, 'presupuesto_gastado', 0) or 0)
+        except Exception:
+            # fallback to the DB field if any issue
+            total_gastado += float(getattr(p, 'presupuesto_gastado', 0) or 0)
+            
+    total_presupuesto = Decimal(total_presupuesto)
+    total_gastado = Decimal(total_gastado)
     saldo = total_presupuesto - total_gastado
 
     porcentaje_avance = 0
-    if total_presupuesto and total_presupuesto > 0:
+    if total_presupuesto and total_gastado > 0:
         porcentaje_avance = (total_gastado / total_presupuesto) * 100
 
     # Materiales con stock bajo (porcentaje de presentation_qty)
     materiales_bajo = Material.objects.filter(stock__lte=F('presentation_qty') * (material_threshold/100.0))
+    
+    # Materiales con stock < 10 por proyecto
+    materiales_bajo_10 = ProyectoMaterial.objects.filter(stock_proyecto__lt=10)
 
     # Proyectos con desviación significativa
     proyectos_desviacion = []
     for p in proyectos:
         if p.presupuesto and p.presupuesto > 0:
-            porcentaje = (p.presupuesto_gastado / p.presupuesto) * 100
+            # porcentaje = (p.presupuesto_gastado / p.presupuesto) * 100
+            gasto_real = getattr(p, 'presupuesto_gastado_calculado', None) or p.presupuesto_gastado
+            porcentaje = (gasto_real / p.presupuesto) * 100
             if abs(porcentaje - 100) >= desviacion_threshold:
                 proyectos_desviacion.append({
                     "id": p.id,
                     "name": p.name,
                     "presupuesto": p.presupuesto,
-                    "gastado": p.presupuesto_gastado,
+                    "gastado": p.presupuesto_gastado_calculado,
                     "porcentaje": porcentaje,
                 })
 
     context = {
         "porcentaje_avance": round(porcentaje_avance, 2),
         "materiales_bajo_stock": materiales_bajo[:20],
+        "materiales_bajo_10": materiales_bajo_10,
         "proyectos_desviacion": proyectos_desviacion,
         "resumen_financiero": {
             "total_presupuesto": total_presupuesto,
@@ -130,7 +147,7 @@ def kpis_data(request):
     except ValueError:
         desviacion_threshold = 10.0
 
-    proyectos_qs = Project.objects.filter(~Q(estado="futuro"))
+    proyectos_qs = Project.objects.filter(~Q(estado__in=["futuro", "terminado"]))   
     materiales_qs = Material.objects.filter(stock__lte=F('presentation_qty') * (material_threshold/100.0))
 
     payload = compute_kpis_from_django(proyectos_qs, materiales_qs, material_threshold=material_threshold, desviacion_threshold=desviacion_threshold)

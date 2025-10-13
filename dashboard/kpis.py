@@ -83,8 +83,9 @@ def compute_kpis_from_django(projects_qs, materials_qs, material_threshold: floa
         proyectos.append({
             'id': getattr(p, 'id', None),
             'name': getattr(p, 'name', ''),
-            'presupuesto': getattr(p, 'presupuesto', 0),
-            'presupuesto_gastado': getattr(p, 'presupuesto_gastado', 0),
+            'presupuesto': float(getattr(p, 'presupuesto', 0) or 0),
+            # Prefer the computed property if available (sums entradas/consumos)
+            'presupuesto_gastado': float(getattr(p, 'presupuesto_gastado_calculado', None) if getattr(p, 'presupuesto_gastado_calculado', None) is not None else getattr(p, 'presupuesto_gastado', 0) or 0),
         })
 
     materiales = []
