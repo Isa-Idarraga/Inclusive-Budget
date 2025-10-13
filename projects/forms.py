@@ -696,7 +696,7 @@ class BudgetItemForm(forms.ModelForm):
             "unit_price": forms.NumberInput(attrs={
                 "class": "form-control",
                 "step": "0.01",
-                "min": "0"
+                "min": "0.01"
             }),
         }
     
@@ -704,6 +704,22 @@ class BudgetItemForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["quantity"].label = "Cantidad"
         self.fields["unit_price"].label = "Precio Unitario (COP)"
+    
+    def clean_quantity(self):
+        quantity = self.cleaned_data.get("quantity")
+        if quantity is None:
+            raise forms.ValidationError("Este campo es obligatorio.")
+        if quantity <= 0:
+            raise forms.ValidationError("La cantidad debe ser mayor a cero.")
+        return quantity
+    
+    def clean_unit_price(self):
+        unit_price = self.cleaned_data.get("unit_price")
+        if unit_price is None:
+            raise forms.ValidationError("Este campo es obligatorio.")
+        if unit_price <= 0:
+            raise forms.ValidationError("El precio unitario debe ser mayor a cero.")
+        return unit_price
 
 
 class BudgetSectionForm(forms.Form):
