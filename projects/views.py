@@ -7,6 +7,7 @@ from django.db.models import Q, Max, Count
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
 from django.db.models import Q, Max, Sum, F, DecimalField, ExpressionWrapper
 from django.utils import timezone
+from zoneinfo import ZoneInfo
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from openpyxl.utils import get_column_letter
@@ -20,6 +21,12 @@ from .forms import EntradaMaterialForm
 from users.decorators import role_required, project_owner_or_jefe_required
 from users.models import User
 from django.core.exceptions import PermissionDenied
+
+# Helper function para obtener hora colombiana
+def get_colombia_time():
+    """Obtiene la hora actual en zona horaria de Colombia"""
+    colombia_tz = ZoneInfo("America/Bogota")
+    return timezone.now().astimezone(colombia_tz)
 
 # Función para registrar entrada de material al inventario del proyecto
 @project_owner_or_jefe_required
@@ -1731,7 +1738,7 @@ def export_budget_to_excel(request, project_id):
         worksheet['A1'].fill = PatternFill(start_color='D9E1F2', end_color='D9E1F2', fill_type='solid')
         
         worksheet.merge_cells('A2:F2')
-        worksheet['A2'] = f"Fecha de exportación: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
+        worksheet['A2'] = f"Fecha de exportación: {get_colombia_time().strftime('%d/%m/%Y %H:%M')}"
         worksheet['A2'].font = Font(name='Arial', size=10, italic=True)
         worksheet['A2'].alignment = center_alignment
         
@@ -1868,7 +1875,7 @@ def export_budget_to_excel(request, project_id):
     summary_sheet['A2'].alignment = center_alignment
     
     summary_sheet.merge_cells('A3:D3')
-    summary_sheet['A3'] = f"Fecha de exportación: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
+    summary_sheet['A3'] = f"Fecha de exportación: {get_colombia_time().strftime('%d/%m/%Y %H:%M')}"
     summary_sheet['A3'].font = Font(name='Arial', size=10, italic=True)
     summary_sheet['A3'].alignment = center_alignment
     
@@ -1998,7 +2005,7 @@ def export_budget_to_excel(request, project_id):
     # Generar nombre del archivo
     project_name_clean = "".join(c for c in project.name if c.isalnum() or c in (' ', '_')).strip()
     project_name_clean = project_name_clean.replace(' ', '_')
-    fecha_actual = timezone.now().strftime('%Y-%m-%d')
+    fecha_actual = get_colombia_time().strftime('%Y-%m-%d')
     filename = f"Presupuesto_{project_name_clean}_{fecha_actual}.xlsx"
     
     print(f"🔍 DEBUG Excel Export - Archivo generado: {filename}")
@@ -2123,7 +2130,7 @@ def export_gastos_to_excel(request, project_id):
     ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
     
     ws.merge_cells('A3:G3')
-    ws['A3'] = f"Generado: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
+    ws['A3'] = f"Generado: {get_colombia_time().strftime('%d/%m/%Y %H:%M')}"
     ws['A3'].font = Font(name='Calibri', size=10, color='666666')
     ws['A3'].alignment = Alignment(horizontal='center', vertical='center')
     
@@ -2160,7 +2167,7 @@ def export_gastos_to_excel(request, project_id):
             costo_unitario,
             costo_total,
             consumo.componente_actividad,
-            consumo.responsable or 'No especificado'
+            consumo.responsable or (request.user.get_full_name() or request.user.username)
         ]
         
         for col, value in enumerate(row_data, 1):
@@ -2219,7 +2226,7 @@ def export_gastos_to_excel(request, project_id):
         ["Período:", periodo_texto],
         ["Total de registros:", consumos.count()],
         ["Total invertido:", f"${total_general:,.2f}"],
-        ["Fecha de generación:", timezone.now().strftime('%d/%m/%Y %H:%M')],
+        ["Fecha de generación:", get_colombia_time().strftime('%d/%m/%Y %H:%M')],
         ["Generado por:", request.user.get_full_name() or request.user.username]
     ]
     
@@ -2244,7 +2251,7 @@ def export_gastos_to_excel(request, project_id):
     # Generar nombre del archivo
     project_name_clean = "".join(c for c in project.name if c.isalnum() or c in (' ', '_')).strip()
     project_name_clean = project_name_clean.replace(' ', '_')
-    fecha_actual = timezone.now().strftime('%Y-%m-%d')
+    fecha_actual = get_colombia_time().strftime('%Y-%m-%d')
     
     if tipo_filtro == 'dia' and fecha:
         filename = f"Gastos_{project_name_clean}_{fecha}_{fecha_actual}.xlsx"
@@ -2388,7 +2395,7 @@ def export_comparativo_to_excel(request, project_id):
     
     # Información del reporte
     ws_comparativo.merge_cells('A2:H2')
-    ws_comparativo['A2'] = f"Generado: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
+    ws_comparativo['A2'] = f"Generado: {get_colombia_time().strftime('%d/%m/%Y %H:%M')}"
     ws_comparativo['A2'].font = Font(name='Calibri', size=10, color='666666')
     ws_comparativo['A2'].alignment = Alignment(horizontal='center', vertical='center')
     
@@ -2630,7 +2637,7 @@ def export_comparativo_to_excel(request, project_id):
         ["Gastos sin presupuesto:", len([d for d in comparativo_data if d['tipo'] == 'gasto_extra'])],
         ["", ""],
         ["INFORMACIÓN DEL REPORTE", ""],
-        ["Fecha de generación:", timezone.now().strftime('%d/%m/%Y %H:%M')],
+        ["Fecha de generación:", get_colombia_time().strftime('%d/%m/%Y %H:%M')],
         ["Generado por:", request.user.get_full_name() or request.user.username],
         ["Total de ítems presupuestados:", sum(item['items_presupuesto'] for item in comparativo_data)],
         ["Total de registros de gasto:", sum(item['items_gastados'] for item in comparativo_data)]
@@ -2670,7 +2677,7 @@ def export_comparativo_to_excel(request, project_id):
     # Generar nombre del archivo
     project_name_clean = "".join(c for c in project.name if c.isalnum() or c in (' ', '_')).strip()
     project_name_clean = project_name_clean.replace(' ', '_')
-    fecha_actual = timezone.now().strftime('%Y-%m-%d')
+    fecha_actual = get_colombia_time().strftime('%Y-%m-%d')
     filename = f"Comparativo_{project_name_clean}_{fecha_actual}.xlsx"
     
     print(f"🔍 DEBUG Export Comparativo - Archivo generado: {filename}")
