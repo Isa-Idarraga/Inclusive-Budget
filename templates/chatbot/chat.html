@@ -2,28 +2,33 @@
 {% load static %}
 
 {% block content %}
-<div class="container py-5">
-  <h2 class="fw-bold mb-4 text-center"> Chatbot Asistente</h2>
+<link rel="stylesheet" href="{% static 'C:\Users\ASUS\Downloads\InclusiveBudgetProject\Inclusive-Budget\static\styles.css' %}">
 
-  <!-- Caja de chat -->
-  <div id="chat-box" class="p-3 border rounded-4 bg-light mb-3" style="height: 400px; overflow-y: auto;">
-    <!-- Mensajes se insertan aquí -->
+<div class="container py-5" style="max-width: 950px;">
+  <h2 class="fw-bold mb-4 text-center">Asistente de Presupuestos</h2>
+
+  <div id="chat-box" class="chat-box p-4 border rounded-4 bg-light mb-3 shadow-sm">
+    <div class="text-muted small mb-3 text-center">
+      💬 Escribe <b>“crear presupuesto”</b> para iniciar uno nuevo.<br>
+      ⛔ Escribe <b>“cancelar”</b> para detenerlo.
+    </div>
   </div>
 
-  <!-- Formulario -->
   <form id="chat-form" class="d-flex gap-2">
     <input 
       type="text" 
       id="user-input" 
-      class="form-control" 
+      class="form-control"
       placeholder="Escribe tu mensaje..." 
       required
     >
-    <button type="submit" class="btn btn-dark">Enviar</button>
+    <button type="submit" class="btn btn-dark px-4">Enviar</button>
   </form>
 </div>
 
 <script>
+let conversationId = null;
+
 document.getElementById("chat-form").addEventListener("submit", async function(e) {
   e.preventDefault();
 
@@ -31,36 +36,102 @@ document.getElementById("chat-form").addEventListener("submit", async function(e
   const message = input.value.trim();
   if (!message) return;
 
-  // Mostrar mensaje del usuario
-  const chatBox = document.getElementById("chat-box");
-  chatBox.innerHTML += `<div class="mb-2 text-end"><span class="badge bg-primary">${message}</span></div>`;
-  chatBox.scrollTop = chatBox.scrollHeight;
-
+  appendMessage("user", message);
   input.value = "";
+  appendTyping();
 
   try {
-    // Llamar al backend
     const response = await fetch("{% url 'chatbot:chat_api' %}", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": "{{ csrf_token }}"
       },
-      body: JSON.stringify({ message })
+      body: JSON.stringify({
+        message: message,
+        conversation_id: conversationId
+      })
     });
 
     const data = await response.json();
+    removeTyping();
 
-    // Mostrar respuesta del bot
-    chatBox.innerHTML += `<div class="mb-2 text-start"><span class="badge bg-secondary">${data.respuesta}</span></div>`;
-    chatBox.scrollTop = chatBox.scrollHeight;
+    if (data.success && data.messages) {
+      conversationId = data.conversation_id;
+      data.messages.forEach(msg => appendMessage(msg.role, msg.content));
+
+      // 🔹 Si hay opciones (choices del formulario), las mostramos como botones
+      if (data.options && data.options.length > 0) {
+        appendOptions(data.options);
+      }
+    } else {
+      appendMessage("assistant", "⚠️ No se pudo procesar tu mensaje.");
+    }
 
   } catch (error) {
-    chatBox.innerHTML += `<div class="mb-2 text-start text-danger">⚠️ Error al conectar con el chatbot.</div>`;
+    removeTyping();
+    appendMessage("assistant", "⚠️ Error al conectar con el servidor.");
   }
-
-  
 });
+
+function appendMessage(role, content) {
+  const chatBox = document.getElementById("chat-box");
+  const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const isUser = role === "user";
+  const bubbleColor = isUser ? "bg-primary text-white" : "bg-white border";
+
+  const html = `
+    <div class="d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'} mb-3">
+      <div class="p-3 rounded-4 ${bubbleColor}" style="max-width: 75%;">
+        <div>${content}</div>
+        <div class="text-muted small mt-1">${timestamp}</div>
+      </div>
+    </div>
+  `;
+  chatBox.insertAdjacentHTML("beforeend", html);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function appendTyping() {
+  const chatBox = document.getElementById("chat-box");
+  const typingHTML = `
+    <div id="typing-indicator" class="d-flex align-items-center mb-2">
+      <div class="bg-white border rounded-4 px-3 py-2">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
+    </div>
+  `;
+  chatBox.insertAdjacentHTML("beforeend", typingHTML);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function removeTyping() {
+  const typing = document.getElementById("typing-indicator");
+  if (typing) typing.remove();
+}
+
+// 🔹 Mostrar opciones como botones debajo del mensaje
+function appendOptions(options) {
+  const chatBox = document.getElementById("chat-box");
+  const container = document.createElement("div");
+  container.classList.add("d-flex", "flex-wrap", "gap-2", "mb-3");
+
+  options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.classList.add("btn", "btn-outline-dark", "btn-sm", "rounded-pill");
+    btn.textContent = opt;
+    btn.onclick = () => {
+      document.getElementById("user-input").value = opt;
+      document.getElementById("chat-form").dispatchEvent(new Event("submit"));
+      container.remove(); // quitar los botones al elegir
+    };
+    container.appendChild(btn);
+  });
+
+  chatBox.appendChild(container);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 </script>
 {% endblock %}
-
