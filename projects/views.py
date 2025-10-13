@@ -3,16 +3,19 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Sum, F
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
 from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm, DetailedProjectForm, BudgetSectionForm, BudgetManagementForm, BudgetItemCreateForm, BudgetItemEditForm
 import json
 from django.urls import reverse
-from .models import Project, EntradaMaterial
+from .models import Project, EntradaMaterial, ConsumoMaterial
 from .forms import EntradaMaterialForm
 from users.decorators import role_required, project_owner_or_jefe_required
 from users.models import User
 from django.core.exceptions import PermissionDenied
+from datetime import datetime, timedelta
+from decimal import Decimal
+
 
 @project_owner_or_jefe_required
 def registrar_entrada_material(request, project_id):
@@ -1679,3 +1682,163 @@ def project_workers(request, project_id):
     }
     
     return render(request, "projects/project_workers.html", context)
+@login_required
+def project_graficos(request, project_id):
+    """
+    Vista principal para mostrar los gráficos comparativos de presupuesto vs gasto real.
+    RF18: Control Diario de Gasto y Avance - Visualización de Gráficos
+    """
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar permisos (opcional)
+    # if not request.user.has_perm('projects.view_project'):
+    #     return redirect('projects:project_list')
+    
+    context = {
+        'project': project,
+    }
+    
+    return render(request, 'projects/graficos_proyecto.html', context)
+
+# ===== VISTAS PARA RF18 - GRÁFICOS =====
+
+@login_required
+def project_graficos(request, project_id):
+    """
+    Vista principal para mostrar los gráficos comparativos de presupuesto vs gasto real.
+    RF18: Control Diario de Gasto y Avance - Visualización de Gráficos
+    """
+    project = get_object_or_404(Project, id=project_id)
+    
+    context = {
+        'project': project,
+    }
+    
+    return render(request, 'projects/graficos_proyecto.html', context)
+
+
+@login_required
+def api_datos_graficos(request, project_id):
+    """API que devuelve datos JSON para los gráficos"""
+    try:
+        project = get_object_or_404(Project, id=project_id)
+        
+        periodo = request.GET.get('periodo', 'todo')
+        fecha_fin = datetime.now().date()
+        
+        if periodo == 'mes':
+            fecha_inicio = fecha_fin - timedelta(days=30)
+        elif periodo == 'trimestre':
+            fecha_inicio = fecha_fin - timedelta(days=90)
+        else:
+            fecha_inicio = project.fecha_creacion.date() if project.fecha_creacion else (fecha_fin - timedelta(days=365))
+        
+        # Consolidado
+        presupuesto_total = float(project.presupuesto or 0)
+        gasto_total = float(project.presupuesto_gastado_calculado or 0)
+        
+        # Por material
+        materiales_dict = {}
+        
+        # PRIMERO: Obtener todos los materiales del proyecto con sus entradas
+        entradas = EntradaMaterial.objects.filter(proyecto=project).select_related('material')
+        
+        print(f"Total entradas en el proyecto: {entradas.count()}")
+        
+        for entrada in entradas:
+            mid = entrada.material.id
+            if mid not in materiales_dict:
+                materiales_dict[mid] = {
+                    'material': entrada.material.name,
+                    'presupuesto': 0,
+                    'gasto_real': 0,
+                }
+            # Presupuesto = todo lo que se ha comprado (sin importar fecha)
+            precio = float(entrada.material.unit_cost or 0)
+            cantidad = float(entrada.cantidad or 0)
+            materiales_dict[mid]['presupuesto'] += precio * cantidad
+        
+        # SEGUNDO: Calcular consumos en el período seleccionado
+        consumos = ConsumoMaterial.objects.filter(
+            proyecto=project,
+            fecha_consumo__gte=fecha_inicio,
+            fecha_consumo__lte=fecha_fin
+        ).select_related('material')
+        
+        print(f"Consumos en período: {consumos.count()}")
+        
+        for consumo in consumos:
+            mid = consumo.material.id
+            if mid not in materiales_dict:
+                # Si no hay entrada, crear con presupuesto 0
+                materiales_dict[mid] = {
+                    'material': consumo.material.name,
+                    'presupuesto': 0,
+                    'gasto_real': 0,
+                }
+            precio = float(consumo.material.unit_cost or 0)
+            cantidad = float(consumo.cantidad_consumida or 0)
+            materiales_dict[mid]['gasto_real'] += precio * cantidad
+        
+        datos_por_material = list(materiales_dict.values())
+        
+        # Evolución temporal
+        evolucion = []
+        consumos_ord = ConsumoMaterial.objects.filter(
+            proyecto=project,
+            fecha_consumo__gte=fecha_inicio,
+            fecha_consumo__lte=fecha_fin
+        ).select_related('material').order_by('fecha_consumo')
+        
+        gasto_acum = 0
+        fecha_act = None
+        gasto_dia = 0
+        
+        for consumo in consumos_ord:
+            if fecha_act and consumo.fecha_consumo != fecha_act:
+                gasto_acum += gasto_dia
+                evolucion.append({
+                    'fecha': fecha_act.strftime('%Y-%m-%d'),
+                    'gasto_dia': round(gasto_dia, 2),
+                    'gasto_acumulado': round(gasto_acum, 2),
+                })
+                gasto_dia = 0
+            
+            precio = float(consumo.material.unit_cost or 0)
+            cantidad = float(consumo.cantidad_consumida or 0)
+            gasto_dia += precio * cantidad
+            fecha_act = consumo.fecha_consumo
+        
+        if fecha_act:
+            gasto_acum += gasto_dia
+            evolucion.append({
+                'fecha': fecha_act.strftime('%Y-%m-%d'),
+                'gasto_dia': round(gasto_dia, 2),
+                'gasto_acumulado': round(gasto_acum, 2),
+            })
+        
+        response_data = {
+            'consolidado': {
+                'presupuesto': presupuesto_total,
+                'gasto_real': gasto_total,
+            },
+            'por_material': datos_por_material,
+            'evolucion_temporal': evolucion,
+            'periodo': periodo,
+            'fecha_inicio': fecha_inicio.strftime('%Y-%m-%d'),
+            'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),
+        }
+        
+        print(f"Respuesta: {len(datos_por_material)} materiales, {len(evolucion)} días")
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'consolidado': {'presupuesto': 0, 'gasto_real': 0},
+            'por_material': [],
+            'evolucion_temporal': [],
+        }, status=200)

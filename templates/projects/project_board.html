@@ -12,7 +12,9 @@
         <a class="btn btn-outline-success" href="{% url 'projects:listar_consumos_proyecto' project.id %}">
           <i class="fas fa-chart-line me-1"></i>Ver consumos
         </a>
-        <a class="btn btn-outline-dark" href="{{ charts_url|default:'#' }}">Ver gráficos</a>
+        <a class="btn btn-outline-dark" href="{% url 'projects:project_graficos' project.id %}">
+          <i class="fas fa-chart-bar me-1"></i>Ver gráficos
+        </a>
         <a class="btn btn-outline-secondary" href="{{ add_purchases_url|default:'#' }}"> Agregar compras</a>
         <a class="btn btn-dark" href="{{ details_url|default:'#' }}">Ver detalles</a>
       </div>
