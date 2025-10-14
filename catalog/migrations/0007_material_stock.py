@@ -8,6 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('catalog', '0006_remove_materialsupplier_lead_time_days'),
+        
     ]
 
     operations = [

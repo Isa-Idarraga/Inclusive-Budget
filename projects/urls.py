@@ -68,4 +68,10 @@ urlpatterns = [
     
     # URL para exportar reporte comparativo a Excel (solo JEFE)
     path('<int:project_id>/export-comparativo-excel/', views.export_comparativo_to_excel, name='export_comparativo_to_excel'),
+    
+    # ===== URLs PARA RF18 - GRÁFICOS =====
+    # Vista principal de gráficos
+    path('<int:project_id>/graficos/', views.project_graficos, name='project_graficos'),
+    # API para obtener datos de gráficos
+    path('<int:project_id>/api/datos-graficos/', views.api_datos_graficos, name='api_datos_graficos'),
 ]

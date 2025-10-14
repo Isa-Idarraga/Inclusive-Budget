@@ -110,10 +110,10 @@ class Project(models.Model):
 
     # 1. Datos generales
     UBICACION_CHOICES = [
-        ("medellin", "Medellín"),
-        ("bogota", "Bogotá"),
-        ("cali", "Cali"),
-        ("otra", "Otra (especificar)"),
+        ("Medellin", "Medellín"),
+        ("Bogota", "Bogotá"),
+        ("Cali", "Cali"),
+        ("Otra", "Otra (especificar)"),
     ]
 
     PISOS_CHOICES = [
@@ -268,6 +268,7 @@ class Project(models.Model):
     doors_height = models.DecimalField(
         max_digits=5,  # Menos dígitos porque las alturas son menores
         decimal_places=2,
+        default=2.10,
         verbose_name="Altura de las puertas (en metros)",
         validators=[MinValueValidator(0)],
     )
@@ -537,6 +538,11 @@ class Project(models.Model):
         on_delete=models.CASCADE,  # Si se elimina el usuario, se elimina el proyecto
         verbose_name="Creado por",
     )
+    created_by_ai = models.BooleanField(
+        default=False,
+        verbose_name="Creado por IA",
+        help_text="Indica si este proyecto fue generado automáticamente por el chatbot IA"
+    )   
 
     # ===== FECHAS =====
     # PostgreSQL: TIMESTAMP - Fecha y hora de creación (se establece automáticamente)
@@ -744,22 +750,27 @@ class Project(models.Model):
         """
         from decimal import Decimal
         from django.db.models import Sum, Q
+        from decimal import Decimal
 
         if self.has_detailed_budget_items():
-            # Cálculo detallado con ítems específicos
-            totals = self.budget_items.select_related('budget_item__section').aggregate(
-                costo_directo=Sum('total_price', filter=~Q(budget_item__section__order=21)),
-                administracion_manual=Sum('total_price', filter=Q(budget_item__section__order=21))
-            )
-            costo_directo = totals['costo_directo'] or Decimal('0')
-            administracion_manual = totals['administracion_manual'] or Decimal('0')
-            administracion_automatica = costo_directo * Decimal('0.12')
-            total = costo_directo + administracion_automatica + administracion_manual
-            return total
+                # Cálculo detallado con ítems específicos
+                totals = self.budget_items.select_related('budget_item__section').aggregate(
+                    costo_directo=Sum('total_price', filter=~Q(budget_item__section__order=21)),
+                    administracion_manual=Sum('total_price', filter=Q(budget_item__section__order=21))
+                )
+                costo_directo = totals['costo_directo'] or Decimal('0')
+                administracion_manual = totals['administracion_manual'] or Decimal('0')
+                administracion_automatica = costo_directo * Decimal('0.12')
+                total = costo_directo + administracion_automatica + administracion_manual
         else:
-            # Cálculo tradicional
-            return self.calculate_detailed_budget()
+                # Cálculo tradicional
+                total = self.calculate_detailed_budget()
 
+            # Aseguramos un mínimo razonable
+        if not total or total <= 0:
+                total = Decimal('1000000')
+
+        return total
  #Modelos de proveeddores entradas y materiales
 
 class EntradaMaterial(models.Model):

@@ -1,154 +1,196 @@
+# chatbot/views.py
 import json
 import os
 import traceback
-from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
 
-from .models import Conversation, Message
-from .services import get_context_data
+from .models import Conversation
+from .services.conversation_service import ConversationService
 from .llm import OpenAIAdapter
-from .logic.chat_flow import iniciar_conversacion, procesar_respuesta
-from projects.forms import ProjectForm as PresupuestoForm
+from .helpers import get_context_data
+from projects.forms import ProjectForm  
 
 
-# Inicializar cliente LLM (OpenAI o Groq)
+# Inicializar servicio con LLM
 try:
     openai_api_key = os.getenv("OPENAI_API_KEY")
-    client = OpenAIAdapter(api_key=openai_api_key) if openai_api_key else None
+    llm_client = OpenAIAdapter(api_key=openai_api_key) if openai_api_key else None
 except Exception as e:
-    client = None
+    llm_client = None
     print(f"⚠️ OpenAI client not initialized: {e}")
+
+conversation_service = ConversationService(llm_client=llm_client, form_class=ProjectForm)
 
 
 @csrf_exempt
 def chat_api(request):
-    """API que maneja tanto el flujo guiado de presupuestos como las consultas con IA."""
+    """API principal del chatbot - simplificada y clara"""
+    
     if request.method != "POST":
         return JsonResponse({"error": "Método no permitido"}, status=405)
-
+    
     try:
-        # --- 🔹 Parsear entrada ---
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Formato JSON inválido."}, status=400)
-
+        # Parsear request
+        data = json.loads(request.body)
         user_message = data.get("message", "").strip()
+        
         if not user_message:
-            return JsonResponse({"success": False, "error": "Mensaje vacío."}, status=400)
-
+            return JsonResponse({
+                "success": False, 
+                "error": "Mensaje vacío."
+            }, status=400)
+        
+        # Obtener usuario
         user = request.user if request.user.is_authenticated else None
-        user_id = str(user.id if user else request.session.session_key)
-
-        # --- 🔹 Recuperar o crear conversación ---
+        
+        # Obtener o crear conversación
         conversation_id = data.get("conversation_id")
-        conversation = (
-            Conversation.objects.filter(id=conversation_id, user=user).first()
-            if conversation_id else Conversation.objects.create(user=user, title="Nueva conversación")
+        conversation = conversation_service.get_or_create_conversation(
+            conversation_id=conversation_id,
+            user=user
         )
-
+        
         # Guardar mensaje del usuario
-        Message.objects.create(
+        conversation_service.add_message(
             conversation=conversation,
             role="user",
-            content=user_message,
-            meta={"timestamp": timezone.now().isoformat()}
+            content=user_message
         )
-
-        msg_lower = user_message.lower()
-
-        # --- 🔹 Comandos básicos ---
-        if msg_lower in ["cancelar", "parar", "salir", "detener"]:
-            request.session.pop("budget_flow", None)
-            return JsonResponse({
-                "success": True,
-                "conversation_id": conversation.id,
-                "messages": [{"role": "assistant", "content": "✅ Proceso cancelado. Puedes iniciar uno nuevo cuando quieras."}]
-            })
-
-        # --- 🔹 Inicio de flujo guiado ---
-        if msg_lower in ["nuevo presupuesto", "crear presupuesto", "iniciar presupuesto"]:
-            primera_pregunta = iniciar_conversacion(PresupuestoForm, user_id)
-            request.session["budget_flow"] = True  # Activa modo guiado
-            return JsonResponse({
-                "success": True,
-                "conversation_id": conversation.id,
-                "messages": [{"role": "assistant", "content": f"Perfecto 👍 Empecemos.\n{primera_pregunta}"}]
-            })
-
-        # --- 🔹 Flujo guiado activo ---
-        if request.session.get("budget_flow"):
-            respuesta = procesar_respuesta(user_id, user_message)
-
-            # Si ya terminó el formulario, salir del modo guiado
-            if "Presupuesto completado" in respuesta or "🎯" in respuesta:
-                request.session.pop("budget_flow", None)
-
-            Message.objects.create(
-                conversation=conversation,
-                role="assistant",
-                content=respuesta,
-                meta={"timestamp": timezone.now().isoformat()}
-            )
-
-            return JsonResponse({
-                "success": True,
-                "conversation_id": conversation.id,
-                "messages": [{"role": "assistant", "content": respuesta}],
-            })
-
-        # --- 🔹 Modo normal con IA (si no está en flujo guiado) ---
-        if not client:
-            return JsonResponse({
-                "success": True,
-                "conversation_id": conversation.id,
-                "messages": [{"role": "assistant", "content": "⚠️ No hay conexión con el modelo de IA. Configura OPENAI_API_KEY."}]
-            })
-
-        context_data = get_context_data()
-        system_prompt = f"""
-        Eres un asistente experto en presupuestos y gestión de obras.
-        Usa los siguientes datos reales del sistema:
-
-        Proyectos: {context_data["proyectos"]}
-        Materiales: {context_data["materiales"]}
-        Trabajadores: {context_data["trabajadores"]}
-
-        Sé claro, técnico y breve. Si algo no está en los datos, dilo con transparencia.
-        """
-
-        messages = [{"role": "system", "content": system_prompt}]
-        for msg in conversation.messages.all():
-            messages.append({"role": msg.role, "content": msg.content})
-
-        bot_reply = client.complete(messages)
-
-        Message.objects.create(
+        
+        # Procesar mensaje (ahora retorna un dict)
+        response = process_user_message(conversation, user_message)
+        
+        # Guardar respuesta del asistente
+        conversation_service.add_message(
             conversation=conversation,
             role="assistant",
-            content=bot_reply,
-            meta={"timestamp": timezone.now().isoformat()}
+            content=response["message"]
         )
-
+        
+        # Retornar respuesta
         return JsonResponse({
             "success": True,
             "conversation_id": conversation.id,
             "messages": [
-                {"role": "user", "content": user_message},
-                {"role": "assistant", "content": bot_reply},
+                {"role": "assistant", "content": response["message"]}
             ],
+            "flow_active": conversation.is_active(),
+            "flow_type": conversation.flow_type,
+            "progress": {
+                "current": conversation.current_step,
+                "total": conversation.total_steps
+            } if conversation.is_active() else None
         })
-
+    
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
             "success": False,
-            "error": f"⚠️ Error interno: {str(e)}"
-        }, status=200)
+            "error": f"Error interno: {str(e)}"
+        }, status=500)
+
+
+def process_user_message(conversation: Conversation, user_message: str) -> dict:
+    """
+    Procesa el mensaje del usuario y retorna la respuesta como diccionario
+    """
+    service = ConversationService(
+        llm_client=OpenAIAdapter(api_key=openai_api_key),
+        form_class=ProjectForm
+    )
+    
+    # Detectar intención
+    intent = service.detect_intent(user_message)
+    
+    # Si hay un flujo activo
+    if conversation.is_active():
+        # Comando de cancelar
+        if intent == "cancel":
+            message = service.cancel_flow(conversation)
+            return {"message": message}
+        
+        # Procesar mensaje del flujo
+        result = service.process_flow_message(conversation, user_message)
+        
+        # Si el flujo se completó
+        if result.get("completed"):
+            # ✅ YA NO PREGUNTAR "¿Deseas guardar?"
+            # El proyecto se crea automáticamente
+            return {"message": result["message"], "completed": True}
+        
+        return {"message": result["message"]}
+    
+    # No hay flujo activo - detectar comandos
+    if intent == "start_manual":
+        message = service.start_manual_flow(conversation)
+        return {"message": message}
+    
+    if intent == "start_ai":
+        message = service.start_ai_flow(conversation)
+        return {"message": message}
+    
+    if intent == "cancel":
+        return {"message": "No hay ningún proceso activo para cancelar."}
+    
+    # Chat normal con contexto
+    context_data = {
+        "proyectos": [],
+        "materiales": [],
+        "trabajadores": []
+    }
+    
+    message = service.handle_normal_chat(conversation, user_message, context_data)
+    return {"message": message}
 
 
 def chat_view(request):
-    """Renderiza la interfaz del chatbot."""
+    """Renderiza la interfaz del chatbot"""
     return render(request, "chatbot/chat.html")
+
+
+def conversation_list(request):
+    """Lista las conversaciones del usuario"""
+    user = request.user if request.user.is_authenticated else None
+    
+    conversations = Conversation.objects.filter(user=user).values(
+        "id", "title", "state", "created_at", "updated_at"
+    )
+    
+    return JsonResponse({
+        "success": True,
+        "conversations": list(conversations)
+    })
+
+
+def conversation_detail(request, conversation_id):
+    """Obtiene el detalle completo de una conversación"""
+    try:
+        conversation = Conversation.objects.get(id=conversation_id)
+        
+        messages = [
+            {
+                "role": msg.role,
+                "content": msg.content,
+                "created_at": msg.created_at.isoformat()
+            }
+            for msg in conversation.messages.all()
+        ]
+        
+        return JsonResponse({
+            "success": True,
+            "conversation": {
+                "id": conversation.id,
+                "title": conversation.title,
+                "state": conversation.state,
+                "flow_type": conversation.flow_type,
+                "created_at": conversation.created_at.isoformat(),
+                "messages": messages
+            }
+        })
+    except Conversation.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "error": "Conversación no encontrada"
+        }, status=404)

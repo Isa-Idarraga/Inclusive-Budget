@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("catalog", "0007_material_stock"),
-        ("catalog", "0007_stock_default_not_null"),
+        
     ]
 
     operations = []
