@@ -1,10 +1,18 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator
-from django.db.models import Q, Max, Sum, F
+from django.db.models import Q, Max, Sum, F, Count
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
+from django.db.models import Q, Max, Sum, F, DecimalField, ExpressionWrapper
+from django.utils import timezone
+from zoneinfo import ZoneInfo
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
+import io
+from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem, ConsumoMaterial, ProyectoMaterial
 from .forms import ProjectForm, WorkerForm, RoleForm, ConsumoMaterialForm, DetailedProjectForm, BudgetSectionForm, BudgetManagementForm, BudgetItemCreateForm, BudgetItemEditForm
 import json
 from django.urls import reverse
@@ -13,10 +21,17 @@ from .forms import EntradaMaterialForm
 from users.decorators import role_required, project_owner_or_jefe_required
 from users.models import User
 from django.core.exceptions import PermissionDenied
-from datetime import datetime, timedelta
 from decimal import Decimal
+from datetime import datetime
 
 
+# Helper function para obtener hora colombiana
+def get_colombia_time():
+    """Obtiene la hora actual en zona horaria de Colombia"""
+    colombia_tz = ZoneInfo("America/Bogota")
+    return timezone.now().astimezone(colombia_tz)
+
+# Función para registrar entrada de material al inventario del proyecto
 @project_owner_or_jefe_required
 def registrar_entrada_material(request, project_id):
     project = get_object_or_404(Project, id=project_id)
@@ -107,27 +122,21 @@ def project_list(request):
     - CONSTRUCTOR: Ve todos los proyectos (solo edita los suyos)
     - JEFE: Ve y puede editar todos los proyectos
     """
-    # Obtener parámetros de búsqueda desde la URL
+    # Obtener parámetros de búsqueda
     search_query = request.GET.get("search", "")
     status_filter = request.GET.get("status", "")
-    ubicacion_filter = request.GET.get("ubicacion", "")
-    pisos_filter = request.GET.get("pisos", "")
-    acabados_filter = request.GET.get("acabados", "")
-    area_min_filter = request.GET.get("area_min", "")
-    area_max_filter = request.GET.get("area_max", "")
-    presupuesto_min_filter = request.GET.get("presupuesto_min", "")
-    presupuesto_max_filter = request.GET.get("presupuesto_max", "")
-    terreno_filter = request.GET.get("terreno", "")
-    acceso_filter = request.GET.get("acceso", "")
-    banos_filter = request.GET.get("banos", "")
+    trabajadores_filter = request.GET.get("trabajadores", "")
+    creador_filter = request.GET.get("creador", "")
     fecha_desde_filter = request.GET.get("fecha_desde", "")
     fecha_hasta_filter = request.GET.get("fecha_hasta", "")
-    creador_filter = request.GET.get("creador", "")
+    ubicacion_filter = request.GET.get("ubicacion", "")
+    presupuesto_min_filter = request.GET.get("presupuesto_min", "")
+    presupuesto_max_filter = request.GET.get("presupuesto_max", "")
 
     # TODOS los usuarios ven TODOS los proyectos
     projects = Project.objects.all()
 
-    # Filtro por búsqueda - PostgreSQL: LIKE queries para búsqueda de texto
+    # Filtro por búsqueda - Buscar en nombre, descripción y ubicación
     if search_query:
         projects = projects.filter(
             Q(name__icontains=search_query)  # Buscar en nombre
@@ -135,71 +144,26 @@ def project_list(request):
             | Q(location_address__icontains=search_query)  # Buscar en dirección
         )
 
-    # Filtro por estado - PostgreSQL: WHERE estado = [status_filter]
+    # Filtro por estado
     if status_filter:
         projects = projects.filter(estado=status_filter)
 
-    # Filtro por ubicación
-    if ubicacion_filter:
-        projects = projects.filter(ubicacion_proyecto=ubicacion_filter)
+    # Filtro por número de trabajadores
+    if trabajadores_filter:
+        if trabajadores_filter == "0":
+            projects = projects.filter(workers__isnull=True)
+        elif trabajadores_filter == "1-3":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=1, worker_count__lte=3)
+        elif trabajadores_filter == "4-6":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=4, worker_count__lte=6)
+        elif trabajadores_filter == "7+":
+            projects = projects.annotate(worker_count=Count('workers')).filter(worker_count__gte=7)
 
-    # Filtro por número de pisos
-    if pisos_filter:
-        projects = projects.filter(numero_pisos=pisos_filter)
-
-    # Filtro por nivel de acabados
-    if acabados_filter:
-        projects = projects.filter(acabado_muros=acabados_filter)
-
-    # Filtro por área mínima
-    if area_min_filter:
+    # Filtro por creador
+    if creador_filter:
         try:
-            area_min = float(area_min_filter)
-            projects = projects.filter(area_construida_total__gte=area_min)
-        except ValueError:
-            pass
-
-    # Filtro por área máxima
-    if area_max_filter:
-        try:
-            area_max = float(area_max_filter)
-            projects = projects.filter(area_construida_total__lte=area_max)
-        except ValueError:
-            pass
-
-    # Filtro por presupuesto mínimo
-    if presupuesto_min_filter:
-        try:
-            presupuesto_min = float(presupuesto_min_filter)
-            projects = projects.filter(presupuesto__gte=presupuesto_min)
-        except ValueError:
-            pass
-
-    # Filtro por presupuesto máximo
-    if presupuesto_max_filter:
-        try:
-            presupuesto_max = float(presupuesto_max_filter)
-            projects = projects.filter(presupuesto__lte=presupuesto_max)
-        except ValueError:
-            pass
-
-    # Filtro por tipo de terreno
-    if terreno_filter:
-        projects = projects.filter(tipo_terreno=terreno_filter)
-
-    # Filtro por acceso a obra
-    if acceso_filter:
-        projects = projects.filter(acceso_obra=acceso_filter)
-
-    # Filtro por número de baños
-    if banos_filter:
-        try:
-            banos_count = int(banos_filter)
-            if banos_count == 3:
-                # Para 3+, filtrar por 3 o más
-                projects = projects.filter(numero_banos__gte=3)
-            else:
-                projects = projects.filter(numero_banos=banos_count)
+            creador_id = int(creador_filter)
+            projects = projects.filter(creado_por_id=creador_id)
         except ValueError:
             pass
 
@@ -211,45 +175,44 @@ def project_list(request):
     if fecha_hasta_filter:
         projects = projects.filter(fecha_creacion__lte=fecha_hasta_filter)
 
-    # Filtro por creador
-    if creador_filter:
+    # Filtro por ubicación (búsqueda de texto en dirección)
+    if ubicacion_filter:
+        projects = projects.filter(location_address__icontains=ubicacion_filter)
+        print(f"DEBUG: Filtro ubicación aplicado: {ubicacion_filter}")
+
+    # Filtro por presupuesto mínimo
+    if presupuesto_min_filter:
         try:
-            creador_id = int(creador_filter)
-            projects = projects.filter(creado_por_id=creador_id)
-        except ValueError:
-            pass
+            # Limpiar puntos y convertir a float
+            presupuesto_min_clean = presupuesto_min_filter.replace('.', '').replace(',', '')
+            presupuesto_min = float(presupuesto_min_clean)
+            if presupuesto_min > 0:
+                projects = projects.filter(presupuesto__gte=presupuesto_min)
+                print(f"DEBUG: Filtro presupuesto mínimo aplicado: {presupuesto_min}")
+        except (ValueError, AttributeError) as e:
+            print(f"DEBUG: Error en filtro presupuesto mínimo: {e}")
 
-    # Agrupar por estado para mostrar en secciones separadas
-    # PostgreSQL: Múltiples consultas SELECT con filtros diferentes
-    projects_en_proceso = projects.filter(estado="en_proceso")
-    projects_terminados = projects.filter(estado="terminado")
-    projects_futuros = projects.filter(estado="futuro")
+    # Filtro por presupuesto máximo
+    if presupuesto_max_filter:
+        try:
+            # Limpiar puntos y convertir a float
+            presupuesto_max_clean = presupuesto_max_filter.replace('.', '').replace(',', '')
+            presupuesto_max = float(presupuesto_max_clean)
+            if presupuesto_max > 0:
+                projects = projects.filter(presupuesto__lte=presupuesto_max)
+                print(f"DEBUG: Filtro presupuesto máximo aplicado: {presupuesto_max}")
+        except (ValueError, AttributeError) as e:
+            print(f"DEBUG: Error en filtro presupuesto máximo: {e}")
 
-    # Obtener lista de creadores únicos para el filtro
+    # Separar proyectos por estado
+    projects_en_proceso = projects.filter(estado='en_proceso')
+    projects_terminados = projects.filter(estado='terminado')
+    projects_futuros = projects.filter(estado='futuro')
+
+    # Obtener lista de creadores para el filtro
     creadores = User.objects.filter(
         id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
     ).order_by('first_name', 'last_name')
-
-    # Verificar si hay filtros activos
-    has_active_filters = any(
-        [
-            search_query,
-            status_filter,
-            ubicacion_filter,
-            pisos_filter,
-            acabados_filter,
-            area_min_filter,
-            area_max_filter,
-            presupuesto_min_filter,
-            presupuesto_max_filter,
-            terreno_filter,
-            acceso_filter,
-            banos_filter,
-            fecha_desde_filter,
-            fecha_hasta_filter,
-            creador_filter,
-        ]
-    )
 
     context = {
         "projects_en_proceso": projects_en_proceso,
@@ -257,21 +220,14 @@ def project_list(request):
         "projects_futuros": projects_futuros,
         "search_query": search_query,
         "status_filter": status_filter,
-        "ubicacion_filter": ubicacion_filter,
-        "pisos_filter": pisos_filter,
-        "acabados_filter": acabados_filter,
-        "area_min_filter": area_min_filter,
-        "area_max_filter": area_max_filter,
-        "presupuesto_min_filter": presupuesto_min_filter,
-        "presupuesto_max_filter": presupuesto_max_filter,
-        "terreno_filter": terreno_filter,
-        "acceso_filter": acceso_filter,
-        "banos_filter": banos_filter,
+        "trabajadores_filter": trabajadores_filter,
+        "creador_filter": creador_filter,
         "fecha_desde_filter": fecha_desde_filter,
         "fecha_hasta_filter": fecha_hasta_filter,
-        "creador_filter": creador_filter,
+        "ubicacion_filter": ubicacion_filter,
+        "presupuesto_min_filter": presupuesto_min_filter,
+        "presupuesto_max_filter": presupuesto_max_filter,
         "creadores": creadores,
-        "has_active_filters": has_active_filters,
     }
 
     return render(request, "projects/project_list.html", context)
@@ -778,6 +734,7 @@ def role_delete(request, role_id):
         return redirect('projects:role_list')
     return render(request, 'projects/role_confirm_delete.html', {'role': role})
 
+# Función para editar una entrada de material existente
 @login_required
 def editar_entrada_material(request, entrada_id):
     entrada = get_object_or_404(EntradaMaterial, id=entrada_id, proyecto__creado_por=request.user)
@@ -814,14 +771,14 @@ def borrar_entrada_material(request, entrada_id):
 
 # ===== VISTAS PARA CONSUMO DIARIO DE MATERIALES (RF17A) =====
 
-@login_required
+@project_owner_or_jefe_required
 def registrar_consumo_material(request, project_id):
     """
     Vista para registrar el consumo diario de materiales (RF17A)
     Con validación de stock insuficiente (RF17D)
     Se accede desde el calendario al seleccionar una fecha
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
 
     # Obtener fecha seleccionada del parámetro GET o usar hoy
     from django.utils import timezone
@@ -894,13 +851,13 @@ def registrar_consumo_material(request, project_id):
     return render(request, 'projects/registrar_consumo_material.html', context)
 
 
-@login_required
+@project_owner_or_jefe_required
 def listar_consumos_proyecto(request, project_id):
     """
     Vista para listar todos los consumos de un proyecto
     Permite filtrar por fecha, material, actividad
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
 
     # Obtener parámetros de filtro
     fecha_desde = request.GET.get('fecha_desde', '')
@@ -943,13 +900,13 @@ def listar_consumos_proyecto(request, project_id):
     return render(request, 'projects/listar_consumos.html', context)
 
 
-@login_required
+@project_owner_or_jefe_required
 def obtener_consumos_fecha(request, project_id):
     """
     API endpoint para obtener consumos de una fecha específica (para el calendario)
     Retorna JSON con los consumos de la fecha
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
     fecha = request.GET.get('fecha')
 
     if not fecha:
@@ -977,13 +934,13 @@ def obtener_consumos_fecha(request, project_id):
     })
 
 
-@login_required
+@project_owner_or_jefe_required
 def obtener_consumos_mes(request, project_id):
     """
     API endpoint para obtener todos los consumos de un mes específico (RF17C)
     Retorna JSON con los consumos agrupados por fecha para el calendario
     """
-    project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+    project = get_object_or_404(Project, id=project_id)
     mes = request.GET.get('mes')
     anio = request.GET.get('anio')
 
@@ -1041,12 +998,13 @@ def editar_consumo_material(request, consumo_id):
     Vista para editar un consumo existente
     """
     from .models import ConsumoMaterial
-    consumo = get_object_or_404(
-        ConsumoMaterial,
-        id=consumo_id,
-        proyecto__creado_por=request.user
-    )
+    consumo = get_object_or_404(ConsumoMaterial, id=consumo_id)
     project = consumo.proyecto
+    
+    # Verificar permisos: JEFE o creador del proyecto
+    if request.user.role != 'JEFE' and not request.user.is_superuser:
+        if project.creado_por != request.user:
+            raise PermissionDenied("No tienes permisos para editar consumos de este proyecto")
 
     if request.method == 'POST':
         form = ConsumoMaterialForm(request.POST, instance=consumo, proyecto=project)
@@ -1076,12 +1034,14 @@ def eliminar_consumo_material(request, consumo_id):
     Vista para eliminar un consumo de material
     """
     from .models import ConsumoMaterial
-    consumo = get_object_or_404(
-        ConsumoMaterial,
-        id=consumo_id,
-        proyecto__creado_por=request.user
-    )
-    project_id = consumo.proyecto.id
+    consumo = get_object_or_404(ConsumoMaterial, id=consumo_id)
+    project = consumo.proyecto
+    project_id = project.id
+    
+    # Verificar permisos: JEFE o creador del proyecto
+    if request.user.role != 'JEFE' and not request.user.is_superuser:
+        if project.creado_por != request.user:
+            raise PermissionDenied("No tienes permisos para eliminar consumos de este proyecto")
 
     if request.method == 'POST':
         try:
@@ -1842,3 +1802,1054 @@ def api_datos_graficos(request, project_id):
             'por_material': [],
             'evolucion_temporal': [],
         }, status=200)
+
+@role_required(User.JEFE)
+@login_required
+def export_budget_to_excel(request, project_id):
+    """
+    Vista para exportar el presupuesto detallado a Excel
+    Solo accesible para usuarios con rol JEFE
+    """
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar que el proyecto tenga presupuesto detallado
+    project_items_count = project.budget_items.count()
+    print(f"🔍 DEBUG Excel Export - Total ProjectBudgetItems: {project_items_count}")
+    
+    if not project.budget_items.exists():
+        print(f"❌ DEBUG Excel Export - No hay presupuesto detallado para proyecto {project.id}")
+        messages.error(request, "❌ Este proyecto no tiene presupuesto detallado configurado.")
+        return redirect("projects:project_board", project_id=project.id)
+    
+    print(f"✅ DEBUG Excel Export - Proyecto tiene presupuesto detallado, procediendo...")
+    
+    # Crear el libro de Excel
+    workbook = openpyxl.Workbook()
+    
+    # Estilos para el formato profesional
+    header_font = Font(name='Arial', size=12, bold=True, color='FFFFFF')
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    subheader_font = Font(name='Arial', size=11, bold=True, color='FFFFFF')
+    subheader_fill = PatternFill(start_color='4F81BD', end_color='4F81BD', fill_type='solid')
+    normal_font = Font(name='Arial', size=10)
+    currency_font = Font(name='Arial', size=10)
+    total_font = Font(name='Arial', size=11, bold=True)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    center_alignment = Alignment(horizontal='center', vertical='center')
+    right_alignment = Alignment(horizontal='right', vertical='center')
+    
+    # Eliminar la hoja por defecto
+    workbook.remove(workbook.active)
+    
+    # Obtener todas las secciones del presupuesto (no solo las que tienen items configurados)
+    all_sections = BudgetSection.objects.all().order_by('order')
+    print(f"🔍 DEBUG Excel Export - Total secciones en sistema: {all_sections.count()}")
+    
+    # Filtrar solo las secciones que tienen ítems configurados en este proyecto
+    sections_with_data = []
+    for section in all_sections:
+        items_in_section = ProjectBudgetItem.objects.filter(
+            project=project,
+            budget_item__section=section,
+            quantity__gt=0  # Solo ítems con cantidad mayor a 0
+        ).count()
+        if items_in_section > 0:
+            sections_with_data.append(section)
+            print(f"  ✅ Sección {section.order}: {section.name} - {items_in_section} ítems")
+        else:
+            print(f"  ❌ Sección {section.order}: {section.name} - Sin ítems configurados")
+    
+    print(f"🔍 DEBUG Excel Export - Secciones con datos: {len(sections_with_data)}")
+    
+    # Obtener todos los ProjectBudgetItem del proyecto
+    project_items = ProjectBudgetItem.objects.filter(project=project).select_related('budget_item', 'budget_item__section')
+    project_items_dict = {item.budget_item_id: item for item in project_items}
+    
+    print(f"🔍 DEBUG Excel Export - ProjectBudgetItems encontrados: {project_items.count()}")
+    for item in project_items:
+        print(f"  - {item.budget_item.code or 'Sin código'}: {item.budget_item.description[:50]} - Cantidad: {item.quantity} - Precio: {item.unit_price}")
+    
+    # Variables para el resumen
+    total_sections = {}
+    grand_total = 0
+    
+    # Verificar si hay secciones con datos
+    if not sections_with_data:
+        print(f"❌ DEBUG Excel Export - No hay secciones con datos, pero el proyecto tiene {project_items.count()} items")
+        messages.warning(request, "⚠️ Este proyecto tiene presupuesto configurado pero sin cantidades. Por favor configure las cantidades primero.")
+        return redirect("projects:detailed_budget_edit", project_id=project.id)
+    
+    # Crear una hoja por cada sección
+    for section in sections_with_data:
+        print(f"🔍 DEBUG Excel Export - Procesando sección: {section.order}. {section.name}")
+        
+        # Crear hoja para la sección
+        sheet_name = f"{section.order}. {section.name[:25]}"  # Limitar nombre de hoja
+        worksheet = workbook.create_sheet(title=sheet_name)
+        
+        # Configurar encabezado del proyecto
+        worksheet.merge_cells('A1:F1')
+        worksheet['A1'] = f"PRESUPUESTO DETALLADO - {project.name.upper()}"
+        worksheet['A1'].font = Font(name='Arial', size=14, bold=True)
+        worksheet['A1'].alignment = center_alignment
+        worksheet['A1'].fill = PatternFill(start_color='D9E1F2', end_color='D9E1F2', fill_type='solid')
+        
+        worksheet.merge_cells('A2:F2')
+        worksheet['A2'] = f"Fecha de exportación: {get_colombia_time().strftime('%d/%m/%Y %H:%M')}"
+        worksheet['A2'].font = Font(name='Arial', size=10, italic=True)
+        worksheet['A2'].alignment = center_alignment
+        
+        # Encabezado de la sección
+        row = 4
+        worksheet.merge_cells(f'A{row}:F{row}')
+        worksheet[f'A{row}'] = f"SECCIÓN {section.order}: {section.name.upper()}"
+        worksheet[f'A{row}'].font = header_font
+        worksheet[f'A{row}'].fill = header_fill
+        worksheet[f'A{row}'].alignment = center_alignment
+        
+        # Encabezados de columnas
+        row += 1
+        headers = ['Código', 'Descripción', 'Unidad', 'Cantidad', 'Precio Unitario (COP)', 'Total (COP)']
+        for col, header in enumerate(headers, 1):
+            cell = worksheet.cell(row=row, column=col)
+            cell.value = header
+            cell.font = subheader_font
+            cell.fill = subheader_fill
+            cell.alignment = center_alignment
+            cell.border = border
+        
+        # Obtener ítems de la sección configurados en el proyecto
+        section_items = BudgetItem.objects.filter(
+            section=section, 
+            is_active=True,
+            projectbudgetitem__project=project
+        ).order_by('order')
+        
+        print(f"🔍 DEBUG Excel Export - Ítems en sección {section.name}: {section_items.count()}")
+        
+        section_total = 0
+        row += 1
+        items_added = 0
+        
+        for item in section_items:
+            project_item = project_items_dict.get(item.id)
+            print(f"  🔍 DEBUG - Item {item.code or 'Sin código'}: {item.description[:30]}")
+            print(f"    - ProjectItem encontrado: {project_item is not None}")
+            if project_item:
+                print(f"    - Cantidad: {project_item.quantity}, Precio: {project_item.unit_price}")
+            
+            if project_item and project_item.quantity > 0:
+                print(f"    ✅ Agregando ítem al Excel")
+                items_added += 1
+                
+                # Código
+                worksheet.cell(row=row, column=1).value = item.code or f"{section.order}.{item.order}"
+                worksheet.cell(row=row, column=1).font = normal_font
+                worksheet.cell(row=row, column=1).border = border
+                
+                # Descripción
+                worksheet.cell(row=row, column=2).value = item.description
+                worksheet.cell(row=row, column=2).font = normal_font
+                worksheet.cell(row=row, column=2).border = border
+                
+                # Unidad
+                worksheet.cell(row=row, column=3).value = item.unit
+                worksheet.cell(row=row, column=3).font = normal_font
+                worksheet.cell(row=row, column=3).alignment = center_alignment
+                worksheet.cell(row=row, column=3).border = border
+                
+                # Cantidad
+                worksheet.cell(row=row, column=4).value = float(project_item.quantity)
+                worksheet.cell(row=row, column=4).font = normal_font
+                worksheet.cell(row=row, column=4).alignment = right_alignment
+                worksheet.cell(row=row, column=4).border = border
+                worksheet.cell(row=row, column=4).number_format = '#,##0.000'
+                
+                # Precio Unitario
+                worksheet.cell(row=row, column=5).value = float(project_item.unit_price)
+                worksheet.cell(row=row, column=5).font = currency_font
+                worksheet.cell(row=row, column=5).alignment = right_alignment
+                worksheet.cell(row=row, column=5).border = border
+                worksheet.cell(row=row, column=5).number_format = '"$"#,##0'
+                
+                # Total
+                item_total = float(project_item.total_price)
+                worksheet.cell(row=row, column=6).value = item_total
+                worksheet.cell(row=row, column=6).font = currency_font
+                worksheet.cell(row=row, column=6).alignment = right_alignment
+                worksheet.cell(row=row, column=6).border = border
+                worksheet.cell(row=row, column=6).number_format = '"$"#,##0'
+                
+                section_total += item_total
+                row += 1
+        
+        # Total de la sección
+        row += 1
+        worksheet.merge_cells(f'A{row}:E{row}')
+        worksheet[f'A{row}'] = f"TOTAL SECCIÓN {section.order}: {section.name.upper()}"
+        worksheet[f'A{row}'].font = total_font
+        worksheet[f'A{row}'].alignment = right_alignment
+        worksheet[f'A{row}'].fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
+        worksheet[f'A{row}'].border = border
+        
+        worksheet.cell(row=row, column=6).value = section_total
+        worksheet.cell(row=row, column=6).font = total_font
+        worksheet.cell(row=row, column=6).alignment = right_alignment
+        worksheet.cell(row=row, column=6).number_format = '"$"#,##0'
+        worksheet.cell(row=row, column=6).fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
+        worksheet.cell(row=row, column=6).border = border
+        
+        print(f"🔍 DEBUG Excel Export - Sección {section.name} completada:")
+        print(f"  - Ítems agregados: {items_added}")
+        print(f"  - Total de sección: ${section_total:,.0f}")
+        
+        # Guardar total para el resumen
+        total_sections[section.name] = section_total
+        grand_total += section_total
+        
+        # Ajustar ancho de columnas
+        worksheet.column_dimensions['A'].width = 12
+        worksheet.column_dimensions['B'].width = 50
+        worksheet.column_dimensions['C'].width = 12
+        worksheet.column_dimensions['D'].width = 15
+        worksheet.column_dimensions['E'].width = 20
+        worksheet.column_dimensions['F'].width = 20
+    
+    # Crear hoja de RESUMEN
+    summary_sheet = workbook.create_sheet(title="RESUMEN", index=0)
+    
+    # Encabezado del resumen
+    summary_sheet.merge_cells('A1:D1')
+    summary_sheet['A1'] = f"RESUMEN DE PRESUPUESTO - {project.name.upper()}"
+    summary_sheet['A1'].font = Font(name='Arial', size=16, bold=True)
+    summary_sheet['A1'].alignment = center_alignment
+    summary_sheet['A1'].fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    summary_sheet['A1'].font = Font(name='Arial', size=16, bold=True, color='FFFFFF')
+    
+    summary_sheet.merge_cells('A2:D2')
+    summary_sheet['A2'] = f"Proyecto: {project.name}"
+    summary_sheet['A2'].font = Font(name='Arial', size=12, bold=True)
+    summary_sheet['A2'].alignment = center_alignment
+    
+    summary_sheet.merge_cells('A3:D3')
+    summary_sheet['A3'] = f"Fecha de exportación: {get_colombia_time().strftime('%d/%m/%Y %H:%M')}"
+    summary_sheet['A3'].font = Font(name='Arial', size=10, italic=True)
+    summary_sheet['A3'].alignment = center_alignment
+    
+    # Encabezados del resumen
+    row = 5
+    headers = ['Sección', 'Descripción', 'Subtotal (COP)', 'Porcentaje (%)']
+    for col, header in enumerate(headers, 1):
+        cell = summary_sheet.cell(row=row, column=col)
+        cell.value = header
+        cell.font = subheader_font
+        cell.fill = subheader_fill
+        cell.alignment = center_alignment
+        cell.border = border
+    
+    # Datos del resumen
+    row += 1
+    for section in sections_with_data:
+        if section.name in total_sections:
+            section_total = total_sections[section.name]
+            percentage = (section_total / grand_total * 100) if grand_total > 0 else 0
+            
+            print(f"🔍 DEBUG Excel Export - Resumen sección {section.name}: ${section_total:,.0f} ({percentage:.1f}%)")
+            
+            summary_sheet.cell(row=row, column=1).value = f"Sección {section.order}"
+            summary_sheet.cell(row=row, column=1).font = normal_font
+            summary_sheet.cell(row=row, column=1).border = border
+            
+            summary_sheet.cell(row=row, column=2).value = section.name
+            summary_sheet.cell(row=row, column=2).font = normal_font
+            summary_sheet.cell(row=row, column=2).border = border
+            
+            summary_sheet.cell(row=row, column=3).value = section_total
+            summary_sheet.cell(row=row, column=3).font = currency_font
+            summary_sheet.cell(row=row, column=3).alignment = right_alignment
+            summary_sheet.cell(row=row, column=3).border = border
+            summary_sheet.cell(row=row, column=3).number_format = '"$"#,##0'
+            
+            summary_sheet.cell(row=row, column=4).value = percentage
+            summary_sheet.cell(row=row, column=4).font = normal_font
+            summary_sheet.cell(row=row, column=4).alignment = right_alignment
+            summary_sheet.cell(row=row, column=4).border = border
+            summary_sheet.cell(row=row, column=4).number_format = '0.00"%"'
+            
+            row += 1
+    
+    # Subtotal (costos directos)
+    row += 1
+    summary_sheet.merge_cells(f'A{row}:B{row}')
+    summary_sheet[f'A{row}'] = "SUBTOTAL (Costos Directos)"
+    summary_sheet[f'A{row}'].font = total_font
+    summary_sheet[f'A{row}'].alignment = right_alignment
+    summary_sheet[f'A{row}'].fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
+    summary_sheet[f'A{row}'].border = border
+    
+    summary_sheet.cell(row=row, column=3).value = grand_total
+    summary_sheet.cell(row=row, column=3).font = total_font
+    summary_sheet.cell(row=row, column=3).alignment = right_alignment
+    summary_sheet.cell(row=row, column=3).number_format = '"$"#,##0'
+    summary_sheet.cell(row=row, column=3).fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
+    summary_sheet.cell(row=row, column=3).border = border
+    
+    summary_sheet.cell(row=row, column=4).value = 100.0
+    summary_sheet.cell(row=row, column=4).font = total_font
+    summary_sheet.cell(row=row, column=4).alignment = right_alignment
+    summary_sheet.cell(row=row, column=4).number_format = '0.00"%"'
+    summary_sheet.cell(row=row, column=4).fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
+    summary_sheet.cell(row=row, column=4).border = border
+    
+    # Administración automática (12%)
+    admin_auto = grand_total * 0.12
+    row += 1
+    summary_sheet.merge_cells(f'A{row}:B{row}')
+    summary_sheet[f'A{row}'] = "Administración (12%)"
+    summary_sheet[f'A{row}'].font = total_font
+    summary_sheet[f'A{row}'].alignment = right_alignment
+    summary_sheet[f'A{row}'].fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
+    summary_sheet[f'A{row}'].border = border
+    
+    summary_sheet.cell(row=row, column=3).value = admin_auto
+    summary_sheet.cell(row=row, column=3).font = total_font
+    summary_sheet.cell(row=row, column=3).alignment = right_alignment
+    summary_sheet.cell(row=row, column=3).number_format = '"$"#,##0'
+    summary_sheet.cell(row=row, column=3).fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
+    summary_sheet.cell(row=row, column=3).border = border
+    
+    summary_sheet.cell(row=row, column=4).value = 12.0
+    summary_sheet.cell(row=row, column=4).font = total_font
+    summary_sheet.cell(row=row, column=4).alignment = right_alignment
+    summary_sheet.cell(row=row, column=4).number_format = '0.00"%"'
+    summary_sheet.cell(row=row, column=4).fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
+    summary_sheet.cell(row=row, column=4).border = border
+    
+    # Total final
+    final_total = grand_total + admin_auto
+    row += 2
+    summary_sheet.merge_cells(f'A{row}:B{row}')
+    summary_sheet[f'A{row}'] = "TOTAL GENERAL DEL PROYECTO"
+    summary_sheet[f'A{row}'].font = Font(name='Arial', size=14, bold=True, color='FFFFFF')
+    summary_sheet[f'A{row}'].alignment = right_alignment
+    summary_sheet[f'A{row}'].fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    summary_sheet[f'A{row}'].border = border
+    
+    summary_sheet.cell(row=row, column=3).value = final_total
+    summary_sheet.cell(row=row, column=3).font = Font(name='Arial', size=14, bold=True, color='FFFFFF')
+    summary_sheet.cell(row=row, column=3).alignment = right_alignment
+    summary_sheet.cell(row=row, column=3).number_format = '"$"#,##0'
+    summary_sheet.cell(row=row, column=3).fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    summary_sheet.cell(row=row, column=3).border = border
+    
+    # Ajustar ancho de columnas del resumen
+    summary_sheet.column_dimensions['A'].width = 15
+    summary_sheet.column_dimensions['B'].width = 40
+    summary_sheet.column_dimensions['C'].width = 20
+    summary_sheet.column_dimensions['D'].width = 15
+    
+    # Preparar respuesta HTTP
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    
+    print(f"🔍 DEBUG Excel Export - RESUMEN FINAL:")
+    print(f"  - Total secciones procesadas: {len(sections_with_data)}")
+    print(f"  - Gran total: ${grand_total:,.0f}")
+    print(f"  - Administración (12%): ${grand_total * 0.12:,.0f}")
+    print(f"  - Total final: ${grand_total + (grand_total * 0.12):,.0f}")
+    
+    # Generar nombre del archivo
+    project_name_clean = "".join(c for c in project.name if c.isalnum() or c in (' ', '_')).strip()
+    project_name_clean = project_name_clean.replace(' ', '_')
+    fecha_actual = get_colombia_time().strftime('%Y-%m-%d')
+    filename = f"Presupuesto_{project_name_clean}_{fecha_actual}.xlsx"
+    
+    print(f"🔍 DEBUG Excel Export - Archivo generado: {filename}")
+    
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    messages.success(request, f'✅ Presupuesto exportado exitosamente: {filename}')
+    
+    return response
+
+
+# Función para exportar gastos diarios a Excel
+@project_owner_or_jefe_required
+def export_gastos_to_excel(request, project_id):
+    """
+    Vista para exportar gastos diarios de materiales a Excel
+    Accesible para JEFE o dueño del proyecto
+    Permite filtrar por día, mes o proyecto completo
+    """
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Parámetros de filtrado
+    tipo_filtro = request.GET.get('tipo', 'proyecto')  # 'dia', 'mes', 'proyecto'
+    fecha = request.GET.get('fecha', '')  # Para filtro por día
+    mes = request.GET.get('mes', '')  # Para filtro por mes (formato: YYYY-MM)
+    
+    print(f"🔍 DEBUG Export Gastos - Parámetros recibidos:")
+    print(f"  - Tipo filtro: {tipo_filtro}")
+    print(f"  - Fecha: {fecha}")
+    print(f"  - Mes: {mes}")
+    print(f"  - Proyecto: {project.name}")
+    
+    from .models import ConsumoMaterial, ProyectoMaterial
+    from datetime import datetime, date
+    from django.utils import timezone
+    
+    # Construir query base
+    consumos_query = ConsumoMaterial.objects.filter(proyecto=project).select_related(
+        'material', 'material__unit', 'registrado_por'
+    )
+    
+    # Aplicar filtros según el tipo
+    if tipo_filtro == 'dia' and fecha:
+        try:
+            fecha_obj = datetime.strptime(fecha, '%Y-%m-%d').date()
+            consumos_query = consumos_query.filter(fecha_consumo=fecha_obj)
+            periodo_texto = f"Día {fecha_obj.strftime('%d/%m/%Y')}"
+        except ValueError:
+            periodo_texto = "Día (fecha inválida)"
+    elif tipo_filtro == 'mes' and mes:
+        try:
+            year, month = map(int, mes.split('-'))
+            consumos_query = consumos_query.filter(
+                fecha_consumo__year=year,
+                fecha_consumo__month=month
+            )
+            fecha_mes = date(year, month, 1)
+            
+            # Nombres de meses en español
+            meses_es = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+            mes_nombre = meses_es.get(month, 'Mes')
+            periodo_texto = f"Mes {mes_nombre} {year}"
+        except (ValueError, IndexError):
+            periodo_texto = "Mes (formato inválido)"
+    else:
+        periodo_texto = "Proyecto completo"
+    
+    # Ordenar por fecha
+    consumos = consumos_query.order_by('fecha_consumo', 'material__name')
+    
+    print(f"🔍 DEBUG Export Gastos - Total consumos encontrados: {consumos.count()}")
+    
+    if not consumos.exists():
+        messages.warning(request, f'No se encontraron gastos para el período seleccionado: {periodo_texto}')
+        return redirect('projects:project_board', project_id=project_id)
+    
+    # Crear workbook
+    workbook = openpyxl.Workbook()
+    
+    # Eliminar hoja por defecto y crear nueva
+    workbook.remove(workbook.active)
+    ws = workbook.create_sheet("Gastos de Materiales")
+    
+    # ===== CONFIGURACIÓN DE ESTILOS =====
+    # Fuentes
+    font_title = Font(name='Calibri', size=16, bold=True, color='FFFFFF')
+    font_header = Font(name='Calibri', size=12, bold=True, color='FFFFFF')
+    font_data = Font(name='Calibri', size=11)
+    font_total = Font(name='Calibri', size=12, bold=True)
+    
+    # Rellenos
+    fill_title = PatternFill(start_color='2F5233', end_color='2F5233', fill_type='solid')
+    fill_header = PatternFill(start_color='4F7942', end_color='4F7942', fill_type='solid')
+    fill_total = PatternFill(start_color='E8F5E8', end_color='E8F5E8', fill_type='solid')
+    
+    # Bordes
+    border_thin = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # ===== ENCABEZADO DEL REPORTE =====
+    ws.merge_cells('A1:G1')
+    ws['A1'] = f"REPORTE DE GASTOS - {project.name.upper()}"
+    ws['A1'].font = font_title
+    ws['A1'].fill = fill_title
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    ws.merge_cells('A2:G2')
+    ws['A2'] = f"Período: {periodo_texto}"
+    ws['A2'].font = Font(name='Calibri', size=12, bold=True, color='2F5233')
+    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    ws.merge_cells('A3:G3')
+    ws['A3'] = f"Generado: {get_colombia_time().strftime('%d/%m/%Y %H:%M')}"
+    ws['A3'].font = Font(name='Calibri', size=10, color='666666')
+    ws['A3'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # ===== ENCABEZADOS DE COLUMNAS =====
+    headers = ['Fecha', 'Material', 'SKU', 'Cantidad', 'Unidad', 'Costo Unit.', 'Costo Total', 'Actividad', 'Responsable']
+    header_row = 5
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=header_row, column=col)
+        cell.value = header
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border_thin
+    
+    # ===== DATOS =====
+    current_row = header_row + 1
+    total_general = 0
+    
+    for consumo in consumos:
+        # Obtener costo unitario del material
+        costo_unitario = float(consumo.material.unit_cost or 0)
+        
+        costo_total = float(consumo.cantidad_consumida) * costo_unitario
+        total_general += costo_total
+        
+        # Datos de la fila
+        row_data = [
+            consumo.fecha_consumo.strftime('%d/%m/%Y'),
+            consumo.material.name,
+            consumo.material.sku or '',
+            float(consumo.cantidad_consumida),
+            consumo.material.unit.symbol,
+            costo_unitario,
+            costo_total,
+            consumo.componente_actividad,
+            consumo.responsable or (request.user.get_full_name() or request.user.username)
+        ]
+        
+        for col, value in enumerate(row_data, 1):
+            cell = ws.cell(row=current_row, column=col)
+            cell.value = value
+            cell.font = font_data
+            cell.border = border_thin
+            
+            # Formato específico para columnas numéricas
+            if col in [4, 6, 7]:  # Cantidad, Costo Unit., Costo Total
+                cell.number_format = '#,##0.00'
+                cell.alignment = Alignment(horizontal='right')
+            elif col == 1:  # Fecha
+                cell.alignment = Alignment(horizontal='center')
+            else:
+                cell.alignment = Alignment(horizontal='left')
+        
+        current_row += 1
+    
+    # ===== FILA DE TOTAL =====
+    total_row = current_row + 1
+    
+    ws.merge_cells(f'A{total_row}:F{total_row}')
+    cell_total_label = ws[f'A{total_row}']
+    cell_total_label.value = "TOTAL GENERAL"
+    cell_total_label.font = font_total
+    cell_total_label.fill = fill_total
+    cell_total_label.alignment = Alignment(horizontal='right', vertical='center')
+    cell_total_label.border = border_thin
+    
+    cell_total_value = ws[f'G{total_row}']
+    cell_total_value.value = total_general
+    cell_total_value.font = font_total
+    cell_total_value.fill = fill_total
+    cell_total_value.number_format = '#,##0.00'
+    cell_total_value.alignment = Alignment(horizontal='right', vertical='center')
+    cell_total_value.border = border_thin
+    
+    # ===== AJUSTAR ANCHOS DE COLUMNAS =====
+    column_widths = [12, 25, 15, 12, 8, 15, 15, 30, 20]
+    for col, width in enumerate(column_widths, 1):
+        ws.column_dimensions[get_column_letter(col)].width = width
+    
+    # ===== AGREGAR RESUMEN EN SEGUNDA HOJA =====
+    ws_resumen = workbook.create_sheet("Resumen")
+    
+    # Título del resumen
+    ws_resumen.merge_cells('A1:D1')
+    ws_resumen['A1'] = f"RESUMEN DE GASTOS - {project.name.upper()}"
+    ws_resumen['A1'].font = font_title
+    ws_resumen['A1'].fill = fill_title
+    ws_resumen['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Información del proyecto
+    resumen_data = [
+        ["Período:", periodo_texto],
+        ["Total de registros:", consumos.count()],
+        ["Total invertido:", f"${total_general:,.2f}"],
+        ["Fecha de generación:", get_colombia_time().strftime('%d/%m/%Y %H:%M')],
+        ["Generado por:", request.user.get_full_name() or request.user.username]
+    ]
+    
+    for row, (label, value) in enumerate(resumen_data, 3):
+        ws_resumen.cell(row=row, column=1, value=label).font = Font(bold=True)
+        ws_resumen.cell(row=row, column=2, value=value)
+    
+    # Ajustar anchos
+    ws_resumen.column_dimensions['A'].width = 20
+    ws_resumen.column_dimensions['B'].width = 30
+    
+    # ===== PREPARAR RESPUESTA =====
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    
+    print(f"🔍 DEBUG Export Gastos - RESUMEN FINAL:")
+    print(f"  - Total registros: {consumos.count()}")
+    print(f"  - Total general: ${total_general:,.2f}")
+    print(f"  - Período: {periodo_texto}")
+    
+    # Generar nombre del archivo
+    project_name_clean = "".join(c for c in project.name if c.isalnum() or c in (' ', '_')).strip()
+    project_name_clean = project_name_clean.replace(' ', '_')
+    fecha_actual = get_colombia_time().strftime('%Y-%m-%d')
+    
+    if tipo_filtro == 'dia' and fecha:
+        filename = f"Gastos_{project_name_clean}_{fecha}_{fecha_actual}.xlsx"
+    elif tipo_filtro == 'mes' and mes:
+        filename = f"Gastos_{project_name_clean}_{mes}_{fecha_actual}.xlsx"
+    else:
+        filename = f"Gastos_{project_name_clean}_Completo_{fecha_actual}.xlsx"
+    
+    print(f"🔍 DEBUG Export Gastos - Archivo generado: {filename}")
+    
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    messages.success(request, f'✅ Gastos exportados exitosamente: {filename}')
+    
+    return response
+
+
+@login_required
+@project_owner_or_jefe_required
+def export_comparativo_to_excel(request, project_id):
+    """
+    Exporta reporte comparativo de presupuesto vs gasto real a Excel
+    RF: Como Jefe de obra, quiero exportar un reporte comparativo para analizar desviaciones financieras
+    """
+    from collections import defaultdict
+    from decimal import Decimal
+    from django.db.models import Sum, F
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from openpyxl.utils import get_column_letter
+    import io
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    print(f"🔍 DEBUG Export Comparativo - Iniciando para proyecto: {project.name}")
+    
+    # ===== OBTENER DATOS DEL PRESUPUESTO =====
+    presupuesto_items = ProjectBudgetItem.objects.filter(
+        project=project
+    ).select_related('budget_item', 'budget_item__section').order_by(
+        'budget_item__section__order', 'budget_item__order'
+    )
+    
+    # Agrupar presupuesto por sección
+    presupuesto_por_seccion = defaultdict(lambda: {
+        'items': [],
+        'total_presupuestado': Decimal('0'),
+        'seccion_nombre': '',
+        'seccion_order': 0
+    })
+    
+    total_presupuesto_proyecto = Decimal('0')
+    
+    for item in presupuesto_items:
+        seccion_key = item.budget_item.section.name
+        seccion_data = presupuesto_por_seccion[seccion_key]
+        
+        seccion_data['seccion_nombre'] = item.budget_item.section.name
+        seccion_data['seccion_order'] = item.budget_item.section.order
+        seccion_data['items'].append({
+            'descripcion': item.budget_item.description,
+            'cantidad': item.quantity,
+            'precio_unitario': item.unit_price,
+            'total': item.total_price
+        })
+        seccion_data['total_presupuestado'] += item.total_price
+        total_presupuesto_proyecto += item.total_price
+    
+    print(f"🔍 DEBUG - Total presupuesto proyecto: ${total_presupuesto_proyecto:,.2f}")
+    print(f"🔍 DEBUG - Secciones de presupuesto encontradas: {len(presupuesto_por_seccion)}")
+    
+    # ===== OBTENER DATOS DE GASTOS REALES =====
+    consumos = ConsumoMaterial.objects.filter(
+        proyecto=project
+    ).select_related('material', 'material__unit')
+    
+    # Agrupar gastos por componente/actividad
+    gastos_por_componente = defaultdict(lambda: {
+        'items': [],
+        'total_gastado': Decimal('0')
+    })
+    
+    total_gastos_proyecto = Decimal('0')
+    
+    for consumo in consumos:
+        componente = consumo.componente_actividad or 'Sin especificar'
+        costo_unitario = getattr(consumo.material, 'unit_cost', None) or Decimal('0')
+        costo_total = consumo.cantidad_consumida * costo_unitario
+        
+        gastos_por_componente[componente]['items'].append({
+            'material': consumo.material.name,
+            'cantidad': consumo.cantidad_consumida,
+            'costo_unitario': costo_unitario,
+            'costo_total': costo_total,
+            'fecha': consumo.fecha_consumo
+        })
+        gastos_por_componente[componente]['total_gastado'] += costo_total
+        total_gastos_proyecto += costo_total
+    
+    print(f"🔍 DEBUG - Total gastos proyecto: ${total_gastos_proyecto:,.2f}")
+    print(f"🔍 DEBUG - Componentes de gasto encontrados: {len(gastos_por_componente)}")
+    
+    # ===== CREAR WORKBOOK =====
+    workbook = openpyxl.Workbook()
+    workbook.remove(workbook.active)
+    
+    # ===== CONFIGURACIÓN DE ESTILOS =====
+    font_title = Font(name='Calibri', size=16, bold=True, color='FFFFFF')
+    font_header = Font(name='Calibri', size=12, bold=True, color='FFFFFF')
+    font_subheader = Font(name='Calibri', size=11, bold=True, color='2F5233')
+    font_data = Font(name='Calibri', size=11)
+    font_total = Font(name='Calibri', size=12, bold=True)
+    font_deviation_positive = Font(name='Calibri', size=11, bold=True, color='D32F2F')  # Rojo para sobrecostos
+    font_deviation_negative = Font(name='Calibri', size=11, bold=True, color='388E3C')  # Verde para ahorros
+    
+    fill_title = PatternFill(start_color='2F5233', end_color='2F5233', fill_type='solid')
+    fill_header = PatternFill(start_color='4F7942', end_color='4F7942', fill_type='solid')
+    fill_section = PatternFill(start_color='E8F5E8', end_color='E8F5E8', fill_type='solid')
+    fill_total = PatternFill(start_color='BBDEFB', end_color='BBDEFB', fill_type='solid')
+    fill_overbudget = PatternFill(start_color='FFEBEE', end_color='FFEBEE', fill_type='solid')  # Rojo claro
+    fill_underbudget = PatternFill(start_color='E8F5E8', end_color='E8F5E8', fill_type='solid')  # Verde claro
+    
+    border_thin = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    
+    # ===== HOJA 1: COMPARATIVO POR SECCIONES =====
+    ws_comparativo = workbook.create_sheet("Comparativo Presupuesto")
+    
+    # Título principal
+    ws_comparativo.merge_cells('A1:H1')
+    ws_comparativo['A1'] = f"COMPARATIVO PRESUPUESTO VS GASTO REAL - {project.name.upper()}"
+    ws_comparativo['A1'].font = font_title
+    ws_comparativo['A1'].fill = fill_title
+    ws_comparativo['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Información del reporte
+    ws_comparativo.merge_cells('A2:H2')
+    ws_comparativo['A2'] = f"Generado: {get_colombia_time().strftime('%d/%m/%Y %H:%M')}"
+    ws_comparativo['A2'].font = Font(name='Calibri', size=10, color='666666')
+    ws_comparativo['A2'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Encabezados
+    headers = [
+        'Sección/Componente', 'Presupuesto Proyectado', 'Gasto Real', 
+        'Desviación ($)', 'Desviación (%)', 'Estado', 'Items Presupuesto', 'Items Gastados'
+    ]
+    
+    header_row = 4
+    for col, header in enumerate(headers, 1):
+        cell = ws_comparativo.cell(row=header_row, column=col)
+        cell.value = header
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.border = border_thin
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    current_row = header_row + 1
+    
+    # ===== MAPEO INTELIGENTE SECCIONES VS COMPONENTES =====
+    # Crear mapeo aproximado basado en palabras clave
+    mapeo_seccion_componente = {
+        'cimentación': ['cimentacion', 'cimientos', 'zapata', 'fundacion'],
+        'estructura': ['estructura', 'viga', 'columna', 'concreto', 'acero'],
+        'muros': ['muro', 'pared', 'mamposteria', 'ladrillo', 'bloque'],
+        'cubierta': ['cubierta', 'techo', 'teja', 'impermeabilizacion'],
+        'pisos': ['piso', 'acabados', 'ceramica', 'baldosa'],
+        'instalaciones': ['instalacion', 'electrica', 'hidrosanitaria', 'fontaneria', 'electricidad'],
+        'carpinteria': ['puerta', 'ventana', 'marco', 'carpinteria'],
+        'pintura': ['pintura', 'acabados'],
+        'varios': ['varios', 'miscelaneos', 'otros']
+    }
+    
+    def encontrar_seccion_para_componente(componente):
+        """Encuentra la sección de presupuesto más apropiada para un componente de gasto"""
+        componente_lower = componente.lower()
+        for seccion_nombre, seccion_data in presupuesto_por_seccion.items():
+            seccion_lower = seccion_nombre.lower()
+            # Buscar coincidencia directa
+            if any(palabra in componente_lower for palabra in seccion_lower.split()):
+                return seccion_nombre
+        
+        # Buscar por mapeo de palabras clave
+        for patron, palabras_clave in mapeo_seccion_componente.items():
+            if any(palabra in componente_lower for palabra in palabras_clave):
+                # Buscar sección que contenga el patrón
+                for seccion_nombre in presupuesto_por_seccion.keys():
+                    if patron in seccion_nombre.lower():
+                        return seccion_nombre
+        
+        return None
+    
+    # ===== PROCESAR DATOS PARA EL COMPARATIVO =====
+    comparativo_data = []
+    secciones_procesadas = set()
+    
+    # 1. Procesar secciones del presupuesto
+    for seccion_nombre, seccion_data in sorted(presupuesto_por_seccion.items(), 
+                                               key=lambda x: x[1]['seccion_order']):
+        presupuestado = seccion_data['total_presupuestado']
+        
+        # Buscar gastos relacionados con esta sección
+        gastos_relacionados = Decimal('0')
+        componentes_relacionados = []
+        
+        for componente, gasto_data in gastos_por_componente.items():
+            seccion_encontrada = encontrar_seccion_para_componente(componente)
+            if seccion_encontrada == seccion_nombre:
+                gastos_relacionados += gasto_data['total_gastado']
+                componentes_relacionados.append(componente)
+        
+        # Marcar componentes como procesados
+        for comp in componentes_relacionados:
+            secciones_procesadas.add(comp)
+        
+        # Calcular desviaciones
+        desviacion_abs = gastos_relacionados - presupuestado
+        desviacion_pct = (desviacion_abs / presupuestado * 100) if presupuestado > 0 else 0
+        
+        estado = "SOBRE PRESUPUESTO" if desviacion_abs > 0 else "DENTRO PRESUPUESTO" if desviacion_abs == 0 else "BAJO PRESUPUESTO"
+        
+        comparativo_data.append({
+            'nombre': seccion_nombre,
+            'presupuestado': presupuestado,
+            'gastado': gastos_relacionados,
+            'desviacion_abs': desviacion_abs,
+            'desviacion_pct': desviacion_pct,
+            'estado': estado,
+            'items_presupuesto': len(seccion_data['items']),
+            'items_gastados': len(componentes_relacionados),
+            'tipo': 'seccion'
+        })
+    
+    # 2. Procesar componentes de gasto sin sección asignada
+    for componente, gasto_data in gastos_por_componente.items():
+        if componente not in secciones_procesadas:
+            gastado = gasto_data['total_gastado']
+            
+            comparativo_data.append({
+                'nombre': f"[GASTO SIN PRESUPUESTO] {componente}",
+                'presupuestado': Decimal('0'),
+                'gastado': gastado,
+                'desviacion_abs': gastado,
+                'desviacion_pct': 100 if gastado > 0 else 0,  # 100% desviación si no estaba presupuestado
+                'estado': "SIN PRESUPUESTO",
+                'items_presupuesto': 0,
+                'items_gastados': len(gasto_data['items']),
+                'tipo': 'gasto_extra'
+            })
+    
+    # ===== ESCRIBIR DATOS EN LA HOJA =====
+    for data in comparativo_data:
+        # Determinar estilo según el estado
+        if data['tipo'] == 'gasto_extra':
+            fill_row = fill_overbudget
+            font_desviacion = font_deviation_positive
+        elif data['desviacion_abs'] > 0:
+            fill_row = fill_overbudget
+            font_desviacion = font_deviation_positive
+        elif data['desviacion_abs'] < 0:
+            fill_row = fill_underbudget
+            font_desviacion = font_deviation_negative
+        else:
+            fill_row = None
+            font_desviacion = font_data
+        
+        row_data = [
+            data['nombre'],
+            float(data['presupuestado']),
+            float(data['gastado']),
+            float(data['desviacion_abs']),
+            float(data['desviacion_pct']),
+            data['estado'],
+            data['items_presupuesto'],
+            data['items_gastados']
+        ]
+        
+        for col, value in enumerate(row_data, 1):
+            cell = ws_comparativo.cell(row=current_row, column=col)
+            cell.value = value
+            cell.border = border_thin
+            
+            # Aplicar formato específico
+            if col in [2, 3, 4]:  # Presupuestado, Gastado, Desviación $
+                cell.number_format = '"$"#,##0.00'
+                cell.alignment = Alignment(horizontal='right')
+            elif col == 5:  # Desviación %
+                cell.number_format = '0.00"%"'
+                cell.alignment = Alignment(horizontal='right')
+                cell.font = font_desviacion
+            elif col in [7, 8]:  # Contadores
+                cell.alignment = Alignment(horizontal='center')
+            else:
+                cell.alignment = Alignment(horizontal='left')
+            
+            # Aplicar fondo si es necesario
+            if fill_row and col <= 8:
+                cell.fill = fill_row
+            
+            cell.font = font_data
+        
+        current_row += 1
+    
+    # ===== FILA DE TOTALES =====
+    total_row = current_row + 1
+    
+    # Calcular totales
+    total_presupuestado_final = sum(item['presupuestado'] for item in comparativo_data 
+                                    if item['tipo'] == 'seccion')
+    total_gastado_final = sum(item['gastado'] for item in comparativo_data)
+    desviacion_total = total_gastado_final - total_presupuestado_final
+    desviacion_pct_total = (desviacion_total / total_presupuestado_final * 100) if total_presupuestado_final > 0 else 0
+    
+    # Aplicar totales
+    ws_comparativo.merge_cells(f'A{total_row}:A{total_row}')
+    cell_total_label = ws_comparativo[f'A{total_row}']
+    cell_total_label.value = "TOTALES GENERALES"
+    cell_total_label.font = font_total
+    cell_total_label.fill = fill_total
+    cell_total_label.alignment = Alignment(horizontal='center', vertical='center')
+    cell_total_label.border = border_thin
+    
+    totales_data = [
+        None,  # Ya asignado arriba
+        float(total_presupuestado_final),
+        float(total_gastado_final),
+        float(desviacion_total),
+        float(desviacion_pct_total),
+        "SOBRE PRESUPUESTO" if desviacion_total > 0 else "DENTRO PRESUPUESTO" if desviacion_total == 0 else "BAJO PRESUPUESTO",
+        sum(item['items_presupuesto'] for item in comparativo_data),
+        sum(item['items_gastados'] for item in comparativo_data)
+    ]
+    
+    for col, value in enumerate(totales_data[1:], 2):  # Empezar desde columna 2
+        cell = ws_comparativo.cell(row=total_row, column=col)
+        cell.value = value
+        cell.font = font_total
+        cell.fill = fill_total
+        cell.border = border_thin
+        
+        if col in [2, 3, 4]:  # Montos
+            cell.number_format = '"$"#,##0.00'
+            cell.alignment = Alignment(horizontal='right')
+        elif col == 5:  # Porcentaje
+            cell.number_format = '0.00"%"'
+            cell.alignment = Alignment(horizontal='right')
+        elif col in [7, 8]:  # Contadores
+            cell.alignment = Alignment(horizontal='center')
+        else:
+            cell.alignment = Alignment(horizontal='center')
+    
+    # ===== AJUSTAR ANCHOS DE COLUMNAS =====
+    column_widths = [35, 18, 18, 18, 15, 20, 15, 15]
+    for col, width in enumerate(column_widths, 1):
+        ws_comparativo.column_dimensions[get_column_letter(col)].width = width
+    
+    # ===== HOJA 2: RESUMEN EJECUTIVO =====
+    ws_resumen = workbook.create_sheet("Resumen Ejecutivo")
+    
+    # Título del resumen
+    ws_resumen.merge_cells('A1:D1')
+    ws_resumen['A1'] = f"RESUMEN EJECUTIVO - {project.name.upper()}"
+    ws_resumen['A1'].font = font_title
+    ws_resumen['A1'].fill = fill_title
+    ws_resumen['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Métricas clave
+    metricas_data = [
+        ["MÉTRICAS FINANCIERAS", ""],
+        ["Presupuesto inicial:", f"${total_presupuestado_final:,.2f}"],
+        ["Gasto real acumulado:", f"${total_gastado_final:,.2f}"],
+        ["Desviación total:", f"${desviacion_total:,.2f}"],
+        ["Desviación porcentual:", f"{desviacion_pct_total:.2f}%"],
+        ["", ""],
+        ["ANÁLISIS POR ESTADO", ""],
+        ["Secciones sobre presupuesto:", len([d for d in comparativo_data if d['desviacion_abs'] > 0])],
+        ["Secciones bajo presupuesto:", len([d for d in comparativo_data if d['desviacion_abs'] < 0])],
+        ["Gastos sin presupuesto:", len([d for d in comparativo_data if d['tipo'] == 'gasto_extra'])],
+        ["", ""],
+        ["INFORMACIÓN DEL REPORTE", ""],
+        ["Fecha de generación:", get_colombia_time().strftime('%d/%m/%Y %H:%M')],
+        ["Generado por:", request.user.get_full_name() or request.user.username],
+        ["Total de ítems presupuestados:", sum(item['items_presupuesto'] for item in comparativo_data)],
+        ["Total de registros de gasto:", sum(item['items_gastados'] for item in comparativo_data)]
+    ]
+    
+    for row, (label, value) in enumerate(metricas_data, 3):
+        if label == "MÉTRICAS FINANCIERAS" or label == "ANÁLISIS POR ESTADO" or label == "INFORMACIÓN DEL REPORTE":
+            # Encabezado de sección
+            ws_resumen.merge_cells(f'A{row}:D{row}')
+            cell = ws_resumen[f'A{row}']
+            cell.value = label
+            cell.font = font_subheader
+            cell.fill = fill_section
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border_thin
+        elif label:  # Solo si tiene contenido
+            ws_resumen.cell(row=row, column=1, value=label).font = Font(bold=True)
+            ws_resumen.cell(row=row, column=2, value=value)
+    
+    # Ajustar anchos
+    ws_resumen.column_dimensions['A'].width = 25
+    ws_resumen.column_dimensions['B'].width = 20
+    ws_resumen.column_dimensions['C'].width = 15
+    ws_resumen.column_dimensions['D'].width = 15
+    
+    # ===== PREPARAR RESPUESTA =====
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    
+    print(f"🔍 DEBUG Export Comparativo - RESUMEN FINAL:")
+    print(f"  - Total presupuestado: ${total_presupuestado_final:,.2f}")
+    print(f"  - Total gastado: ${total_gastado_final:,.2f}")
+    print(f"  - Desviación: ${desviacion_total:,.2f} ({desviacion_pct_total:.2f}%)")
+    print(f"  - Secciones procesadas: {len(comparativo_data)}")
+    
+    # Generar nombre del archivo
+    project_name_clean = "".join(c for c in project.name if c.isalnum() or c in (' ', '_')).strip()
+    project_name_clean = project_name_clean.replace(' ', '_')
+    fecha_actual = get_colombia_time().strftime('%Y-%m-%d')
+    filename = f"Comparativo_{project_name_clean}_{fecha_actual}.xlsx"
+    
+    print(f"🔍 DEBUG Export Comparativo - Archivo generado: {filename}")
+    
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    messages.success(request, f'✅ Reporte comparativo exportado exitosamente: {filename}')
+    
+    return response

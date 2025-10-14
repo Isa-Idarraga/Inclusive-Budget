@@ -16,6 +16,49 @@
           <i class="fas fa-chart-bar me-1"></i>Ver gráficos
         </a>
         <a class="btn btn-outline-secondary" href="{{ add_purchases_url|default:'#' }}"> Agregar compras</a>
+        
+        <!-- Menú de exportaciones - Para JEFE o dueño del proyecto -->
+        {% if user.role == 'JEFE' or project.creado_por == user %}
+        <div class="btn-group" role="group">
+          <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-file-excel me-1"></i>Exportar Excel
+          </button>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="{% url 'projects:export_budget_to_excel' project.id %}">
+                <i class="fas fa-calculator me-2 text-primary"></i>Presupuesto detallado
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="{% url 'projects:export_comparativo_to_excel' project.id %}">
+                <i class="fas fa-chart-line me-2 text-danger"></i>Comparativo presupuesto vs gasto
+              </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <h6 class="dropdown-header">
+                <i class="fas fa-shopping-cart me-1"></i>Gastos diarios
+              </h6>
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" onclick="exportarGastos('proyecto')">
+                <i class="fas fa-project-diagram me-2 text-success"></i>Proyecto completo
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" onclick="mostrarModalMes()">
+                <i class="fas fa-calendar-alt me-2 text-info"></i>Por mes
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" onclick="mostrarModalDia()">
+                <i class="fas fa-calendar-day me-2 text-warning"></i>Por día
+              </a>
+            </li>
+          </ul>
+        </div>
+        {% endif %}
+        
         <a class="btn btn-dark" href="{{ details_url|default:'#' }}">Ver detalles</a>
       </div>
     </div>
@@ -346,10 +389,125 @@
   </div>
 </div>
 
+<!-- Modales para filtros de exportación de gastos -->
+<!-- Modal para seleccionar mes -->
+<div class="modal fade" id="modalMes" tabindex="-1" aria-labelledby="modalMesLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalMesLabel">
+          <i class="fas fa-calendar-alt text-info me-2"></i>Exportar gastos por mes
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formMes">
+          <div class="mb-3">
+            <label for="inputMes" class="form-label">Seleccionar mes:</label>
+            <input type="month" class="form-control" id="inputMes" required>
+            <div class="form-text">Se exportarán todos los gastos del mes seleccionado.</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-info" onclick="exportarGastosMes()">
+          <i class="fas fa-file-excel me-1"></i>Exportar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para seleccionar día -->
+<div class="modal fade" id="modalDia" tabindex="-1" aria-labelledby="modalDiaLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalDiaLabel">
+          <i class="fas fa-calendar-day text-warning me-2"></i>Exportar gastos por día
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formDia">
+          <div class="mb-3">
+            <label for="inputDia" class="form-label">Seleccionar fecha:</label>
+            <input type="date" class="form-control" id="inputDia" required>
+            <div class="form-text">Se exportarán solo los gastos del día seleccionado.</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning" onclick="exportarGastosDia()">
+          <i class="fas fa-file-excel me-1"></i>Exportar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <link rel="stylesheet" href="{% static 'css/board.css' %}">
 <script>
-  // Pasar el ID del proyecto al JavaScript
-  window.PROJECT_ID = {{ project.id }};
+  // Pasar el ID del proyecto al JavaScript de forma segura
+  window.PROJECT_ID = parseInt('{{ project.id|escapejs }}');
+  
+  // Funciones para exportar gastos
+  function exportarGastos(tipo) {
+    let url = `{% url 'projects:export_gastos_to_excel' project.id %}?tipo=${tipo}`;
+    window.location.href = url;
+  }
+  
+  function mostrarModalMes() {
+    // Establecer mes actual por defecto
+    const ahora = new Date();
+    const mesActual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0');
+    document.getElementById('inputMes').value = mesActual;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalMes'));
+    modal.show();
+  }
+  
+  function mostrarModalDia() {
+    // Establecer fecha actual por defecto
+    const ahora = new Date();
+    const fechaActual = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0') + '-' + String(ahora.getDate()).padStart(2, '0');
+    document.getElementById('inputDia').value = fechaActual;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalDia'));
+    modal.show();
+  }
+  
+  function exportarGastosMes() {
+    const mes = document.getElementById('inputMes').value;
+    if (!mes) {
+      alert('Por favor selecciona un mes.');
+      return;
+    }
+    
+    let url = `{% url 'projects:export_gastos_to_excel' project.id %}?tipo=mes&mes=${mes}`;
+    window.location.href = url;
+    
+    // Cerrar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalMes'));
+    modal.hide();
+  }
+  
+  function exportarGastosDia() {
+    const fecha = document.getElementById('inputDia').value;
+    if (!fecha) {
+      alert('Por favor selecciona una fecha.');
+      return;
+    }
+    
+    let url = `{% url 'projects:export_gastos_to_excel' project.id %}?tipo=dia&fecha=${fecha}`;
+    window.location.href = url;
+    
+    // Cerrar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalDia'));
+    modal.hide();
+  }
 </script>
 <script src="{% static 'js/calendar.js' %}"></script>
 {% endblock %}

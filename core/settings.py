@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'storages',  # Para AWS S3
     'projects',
     'catalog',
     'dashboard',
@@ -162,3 +163,28 @@ LOGOUT_REDIRECT_URL = "users:login"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# ===== CONFIGURACIÓN DE AWS S3 PARA IMÁGENES =====
+# Las imágenes se guardarán en AWS S3 (almacenamiento en la nube)
+# Esto permite que las imágenes sean accesibles desde cualquier computador
+
+# Credenciales de AWS
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-2')
+
+# Configuración de S3
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',  # Cache de 1 día
+}
+AWS_DEFAULT_ACL = None  # Sin ACLs (configuración moderna de AWS)
+AWS_S3_FILE_OVERWRITE = False  # No sobrescribir archivos con el mismo nombre
+AWS_QUERYSTRING_AUTH = False  # No usar firma en las URLs
+
+# Usar S3 para archivos media (imágenes subidas por usuarios)
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+# La URL de las imágenes será desde S3
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'

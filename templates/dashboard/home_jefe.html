@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 {% block content %}
 <section class="hero">
   <h1 class="hero-title">Hola Jefe 👑<br>¿Desea iniciar un nuevo proyecto?</h1>
@@ -62,4 +63,229 @@
     <img src="{% static 'img/Logo Inclusive.png' %}" alt="Inclusive">
   </div>
 </section>
+<!-- KPIs section -->
+<div class="container mt-5">
+  <h3 class="text-center mb-4">Dashboard - Indicadores Clave</h3>
+  <div class="row g-4 align-items-start">
+    <div class="card p-3 mt-4 shadow-inclusive">
+      <h5 class="text-center">Comparativa por Proyecto</h5>
+      <div id="chart-proyectos-container" style="height: 400px;">
+        <!-- Aquí se insertará dinámicamente el canvas con Chart.js -->
+      </div>
+    </div>
+    <!-- Avance Presupuestario -->
+    <div class="col-md-6">
+      <div class="card p-3 shadow-inclusive h-100">
+        <h5 class="mb-3">Avance presupuestario consolidado</h5>
+
+        <div class="progress mb-2" style="height: 24px">
+          {% with pct=porcentaje_avance|default:0 %}
+          <div class="progress-bar bg-inclusive-primary" role="progressbar"
+              style="width: {{ pct }}%;" aria-valuenow="{{ pct }}"
+              aria-valuemin="0" aria-valuemax="100">
+            {{ pct }}%
+          </div>
+          {% endwith %}
+        </div>
+        <p class="small mb-3">Basado en suma de presupuestos y gastado.</p>
+
+        <!-- Gráfico más pequeño -->
+        <div style="height: 260px; max-width: 100%; margin: 0 auto;">
+          <canvas id="chartFin"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumen Financiero -->
+    <div class="col-md-6">
+      <div class="card p-3 shadow-inclusive h-100">
+        <h5 class="mb-3">Resumen financiero consolidado</h5>
+        <p class="mb-1"><strong>Presupuesto total:</strong> ${{ resumen_financiero.total_presupuesto|floatformat:0|intcomma }}</p>
+        <p class="mb-1"><strong>Gastado total:</strong> ${{ resumen_financiero.total_gastado|floatformat:0|intcomma }}</p>
+        <p class="mb-0"><strong>Saldo:</strong> ${{ resumen_financiero.saldo|floatformat:0|intcomma }}</p>
+      </div>
+    </div>
+  </div>
+
+    <!-- 🔷 Caja explicativa de stock por proyecto -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card p-3 shadow-inclusive">
+        <div class="alert alert-info" role="alert">
+          <strong>¿Qué muestra esta sección?</strong><br>
+          Aquí se listan los materiales cuyo <strong>stock disponible dentro de un proyecto específico</strong> es menor a <strong>10 unidades</strong>.
+          Esto permite al jefe de obra anticiparse a posibles faltantes de insumos antes de que afecten el desarrollo de las actividades.
+          Ten en cuenta que este stock es <strong>por proyecto</strong>, no global.
+        </div>
+
+        <h5>📦 Materiales con stock bajo en proyectos</h5>
+        <div class="table-responsive">
+          {% if materiales_bajo_10 %}
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Material</th>
+                  <th>Proyecto</th>
+                  <th>Stock asignado</th>
+                  <th>Unidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in materiales_bajo_10 %}
+                  <tr>
+                    <td>{{ item.material.name }}</td>
+                    <td>{{ item.proyecto.name }}</td>
+                    <td>
+                      {% if item.stock_proyecto < 5 %}
+                        <span class="badge bg-danger">{{ item.stock_proyecto }}</span>
+                      {% elif item.stock_proyecto < 10 %}
+                        <span class="badge bg-warning text-dark">{{ item.stock_proyecto }}</span>
+                      {% else %}
+                        <span class="badge bg-success">{{ item.stock_proyecto }}</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ item.material.unit.name }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="alert alert-success">
+              🎉 Todos los proyectos tienen stock suficiente de materiales.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card p-3 shadow-inclusive">
+        <form method="get" class="mb-3">
+          <label for="desviacion_threshold">Umbral de desviación (%)</label>
+          <input type="number" name="desviacion_threshold" id="desviacion_threshold"
+                min="0" max="100" step="0.1"
+                value="{{ desviacion_threshold }}" class="form-control" style="width: 150px; display: inline-block;"/>
+          <button type="submit" class="btn btn-primary btn-sm">Actualizar</button>
+        </form>
+        <h5>Proyectos con desviación ≥ {{ desviacion_threshold }}%</h5>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Proyecto</th>
+                <th>Presupuesto</th>
+                <th>Gastado</th>
+                <th>% Gastado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <div class="alert alert-info" role="alert">
+                <strong>¿Cómo interpretar los colores?</strong><br>
+                Esta tabla muestra los proyectos cuya ejecución presupuestaria se desvía del <strong>100%</strong> esperado.
+                Actualmente se está utilizando un <strong>umbral de desviación de {{ desviacion_threshold }}%</strong>.
+                Solo se listan proyectos cuya desviación es mayor o igual a ese umbral.
+                <br><br>
+                El color del <strong>% Gastado</strong> indica el nivel de desviación:
+                <ul class="mb-0">
+                  <li><span class="badge bg-success">Verde</span>: Gasto dentro del rango esperado (90% - 110%).</li>
+                  <li><span class="badge bg-warning text-dark">Amarillo</span>: Desviación moderada (entre 70%-89% o 111%-130%).</li>
+                  <li><span class="badge bg-danger">Rojo</span>: Desviación fuerte (&lt;70% o &gt;130%).</li>
+                </ul>
+              </div>
+
+              {% for p in proyectos_desviacion %}
+                <tr>
+                  <td>{{ p.name }}</td>
+                  <td>${{ p.presupuesto|floatformat:0|intcomma }}</td>
+                  <td>${{ p.gastado|floatformat:0|intcomma }}</td>
+                  <td>
+                    {% with p.porcentaje as pct %}
+                      {% if pct >= 90 and pct <= 110 %}
+                        <span class="badge bg-success">{{ pct|floatformat:2 }}%</span>
+                      {% elif pct >= 70 and pct < 90 or pct > 110 and pct <= 130 %}
+                        <span class="badge bg-warning text-dark">{{ pct|floatformat:2 }}%</span>
+                      {% else %}
+                        <span class="badge bg-danger">{{ pct|floatformat:2 }}%</span>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4">No hay proyectos con desviación significativa.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const dataUrl = '{% url "dashboard:kpis_data" %}';
+    fetch(dataUrl)
+      .then(r => r.json())
+      .then(payload => {
+        // Update financial summary
+        const totalPresupuesto = payload.resumen_financiero.total_presupuesto || 0;
+        const totalGastado = payload.resumen_financiero.total_gastado || 0;
+        // Pie/doughnut chart for consolidated finances
+        const ctxFin = document.getElementById('chartFin');
+        new Chart(ctxFin, {
+          type: 'doughnut',
+          data: {
+            labels: ['Presupuesto', 'Gastado'],
+            datasets: [{
+              data: [totalPresupuesto, totalGastado],
+              backgroundColor: ['#6C8E68', '#e74a3b']
+            }]
+          },
+        });
+
+        // Projects bar chart (presupuesto vs gastado)
+        if (payload.proyectos && payload.proyectos.length){
+          const labels = payload.proyectos.map(p => p.name);
+          const presupuestos = payload.proyectos.map(p => p.presupuesto);
+          const gastados = payload.proyectos.map(p => p.gastado);
+
+          const container = document.getElementById('chart-proyectos-container');
+          const canvas = document.createElement('canvas');
+          canvas.style.height = '350px';  // altura personalizada
+          container.appendChild(canvas);
+
+          new Chart(canvas, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [
+                { label: 'Presupuesto', data: presupuestos, backgroundColor: '#6C8E68' },
+                { label: 'Gastado', data: gastados, backgroundColor: '#e74a3b' },
+              ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+          });
+        }
+
+        // Populate materials list dynamically (optional enhancement)
+        if (payload.materiales && payload.materiales.length){
+          const listEl = document.querySelector('.card.p-3.shadow-inclusive ul.list-unstyled');
+          if (listEl){
+            listEl.innerHTML = '';
+            payload.materiales.slice(0,20).forEach(m => {
+              const li = document.createElement('li');
+              li.textContent = `${m.sku} — ${m.name}: ${m.stock} ${m.unit}`;
+              listEl.appendChild(li);
+            });
+          }
+        }
+      })
+      .catch(err => console.error('Error cargando KPIs:', err));
+  });
+</script>
 {% endblock %}
