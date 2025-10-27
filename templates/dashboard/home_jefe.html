@@ -66,6 +66,108 @@
 <!-- KPIs section -->
 <div class="container mt-5">
   <h3 class="text-center mb-4">Dashboard - Indicadores Clave</h3>
+  
+  <!-- Formulario de Filtros -->
+  <div class="card p-3 mb-4 shadow-inclusive">
+    <h5 class="mb-3"><i class="fas fa-filter me-2"></i>Filtros del Dashboard</h5>
+    <form method="get" id="dashboard-filters-form">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label for="proyecto" class="form-label">Proyecto</label>
+          <select name="proyecto" id="proyecto" class="form-select">
+            <option value="">Todos los proyectos</option>
+            {% for p in todos_proyectos %}
+              <option value="{{ p.id }}" {% if proyecto_filter == p.id|stringformat:"s" %}selected{% endif %}>
+                {{ p.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="col-md-2">
+          <label for="fecha_desde" class="form-label">Desde</label>
+          <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" 
+                 value="{{ fecha_desde_filter|default:'' }}">
+        </div>
+        
+        <div class="col-md-2">
+          <label for="fecha_hasta" class="form-label">Hasta</label>
+          <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" 
+                 value="{{ fecha_hasta_filter|default:'' }}">
+        </div>
+        
+        <div class="col-md-3">
+          <label for="categoria" class="form-label">Categoría de Material</label>
+          <select name="categoria" id="categoria" class="form-select">
+            <option value="">Todas las categorías</option>
+            {% for cat_code, cat_label in categorias %}
+              <option value="{{ cat_code }}" {% if categoria_filter == cat_code %}selected{% endif %}>
+                {{ cat_label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-inclusive-primary w-100">
+            <i class="fas fa-search me-1"></i>Aplicar Filtros
+          </button>
+        </div>
+      </div>
+      
+      <!-- Mantener umbral de desviación en el form -->
+      <input type="hidden" name="desviacion_threshold" value="{{ desviacion_threshold }}">
+      <input type="hidden" name="material_threshold" value="{{ material_threshold }}">
+    </form>
+    
+    <!-- Filtros activos -->
+    {% if proyecto_filter or categoria_filter or fecha_desde_filter or fecha_hasta_filter %}
+      <div class="mt-3">
+        <strong>Filtros activos:</strong>
+        {% if proyecto_filter %}
+          {% for p in todos_proyectos %}
+            {% if p.id|stringformat:"s" == proyecto_filter %}
+              <span class="badge bg-inclusive-primary ms-2">
+                Proyecto: {{ p.name }}
+                <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}" 
+                   class="text-white ms-1" style="text-decoration: none;">×</a>
+              </span>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% if categoria_filter %}
+          {% for cat_code, cat_label in categorias %}
+            {% if cat_code == categoria_filter %}
+              <span class="badge bg-inclusive-primary ms-2">
+                Categoría: {{ cat_label }}
+                <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if proyecto_filter %}&proyecto={{ proyecto_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}" 
+                   class="text-white ms-1" style="text-decoration: none;">×</a>
+              </span>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% if fecha_desde_filter %}
+          <span class="badge bg-inclusive-primary ms-2">
+            Desde: {{ fecha_desde_filter }}
+            <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if proyecto_filter %}&proyecto={{ proyecto_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}" 
+               class="text-white ms-1" style="text-decoration: none;">×</a>
+          </span>
+        {% endif %}
+        {% if fecha_hasta_filter %}
+          <span class="badge bg-inclusive-primary ms-2">
+            Hasta: {{ fecha_hasta_filter }}
+            <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if proyecto_filter %}&proyecto={{ proyecto_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}" 
+               class="text-white ms-1" style="text-decoration: none;">×</a>
+          </span>
+        {% endif %}
+        <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}" 
+           class="btn btn-sm btn-outline-secondary ms-2">
+          <i class="fas fa-times me-1"></i>Limpiar todos los filtros
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
   <div class="row g-4 align-items-start">
     <div class="card p-3 mt-4 shadow-inclusive">
       <h5 class="text-center">Comparativa por Proyecto</h5>
@@ -228,7 +330,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function(){
-    const dataUrl = '{% url "dashboard:kpis_data" %}';
+    // Construir URL con los filtros activos
+    const params = new URLSearchParams(window.location.search);
+    const dataUrl = '{% url "dashboard:kpis_data" %}?' + params.toString();
+    
     fetch(dataUrl)
       .then(r => r.json())
       .then(payload => {
@@ -270,6 +375,10 @@
             },
             options: { responsive: true, maintainAspectRatio: false }
           });
+        } else {
+          // Si no hay proyectos después de filtrar, mostrar mensaje
+          const container = document.getElementById('chart-proyectos-container');
+          container.innerHTML = '<div class="alert alert-info text-center">No hay proyectos que coincidan con los filtros seleccionados.</div>';
         }
 
         // Populate materials list dynamically (optional enhancement)
