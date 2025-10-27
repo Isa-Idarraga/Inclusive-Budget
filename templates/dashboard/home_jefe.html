@@ -72,7 +72,7 @@
     <h5 class="mb-3"><i class="fas fa-filter me-2"></i>Filtros del Dashboard</h5>
     <form method="get" id="dashboard-filters-form">
       <div class="row g-3">
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label for="proyecto" class="form-label">Proyecto</label>
           <select name="proyecto" id="proyecto" class="form-select">
             <option value="">Todos los proyectos</option>
@@ -84,28 +84,16 @@
           </select>
         </div>
         
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label for="fecha_desde" class="form-label">Desde</label>
           <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" 
                  value="{{ fecha_desde_filter|default:'' }}">
         </div>
         
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label for="fecha_hasta" class="form-label">Hasta</label>
           <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" 
                  value="{{ fecha_hasta_filter|default:'' }}">
-        </div>
-        
-        <div class="col-md-3">
-          <label for="categoria" class="form-label">Categoría de Material</label>
-          <select name="categoria" id="categoria" class="form-select">
-            <option value="">Todas las categorías</option>
-            {% for cat_code, cat_label in categorias %}
-              <option value="{{ cat_code }}" {% if categoria_filter == cat_code %}selected{% endif %}>
-                {{ cat_label }}
-              </option>
-            {% endfor %}
-          </select>
         </div>
         
         <div class="col-md-2 d-flex align-items-end">
@@ -121,7 +109,7 @@
     </form>
     
     <!-- Filtros activos -->
-    {% if proyecto_filter or categoria_filter or fecha_desde_filter or fecha_hasta_filter %}
+    {% if proyecto_filter or fecha_desde_filter or fecha_hasta_filter %}
       <div class="mt-3">
         <strong>Filtros activos:</strong>
         {% if proyecto_filter %}
@@ -129,18 +117,7 @@
             {% if p.id|stringformat:"s" == proyecto_filter %}
               <span class="badge bg-inclusive-primary ms-2">
                 Proyecto: {{ p.name }}
-                <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}" 
-                   class="text-white ms-1" style="text-decoration: none;">×</a>
-              </span>
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        {% if categoria_filter %}
-          {% for cat_code, cat_label in categorias %}
-            {% if cat_code == categoria_filter %}
-              <span class="badge bg-inclusive-primary ms-2">
-                Categoría: {{ cat_label }}
-                <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if proyecto_filter %}&proyecto={{ proyecto_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}" 
+                <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}" 
                    class="text-white ms-1" style="text-decoration: none;">×</a>
               </span>
             {% endif %}
@@ -149,14 +126,14 @@
         {% if fecha_desde_filter %}
           <span class="badge bg-inclusive-primary ms-2">
             Desde: {{ fecha_desde_filter }}
-            <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if proyecto_filter %}&proyecto={{ proyecto_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}" 
+            <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if proyecto_filter %}&proyecto={{ proyecto_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}" 
                class="text-white ms-1" style="text-decoration: none;">×</a>
           </span>
         {% endif %}
         {% if fecha_hasta_filter %}
           <span class="badge bg-inclusive-primary ms-2">
             Hasta: {{ fecha_hasta_filter }}
-            <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if proyecto_filter %}&proyecto={{ proyecto_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}" 
+            <a href="?desviacion_threshold={{ desviacion_threshold }}&material_threshold={{ material_threshold }}{% if proyecto_filter %}&proyecto={{ proyecto_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}" 
                class="text-white ms-1" style="text-decoration: none;">×</a>
           </span>
         {% endif %}
