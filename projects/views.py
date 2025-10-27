@@ -214,6 +214,19 @@ def project_list(request):
         id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
     ).order_by('first_name', 'last_name')
 
+    # Obtener el nombre del creador seleccionado para mostrarlo en el filtro activo
+    creador_nombre = None
+    if creador_filter:
+        try:
+            creador_id = int(creador_filter)
+            creador_obj = User.objects.filter(id=creador_id).first()
+            if creador_obj:
+                creador_nombre = f"{creador_obj.first_name} {creador_obj.last_name}".strip()
+                if not creador_nombre:  # Si no tiene nombre, usar username
+                    creador_nombre = creador_obj.username
+        except ValueError:
+            pass
+
     context = {
         "projects_en_proceso": projects_en_proceso,
         "projects_terminados": projects_terminados,
@@ -222,6 +235,7 @@ def project_list(request):
         "status_filter": status_filter,
         "trabajadores_filter": trabajadores_filter,
         "creador_filter": creador_filter,
+        "creador_nombre": creador_nombre,
         "fecha_desde_filter": fecha_desde_filter,
         "fecha_hasta_filter": fecha_hasta_filter,
         "ubicacion_filter": ubicacion_filter,
