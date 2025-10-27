@@ -314,7 +314,7 @@
                             <span class="badge bg-inclusive-primary me-1">{{ trabajadores_filter }} trabajadores</span>
                         {% endif %}
                         {% if creador_filter %}
-                            <span class="badge bg-inclusive-primary me-1">Creado por: {{ creador_filter }}</span>
+                            <span class="badge bg-inclusive-primary me-1">Creado por: {{ creador_nombre|default:creador_filter }}</span>
                         {% endif %}
                         {% if fecha_desde_filter %}
                             <span class="badge bg-inclusive-primary me-1">Desde: {{ fecha_desde_filter }}</span>
@@ -855,7 +855,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0
             });
-            element.textContent = ' + formatted;
+            element.textContent = '$' + formatted;
         }
     });
     
@@ -904,34 +904,35 @@ document.addEventListener('DOMContentLoaded', function() {
             input.addEventListener('blur', function() {
                 if (this.value && this.value.trim() !== '') {
                     setTimeout(() => form.submit(), 500);
-            }
+                }
+            });
         });
-    });
     
     // Validación de fechas
         const fechaDesde = form.querySelector('input[name="fecha_desde"]');
         const fechaHasta = form.querySelector('input[name="fecha_hasta"]');
     
-    if (fechaDesde && fechaHasta) {
-        fechaDesde.addEventListener('change', function() {
-            fechaHasta.min = this.value;
-        });
-        
-        fechaHasta.addEventListener('change', function() {
-            fechaDesde.max = this.value;
-        });
+        if (fechaDesde && fechaHasta) {
+            fechaDesde.addEventListener('change', function() {
+                fechaHasta.min = this.value;
+            });
+            
+            fechaHasta.addEventListener('change', function() {
+                fechaDesde.max = this.value;
+            });
+        }
     }
 
     // Mostrar filtros automáticamente si hay filtros activos
-    function autoShowFiltersIfNeeded() {
-        const filtersContainer = document.getElementById('filtersContainer');
-        const toggleText = document.getElementById('toggleText');
-        const toggleIcon = document.getElementById('toggleIcon');
+    function autoShowAdvancedFilters() {
+        const advancedFilters = document.getElementById('advancedFilters');
+        const toggleAdvancedText = document.getElementById('toggleAdvancedText');
+        const toggleAdvancedIcon = document.getElementById('toggleAdvancedIcon');
         
         const urlParams = new URLSearchParams(window.location.search);
         const hasAdvancedFilters = Array.from(urlParams.entries()).some(([key, value]) => 
             value && value.trim() !== '' && 
-            ['trabajadores', 'creador', 'fecha_desde', 'fecha_hasta', 'area_min', 'area_max', 'presupuesto_min', 'presupuesto_max'].includes(key)
+            ['trabajadores', 'creador', 'fecha_desde', 'fecha_hasta', 'ubicacion', 'presupuesto_min', 'presupuesto_max'].includes(key)
         );
         
         if (hasAdvancedFilters && advancedFilters) {
