@@ -27,10 +27,11 @@ class EntradaMaterialForm(forms.ModelForm):
 
 
 # Formulario para registrar consumo diario de materiales (RF17A)
+# Formulario para registrar consumo diario de materiales (RF17A + RF17B)
 class ConsumoMaterialForm(forms.ModelForm):
     """
     Formulario para registrar el consumo diario de materiales
-    Incluye validaciones según criterios de aceptación de RF17A
+    Incluye validaciones según criterios de aceptación de RF17A y RF17B
     """
     class Meta:
         model = ConsumoMaterial
@@ -38,6 +39,7 @@ class ConsumoMaterialForm(forms.ModelForm):
             'material',
             'cantidad_consumida',
             'fecha_consumo',
+            'etapa_presupuesto',  # ✅ NUEVO CAMPO RF17B
             'componente_actividad',
             'observaciones'
         ]
@@ -58,6 +60,10 @@ class ConsumoMaterialForm(forms.ModelForm):
                 'type': 'date',
                 'required': True
             }),
+            'etapa_presupuesto': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
             'componente_actividad': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Ej: Cimentación, Muros primer piso, Instalación eléctrica',
@@ -74,11 +80,13 @@ class ConsumoMaterialForm(forms.ModelForm):
             'material': 'Material *',
             'cantidad_consumida': 'Cantidad consumida *',
             'fecha_consumo': 'Fecha de consumo *',
+            'etapa_presupuesto': 'Etapa del presupuesto *',
             'componente_actividad': 'Componente/Actividad *',
             'observaciones': 'Observaciones'
         }
         help_texts = {
             'cantidad_consumida': 'Cantidad del material que se consumió',
+            'etapa_presupuesto': 'Seleccione la etapa/categoría del presupuesto a la que pertenece este consumo',
             'componente_actividad': 'Actividad o parte del proyecto donde se usó el material',
         }
 
@@ -106,6 +114,11 @@ class ConsumoMaterialForm(forms.ModelForm):
                 f"{obj.unit.symbol}"
             )
 
+        # ✅ CONFIGURAR ETAPAS DEL PRESUPUESTO (RF17B)
+        self.fields['etapa_presupuesto'].queryset = BudgetSection.objects.all().order_by('order')
+        self.fields['etapa_presupuesto'].label_from_instance = lambda obj: f"{obj.order}. {obj.name}"
+        self.fields['etapa_presupuesto'].required = True
+
         # Establecer fecha de hoy por defecto
         from django.utils import timezone
         if not self.instance.pk:
@@ -132,6 +145,13 @@ class ConsumoMaterialForm(forms.ModelForm):
         if not componente:
             raise forms.ValidationError('Debe especificar el componente o actividad.')
         return componente
+
+    def clean_etapa_presupuesto(self):
+        """Validar que la etapa del presupuesto esté seleccionada (RF17B)"""
+        etapa = self.cleaned_data.get('etapa_presupuesto')
+        if not etapa:
+            raise forms.ValidationError('Debe seleccionar la etapa del presupuesto.')
+        return etapa
 
     def clean(self):
         """

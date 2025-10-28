@@ -868,51 +868,50 @@ def registrar_consumo_material(request, project_id):
 @project_owner_or_jefe_required
 def listar_consumos_proyecto(request, project_id):
     """
-    Vista para listar todos los consumos de un proyecto
-    Permite filtrar por fecha, material, actividad
+    Vista para listar todos los consumos de materiales de un proyecto
+    Con filtro por etapa del presupuesto (RF17B - Criterio 4)
     """
     project = get_object_or_404(Project, id=project_id)
-
-    # Obtener parámetros de filtro
-    fecha_desde = request.GET.get('fecha_desde', '')
-    fecha_hasta = request.GET.get('fecha_hasta', '')
-    material_id = request.GET.get('material', '')
-    actividad = request.GET.get('actividad', '')
-
-    # Consulta base
-    from .models import ConsumoMaterial
+    
+    # Obtener todos los consumos del proyecto
     consumos = ConsumoMaterial.objects.filter(
         proyecto=project
-    ).select_related('material', 'material__unit', 'registrado_por')
-
-    # Aplicar filtros
-    if fecha_desde:
-        consumos = consumos.filter(fecha_consumo__gte=fecha_desde)
-    if fecha_hasta:
-        consumos = consumos.filter(fecha_consumo__lte=fecha_hasta)
-    if material_id:
-        consumos = consumos.filter(material_id=material_id)
-    if actividad:
-        consumos = consumos.filter(componente_actividad__icontains=actividad)
-
-    # Obtener lista de materiales para el filtro
-    from catalog.models import Material
-    materiales_usados = Material.objects.filter(
-        consumos__proyecto=project
-    ).distinct().order_by('name')
-
+    ).select_related(
+        'material__unit',
+        'etapa_presupuesto',
+        'registrado_por'
+    ).order_by('-fecha_consumo', '-fecha_registro')
+    
+    # ✅ FILTRO POR ETAPA DEL PRESUPUESTO (RF17B - Criterio 4)
+    etapa_filtro = request.GET.get('etapa')
+    if etapa_filtro:
+        try:
+            etapa_id = int(etapa_filtro)
+            consumos = consumos.filter(etapa_presupuesto_id=etapa_id)
+        except (ValueError, TypeError):
+            pass
+    
+    # Obtener todas las etapas para el filtro
+    etapas_disponibles = BudgetSection.objects.all().order_by('order')
+    
+    # Calcular totales por material
+    from django.db.models import Sum
+    totales_por_material = consumos.values(
+        'material__name',
+        'material__unit__symbol'
+    ).annotate(
+        total_consumido=Sum('cantidad_consumida')
+    ).order_by('material__name')
+    
     context = {
         'project': project,
         'consumos': consumos,
-        'materiales_usados': materiales_usados,
-        'fecha_desde': fecha_desde,
-        'fecha_hasta': fecha_hasta,
-        'material_id': material_id,
-        'actividad': actividad,
+        'etapas_disponibles': etapas_disponibles,
+        'etapa_filtro': etapa_filtro,
+        'totales_por_material': totales_por_material,
     }
-
+    
     return render(request, 'projects/listar_consumos.html', context)
-
 
 @project_owner_or_jefe_required
 def obtener_consumos_fecha(request, project_id):
@@ -1006,29 +1005,61 @@ def obtener_consumos_mes(request, project_id):
     })
 
 
-@login_required
+@project_owner_or_jefe_required
 def editar_consumo_material(request, consumo_id):
     """
-    Vista para editar un consumo existente
+    Vista para editar un consumo de material existente
+    Permite cambiar la etapa del presupuesto (RF17B - Criterio 5)
     """
-    from .models import ConsumoMaterial
-    consumo = get_object_or_404(ConsumoMaterial, id=consumo_id)
+    consumo = get_object_or_404(
+        ConsumoMaterial.objects.select_related('proyecto', 'material__unit'),
+        id=consumo_id
+    )
     project = consumo.proyecto
-    
-    # Verificar permisos: JEFE o creador del proyecto
-    if request.user.role != 'JEFE' and not request.user.is_superuser:
-        if project.creado_por != request.user:
-            raise PermissionDenied("No tienes permisos para editar consumos de este proyecto")
+
+    # Variables para manejar el error de stock insuficiente
+    stock_insuficiente = False
+    stock_disponible = None
+    material_info = None
 
     if request.method == 'POST':
         form = ConsumoMaterialForm(request.POST, instance=consumo, proyecto=project)
+
         if form.is_valid():
             try:
-                form.save()
-                messages.success(request, 'Consumo actualizado correctamente.')
+                consumo_actualizado = form.save()
+
+                messages.success(
+                    request,
+                    f'✅ Consumo actualizado correctamente: {consumo_actualizado.cantidad_consumida} '
+                    f'{consumo_actualizado.material.unit.symbol} de {consumo_actualizado.material.name}'
+                )
                 return redirect('projects:listar_consumos_proyecto', project_id=project.id)
+
             except Exception as e:
-                messages.error(request, f'Error al actualizar consumo: {str(e)}')
+                messages.error(request, f'❌ Error al actualizar consumo: {str(e)}')
+        else:
+            # Verificar si el error es de stock insuficiente
+            if '__all__' in form.errors:
+                error_msg = str(form.errors['__all__'][0])
+                if 'Stock insuficiente' in error_msg:
+                    stock_insuficiente = True
+                    if hasattr(form, 'stock_disponible'):
+                        stock_disponible = form.stock_disponible
+                        material_info = {
+                            'nombre': form.material_nombre,
+                            'unidad': form.material_unidad,
+                        }
+                    messages.warning(request, f'⚠️ {error_msg}')
+                else:
+                    messages.error(request, error_msg)
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        if field == '__all__':
+                            messages.error(request, f'{error}')
+                        else:
+                            messages.error(request, f'{field}: {error}')
     else:
         form = ConsumoMaterialForm(instance=consumo, proyecto=project)
 
@@ -1037,10 +1068,13 @@ def editar_consumo_material(request, consumo_id):
         'project': project,
         'consumo': consumo,
         'is_edit': True,
+        'stock_insuficiente': stock_insuficiente,
+        'stock_disponible': stock_disponible,
+        'material_info': material_info,
+        'add_purchases_url': reverse("projects:registrar_entrada_material", kwargs={"project_id": project.id}),
     }
 
     return render(request, 'projects/registrar_consumo_material.html', context)
-
 
 @login_required
 def eliminar_consumo_material(request, consumo_id):

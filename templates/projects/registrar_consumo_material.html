@@ -86,6 +86,7 @@
                         <!-- Material -->
                         <div class="mb-4">
                             <label for="{{ form.material.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-boxes text-primary me-2"></i>
                                 {{ form.material.label }}
                             </label>
                             {{ form.material }}
@@ -97,13 +98,14 @@
                                 </div>
                             {% endif %}
                             {% if form.material.help_text %}
-                                <small class="form-text text-muted">{{ form.material.help_text }}</small>
+                                <small class="form-text text-muted d-block mt-1">{{ form.material.help_text }}</small>
                             {% endif %}
                         </div>
 
                         <!-- Cantidad consumida -->
                         <div class="mb-4">
                             <label for="{{ form.cantidad_consumida.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-calculator text-primary me-2"></i>
                                 {{ form.cantidad_consumida.label }}
                             </label>
                             {{ form.cantidad_consumida }}
@@ -115,13 +117,14 @@
                                 </div>
                             {% endif %}
                             {% if form.cantidad_consumida.help_text %}
-                                <small class="form-text text-muted">{{ form.cantidad_consumida.help_text }}</small>
+                                <small class="form-text text-muted d-block mt-1">{{ form.cantidad_consumida.help_text }}</small>
                             {% endif %}
                         </div>
 
                         <!-- Fecha de consumo -->
                         <div class="mb-4">
                             <label for="{{ form.fecha_consumo.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-calendar-alt text-primary me-2"></i>
                                 {{ form.fecha_consumo.label }}
                             </label>
                             {{ form.fecha_consumo }}
@@ -133,13 +136,35 @@
                                 </div>
                             {% endif %}
                             {% if form.fecha_consumo.help_text %}
-                                <small class="form-text text-muted">{{ form.fecha_consumo.help_text }}</small>
+                                <small class="form-text text-muted d-block mt-1">{{ form.fecha_consumo.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <!-- ✅ NUEVO: Etapa del Presupuesto (RF17B) -->
+                        <div class="mb-4">
+                            <label for="{{ form.etapa_presupuesto.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-layer-group text-primary me-2"></i>
+                                {{ form.etapa_presupuesto.label }}
+                            </label>
+                            {{ form.etapa_presupuesto }}
+                            {% if form.etapa_presupuesto.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.etapa_presupuesto.errors %}
+                                        <small><i class="fas fa-exclamation-circle me-1"></i>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if form.etapa_presupuesto.help_text %}
+                                <small class="form-text text-muted d-block mt-1">
+                                    <i class="fas fa-info-circle me-1"></i>{{ form.etapa_presupuesto.help_text }}
+                                </small>
                             {% endif %}
                         </div>
 
                         <!-- Componente/Actividad -->
                         <div class="mb-4">
                             <label for="{{ form.componente_actividad.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-tasks text-primary me-2"></i>
                                 {{ form.componente_actividad.label }}
                             </label>
                             {{ form.componente_actividad }}
@@ -151,13 +176,14 @@
                                 </div>
                             {% endif %}
                             {% if form.componente_actividad.help_text %}
-                                <small class="form-text text-muted">{{ form.componente_actividad.help_text }}</small>
+                                <small class="form-text text-muted d-block mt-1">{{ form.componente_actividad.help_text }}</small>
                             {% endif %}
                         </div>
 
                         <!-- Observaciones -->
                         <div class="mb-4">
                             <label for="{{ form.observaciones.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-comment-dots text-primary me-2"></i>
                                 {{ form.observaciones.label }}
                             </label>
                             {{ form.observaciones }}
@@ -169,7 +195,7 @@
                                 </div>
                             {% endif %}
                             {% if form.observaciones.help_text %}
-                                <small class="form-text text-muted">{{ form.observaciones.help_text }}</small>
+                                <small class="form-text text-muted d-block mt-1">{{ form.observaciones.help_text }}</small>
                             {% endif %}
                         </div>
 
@@ -187,12 +213,13 @@
                 </div>
             </div>
 
-            <!-- Información adicional -->
+            <!-- ✅ ACTUALIZADO: Información adicional con nueva nota sobre etapa -->
             <div class="alert alert-light mt-4">
-                <h6 class="fw-bold"><i class="fas fa-lightbulb text-warning me-2"></i>Nota importante:</h6>
+                <h6 class="fw-bold"><i class="fas fa-lightbulb text-warning me-2"></i>Notas importantes:</h6>
                 <ul class="mb-0">
                     <li>Solo puedes registrar consumo de materiales que tengan stock disponible en este proyecto.</li>
                     <li>La fecha de consumo no puede ser en el futuro.</li>
+                    <li>Debes seleccionar la etapa del presupuesto a la que pertenece este consumo .</li>
                     <li>El stock se descontará automáticamente al guardar el registro.</li>
                 </ul>
             </div>
