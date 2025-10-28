@@ -925,6 +925,17 @@ class ConsumoMaterial(models.Model):
         verbose_name="Componente/Actividad",
         help_text="Ej: Cimentación, Muros primer piso, Instalación eléctrica"
     )
+
+
+    etapa_presupuesto = models.ForeignKey(
+        'BudgetSection',
+        on_delete=models.PROTECT,
+        related_name="consumos_materiales",
+        verbose_name="Etapa del presupuesto",
+        help_text="Etapa/categoría del presupuesto detallado",
+        null=True,  # Para consumos antiguos
+        blank=False  # Obligatorio en formularios nuevos
+    )
     responsable = models.CharField(
         max_length=200,
         blank=True,
@@ -943,7 +954,8 @@ class ConsumoMaterial(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         verbose_name="Registrado por",
-        help_text="Usuario que registró este consumo"
+        help_text="Usuario que registró este consumo",
+        blank=True,
     )
     fecha_registro = models.DateTimeField(
         auto_now_add=True,
