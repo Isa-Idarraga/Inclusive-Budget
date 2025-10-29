@@ -23,6 +23,90 @@ from users.models import User
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
 from datetime import datetime
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum, F, ExpressionWrapper, FloatField
+from django.shortcuts import render, get_object_or_404
+from projects.models import Project, BudgetSection, BudgetItem, ConsumoMaterial
+from django.http import HttpResponse
+from .utils import get_etapas_con_avance
+
+@login_required
+def budget_progress_report(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+    secciones = BudgetSection.objects.filter(project=project)
+
+    reporte = []
+    for seccion in secciones:
+        items = BudgetItem.objects.filter(section=seccion)
+        presupuesto = sum(item.costo_unitario * item.cantidad for item in items)
+
+        consumos = ConsumoMaterial.objects.filter(etapa=seccion)
+        gasto = sum(c.cantidad * c.material.unit_cost for c in consumos)
+
+        porcentaje = round((gasto / presupuesto) * 100, 2) if presupuesto > 0 else 0
+
+        if gasto == 0:
+            estado = "pendiente"
+            color = "secondary"
+            alerta = None
+        elif porcentaje < 80:
+            estado = "ok"
+            color = "success"
+            alerta = None
+        elif porcentaje <= 100:
+            estado = "medio"
+            color = "warning"
+            alerta = None
+        else:
+            estado = "sobrecosto"
+            color = "danger"
+            alerta = f"+{round(porcentaje - 100, 2)}% sobre presupuesto"
+
+        reporte.append({
+            "seccion": seccion,
+            "presupuesto": presupuesto,
+            "gastado": gasto,
+            "porcentaje": porcentaje,
+            "estado": estado,
+            "color": color,
+            "alerta": alerta
+        })
+
+    if "export" in request.GET:
+        return export_reporte_excel(project, reporte)
+
+    return render(request, "projects/budget_progress_report.html", {
+        "project": project,
+        "reporte": reporte,
+    })
+
+def export_reporte_excel(project, reporte):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Avance por Etapa"
+
+    headers = ["Etapa", "Presupuesto", "Gastado", "% Ejecutado", "Estado", "Alerta"]
+    ws.append(headers)
+
+    for r in reporte:
+        ws.append([
+            r["seccion"].name,
+            r["presupuesto"],
+            r["gastado"],
+            r["porcentaje"],
+            r["estado"],
+            r["alerta"] or ""
+        ])
+
+    for col in range(1, 7):
+        ws.column_dimensions[get_column_letter(col)].width = 20
+
+    response = HttpResponse(
+        content=openpyxl.writer.excel.save_virtual_workbook(wb),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = f'attachment; filename="reporte_etapas_{project.name}.xlsx"'
+    return response
 
 
 # Helper function para obtener hora colombiana
@@ -460,24 +544,24 @@ def project_detail(request, project_id):
 
     # Entradas de materiales del proyecto
     compras = project.entradas.select_related("material", "proveedor").all()
-    print("DEBUG compras:", compras)
-
 
     # Agregar stock por proyecto a cada entrada
     for compra in compras:
-        # Suponiendo que Material tiene un método stock_en_proyecto(project)
         pm = compra.material.proyectos.filter(proyecto=project).first()
         compra.stock_proyecto = pm.stock_proyecto if pm else 0
 
     # Calcular presupuesto estimado usando los datos del proyecto
-    # Primero recalcular campos heredados para asegurar consistencia
     project.calculate_legacy_fields()
     estimated_budget = project.calculate_final_budget()
-    
+
+    # Obtener avance por etapa del presupuesto
+    etapas_con_avance = get_etapas_con_avance(project)
+
     context = {
         'project': project,
         'compras': compras,
         'estimated_budget': estimated_budget,
+        'etapas_con_avance': etapas_con_avance,
     }
 
     return render(request, "projects/project_detail.html", context)

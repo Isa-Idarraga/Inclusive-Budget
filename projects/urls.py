@@ -78,4 +78,6 @@ urlpatterns = [
     path('<int:project_id>/graficos/', views.project_graficos, name='project_graficos'),
     # API para obtener datos de gráficos
     path('<int:project_id>/api/datos-graficos/', views.api_datos_graficos, name='api_datos_graficos'),
+    
+    path("reporte-etapas/<int:project_id>/", views.budget_progress_report, name="budget_progress_report"),
 ]
