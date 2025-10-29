@@ -152,6 +152,14 @@
                     Lista de Proyectos
                 </h2>
                 <p class="text-inclusive-secondary">Gestiona y visualiza todos tus proyectos de construcción</p>
+                
+            <!-- Botón para acceder al historial cronológico -->
+            <div class="mt-3">
+                <a href="{% url 'projects:project_history' %}" class="btn btn-outline-success btn-lg border-2">
+                    <i class="fas fa-history me-2"></i>
+                    Ver Historial Cronológico
+                </a>
+            </div>
             </div>
             
             <!-- Búsqueda y filtros básicos -->
@@ -169,25 +177,25 @@
                                    placeholder="Buscar por nombre, descripción o ubicación..."
                                    value="{{ search_query|default:'' }}"
                                        aria-label="Buscar proyectos">
-                            </div>
                     </div>
-                    
+                </div>
+                
                     <div class="col-md-2">
                         <select name="status" class="form-select filter-select">
-                            <option value="">Todos los estados</option>
+                                        <option value="">Todos los estados</option>
                             <option value="futuro" {% if status_filter == 'futuro' %}selected{% endif %}>Futuro</option>
                             <option value="en_proceso" {% if status_filter == 'en_proceso' %}selected{% endif %}>En Proceso</option>
                             <option value="terminado" {% if status_filter == 'terminado' %}selected{% endif %}>Terminado</option>
-                        </select>
-                </div>
-                
+                                    </select>
+                                </div>
+                                
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-inclusive-primary btn-lg w-100">
                             <i class="fas fa-search me-2"></i>Buscar
                     </button>
                 </div>
-            </div>
-            
+                                </div>
+                                
                 <!-- Botón para mostrar/ocultar filtros adicionales -->
                 <div class="text-center mb-3">
                     <button type="button" class="btn btn-outline-inclusive-primary" id="toggleAdvancedFilters">
@@ -195,8 +203,8 @@
                         <span id="toggleAdvancedText">Mostrar Filtros Avanzados</span>
                         <i class="fas fa-chevron-down ms-2" id="toggleAdvancedIcon"></i>
                     </button>
-                </div>
-                
+                                </div>
+                                
                 <!-- Filtros adicionales (inicialmente ocultos) -->
                 <div id="advancedFilters" style="display: none;">
                     <!-- Fila 2: Filtros adicionales -->
@@ -212,7 +220,7 @@
                             <option value="4-6" {% if trabajadores_filter == '4-6' %}selected{% endif %}>4-6 trabajadores</option>
                             <option value="7+" {% if trabajadores_filter == '7+' %}selected{% endif %}>7+ trabajadores</option>
                                     </select>
-                        </div>
+                                </div>
                                 
                     <div class="col-md-3">
                         <label class="form-label fw-semibold text-inclusive-primary">
@@ -220,14 +228,14 @@
                                     </label>
                         <select name="creador" class="form-select filter-select">
                             <option value="">Todos los usuarios</option>
-                            {% for creador in creadores %}
-                            <option value="{{ creador.id }}" {% if creador_filter == creador.id|stringformat:"s" %}selected{% endif %}>
+                                        {% for creador in creadores %}
+                                        <option value="{{ creador.id }}" {% if creador_filter == creador.id|stringformat:"s" %}selected{% endif %}>
                                 {{ creador.first_name }} {{ creador.last_name }}
-                            </option>
-                            {% endfor %}
+                                        </option>
+                                        {% endfor %}
                                     </select>
-                    </div>
-                                
+                                </div>
+
                     <div class="col-md-3">
                         <label class="form-label fw-semibold text-inclusive-primary">
                             <i class="fas fa-calendar me-2"></i>Fecha desde
@@ -236,8 +244,8 @@
                                name="fecha_desde" 
                                class="form-control filter-select"
                                value="{{ fecha_desde_filter|default:'' }}">
-            </div>
-            
+                                </div>
+                                
                     <div class="col-md-3">
                         <label class="form-label fw-semibold text-inclusive-primary">
                             <i class="fas fa-calendar me-2"></i>Fecha hasta
@@ -314,7 +322,7 @@
                             <span class="badge bg-inclusive-primary me-1">{{ trabajadores_filter }} trabajadores</span>
                         {% endif %}
                         {% if creador_filter %}
-                            <span class="badge bg-inclusive-primary me-1">Creado por: {{ creador_filter }}</span>
+                            <span class="badge bg-inclusive-primary me-1">Creado por: {{ creador_nombre|default:creador_filter }}</span>
                         {% endif %}
                         {% if fecha_desde_filter %}
                             <span class="badge bg-inclusive-primary me-1">Desde: {{ fecha_desde_filter }}</span>
@@ -393,10 +401,10 @@
                                 {% endif %}
                                 <div class="position-absolute top-0 end-0 m-3">
                                     <div class="d-flex flex-column gap-2 align-items-end">
-                                        <span class="badge status-badge-progress rounded-pill px-3 py-2 small fw-semibold">
-                                            <i class="fas fa-clock me-1"></i>
-                                            En Proceso
-                                        </span>
+                                    <span class="badge status-badge-progress rounded-pill px-3 py-2 small fw-semibold">
+                                        <i class="fas fa-clock me-1"></i>
+                                        En Proceso
+                                    </span>
                                         {% if project.created_by_ai %}
                                         <span class="badge rounded-pill px-3 py-2 small fw-semibold ai-badge" 
                                               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -490,7 +498,7 @@
        </div>
        {% endif %}
 
-        <!-- Proyectos Terminados -->
+       <!-- Proyectos Terminados -->
         {% if projects_terminados %}
         <div class="mb-6 position-relative animate-fade-in animate-delay-2">
             <div class="position-absolute top-0 start-0" style="z-index: 10;">
@@ -520,10 +528,10 @@
                                 {% endif %}
                                 <div class="position-absolute top-0 end-0 m-3">
                                     <div class="d-flex flex-column gap-2 align-items-end">
-                                        <span class="badge status-badge-complete rounded-pill px-3 py-2 small fw-semibold">
-                                            <i class="fas fa-check me-1"></i>
-                                            Terminado
-                                        </span>
+                                    <span class="badge status-badge-complete rounded-pill px-3 py-2 small fw-semibold">
+                                        <i class="fas fa-check me-1"></i>
+                                        Terminado
+                                    </span>
                                         {% if project.created_by_ai %}
                                         <span class="badge rounded-pill px-3 py-2 small fw-semibold ai-badge" 
                                               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -617,7 +625,7 @@
        </div>
        {% endif %}
 
-        <!-- Proyectos Futuros -->
+       <!-- Proyectos Futuros -->
         {% if projects_futuros %}
         <div class="mb-6 position-relative animate-fade-in animate-delay-3">
             <div class="position-absolute top-0 start-0" style="z-index: 10;">
@@ -647,10 +655,10 @@
                                 {% endif %}
                                 <div class="position-absolute top-0 end-0 m-3">
                                     <div class="d-flex flex-column gap-2 align-items-end">
-                                        <span class="badge status-badge-future rounded-pill px-3 py-2 small fw-semibold">
-                                            <i class="fas fa-calendar me-1"></i>
-                                            Futuro
-                                        </span>
+                                    <span class="badge status-badge-future rounded-pill px-3 py-2 small fw-semibold">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        Futuro
+                                    </span>
                                         {% if project.created_by_ai %}
                                         <span class="badge rounded-pill px-3 py-2 small fw-semibold ai-badge" 
                                               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -855,7 +863,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0
             });
-            element.textContent = ' + formatted;
+            element.textContent = '$' + formatted;
         }
     });
     
@@ -920,18 +928,19 @@ document.addEventListener('DOMContentLoaded', function() {
         fechaHasta.addEventListener('change', function() {
             fechaDesde.max = this.value;
         });
+        }
     }
 
     // Mostrar filtros automáticamente si hay filtros activos
-    function autoShowFiltersIfNeeded() {
-        const filtersContainer = document.getElementById('filtersContainer');
-        const toggleText = document.getElementById('toggleText');
-        const toggleIcon = document.getElementById('toggleIcon');
+    function autoShowAdvancedFilters() {
+        const advancedFilters = document.getElementById('advancedFilters');
+        const toggleAdvancedText = document.getElementById('toggleAdvancedText');
+        const toggleAdvancedIcon = document.getElementById('toggleAdvancedIcon');
         
         const urlParams = new URLSearchParams(window.location.search);
         const hasAdvancedFilters = Array.from(urlParams.entries()).some(([key, value]) => 
             value && value.trim() !== '' && 
-            ['trabajadores', 'creador', 'fecha_desde', 'fecha_hasta', 'area_min', 'area_max', 'presupuesto_min', 'presupuesto_max'].includes(key)
+            ['trabajadores', 'creador', 'fecha_desde', 'fecha_hasta', 'ubicacion', 'presupuesto_min', 'presupuesto_max'].includes(key)
         );
         
         if (hasAdvancedFilters && advancedFilters) {

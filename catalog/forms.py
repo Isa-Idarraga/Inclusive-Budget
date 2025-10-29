@@ -33,10 +33,10 @@ class MaterialForm(forms.ModelForm):
     )
     supplier_price = forms.IntegerField(
         label="Precio con proveedor (COP)",
-        min_value=1,
+        min_value=0,
         required=True,
         widget=forms.NumberInput(
-            attrs={"class": "form-control", "step": "1", "min": "1", "inputmode": "numeric"}
+            attrs={"class": "form-control", "step": "1", "min": "0", "inputmode": "numeric"}
         ),
     )
 
@@ -72,7 +72,7 @@ class MaterialForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "step": "0.001",
-                    "min": "0.001",
+                    "min": "0",
                     "inputmode": "decimal",
                 }
             ),
@@ -145,7 +145,7 @@ class MaterialSupplierForm(forms.ModelForm):
             "price": forms.NumberInput(
                 attrs={
                     "class": "form-control",
-                    "min": "1",
+                    "min": "0",
                     "step": "1",
                     "inputmode": "numeric",
                 }

@@ -174,17 +174,28 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-2')
 
-# Configuración de S3
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+# Configuración de S3 - Bucket moderno sin ACLs (Bucket owner enforced)
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',  # Cache de 1 día
 }
-AWS_DEFAULT_ACL = None  # Sin ACLs (configuración moderna de AWS)
+# Sin ACLs - usar Bucket Policy en su lugar
+AWS_DEFAULT_ACL = None
 AWS_S3_FILE_OVERWRITE = False  # No sobrescribir archivos con el mismo nombre
-AWS_QUERYSTRING_AUTH = False  # No usar firma en las URLs
+AWS_QUERYSTRING_AUTH = False  # No usar firma en las URLs (URLs públicas)
 
 # Usar S3 para archivos media (imágenes subidas por usuarios)
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+DEFAULT_FILE_STORAGE = 'core.storage_backends.MediaStorage'
 
 # La URL de las imágenes será desde S3
 MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+
+# Configuración adicional para asegurar que S3 se use correctamente
+STORAGES = {
+    "default": {
+        "BACKEND": "core.storage_backends.MediaStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}

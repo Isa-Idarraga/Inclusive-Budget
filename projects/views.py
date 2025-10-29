@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.core.paginator import Paginator
 from django.db.models import Q, Max, Sum, F, Count
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
@@ -298,6 +298,19 @@ def project_list(request):
         id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
     ).order_by('first_name', 'last_name')
 
+    # Obtener el nombre del creador seleccionado para mostrarlo en el filtro activo
+    creador_nombre = None
+    if creador_filter:
+        try:
+            creador_id = int(creador_filter)
+            creador_obj = User.objects.filter(id=creador_id).first()
+            if creador_obj:
+                creador_nombre = f"{creador_obj.first_name} {creador_obj.last_name}".strip()
+                if not creador_nombre:  # Si no tiene nombre, usar username
+                    creador_nombre = creador_obj.username
+        except ValueError:
+            pass
+
     context = {
         "projects_en_proceso": projects_en_proceso,
         "projects_terminados": projects_terminados,
@@ -306,6 +319,7 @@ def project_list(request):
         "status_filter": status_filter,
         "trabajadores_filter": trabajadores_filter,
         "creador_filter": creador_filter,
+        "creador_nombre": creador_nombre,
         "fecha_desde_filter": fecha_desde_filter,
         "fecha_hasta_filter": fecha_hasta_filter,
         "ubicacion_filter": ubicacion_filter,
@@ -315,6 +329,56 @@ def project_list(request):
     }
 
     return render(request, "projects/project_list.html", context)
+
+
+@login_required
+def project_history(request):
+    """
+    Vista para mostrar el historial cronológico de proyectos
+    Muestra todos los proyectos activos y finalizados ordenados cronológicamente
+    """
+    # Obtener parámetros de búsqueda y ordenamiento
+    search_query = request.GET.get("search", "")
+    status_filter = request.GET.get("status", "")
+    order_by = request.GET.get("order", "oldest")  # oldest o newest
+    
+    # Obtener todos los proyectos activos y finalizados
+    projects = Project.objects.filter(estado__in=['en_proceso', 'terminado', 'futuro'])
+    
+    # Filtro por búsqueda
+    if search_query:
+        projects = projects.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(location_address__icontains=search_query)
+        )
+    
+    # Filtro por estado
+    if status_filter:
+        projects = projects.filter(estado=status_filter)
+    
+    # Ordenar cronológicamente según la opción seleccionada
+    if order_by == "newest":
+        projects = projects.order_by('-fecha_creacion')  # Más recientes primero
+    else:
+        projects = projects.order_by('fecha_creacion')   # Más antiguos primero (default)
+    
+    # Separar por estado manteniendo el orden cronológico
+    projects_en_proceso = projects.filter(estado='en_proceso')
+    projects_terminados = projects.filter(estado='terminado')
+    projects_futuros = projects.filter(estado='futuro')
+    
+    context = {
+        "projects_en_proceso": projects_en_proceso,
+        "projects_terminados": projects_terminados,
+        "projects_futuros": projects_futuros,
+        "search_query": search_query,
+        "status_filter": status_filter,
+        "order_by": order_by,
+        "is_history_view": True,  # Flag para identificar que es la vista de historial
+    }
+    
+    return render(request, "projects/project_history.html", context)
 
 
 @login_required
@@ -584,8 +648,12 @@ def update_project_status(request, project_id):
     """
     if request.method == "POST":
         try:
-            # Obtener proyecto
-            project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+            # Obtener proyecto - los jefes pueden modificar cualquier proyecto
+            if request.user.role == User.JEFE or request.user.is_superuser:
+                project = get_object_or_404(Project, id=project_id)
+            else:
+                # Los constructores solo pueden modificar sus propios proyectos
+                project = get_object_or_404(Project, id=project_id, creado_por=request.user)
 
             # Verificar si es AJAX o formulario normal
             if request.content_type == "application/json":
@@ -619,12 +687,24 @@ def update_project_status(request, project_id):
                 )
                 return redirect("projects:project_detail", project_id=project.id)
 
+        except Http404:
+            # Proyecto no encontrado o usuario sin permisos
+            if request.user.role == User.JEFE or request.user.is_superuser:
+                error_msg = "El proyecto no existe."
+            else:
+                error_msg = "No tienes permisos para modificar este proyecto o el proyecto no existe."
+            if request.content_type == "application/json":
+                return JsonResponse({"success": False, "error": error_msg})
+            else:
+                messages.error(request, f"❌ {error_msg}")
+                return redirect("projects:project_list")
+                
         except Exception as e:
             if request.content_type == "application/json":
                 return JsonResponse({"success": False, "error": str(e)})
             else:
                 messages.error(request, f"❌ Error al cambiar estado: {str(e)}")
-                return redirect("projects:project_detail", project_id=project.id)
+                return redirect("projects:project_list")
 
     return JsonResponse({"success": False, "error": "Método no permitido"})
 
@@ -938,51 +1018,50 @@ def registrar_consumo_material(request, project_id):
 @project_owner_or_jefe_required
 def listar_consumos_proyecto(request, project_id):
     """
-    Vista para listar todos los consumos de un proyecto
-    Permite filtrar por fecha, material, actividad
+    Vista para listar todos los consumos de materiales de un proyecto
+    Con filtro por etapa del presupuesto (RF17B - Criterio 4)
     """
     project = get_object_or_404(Project, id=project_id)
-
-    # Obtener parámetros de filtro
-    fecha_desde = request.GET.get('fecha_desde', '')
-    fecha_hasta = request.GET.get('fecha_hasta', '')
-    material_id = request.GET.get('material', '')
-    actividad = request.GET.get('actividad', '')
-
-    # Consulta base
-    from .models import ConsumoMaterial
+    
+    # Obtener todos los consumos del proyecto
     consumos = ConsumoMaterial.objects.filter(
         proyecto=project
-    ).select_related('material', 'material__unit', 'registrado_por')
-
-    # Aplicar filtros
-    if fecha_desde:
-        consumos = consumos.filter(fecha_consumo__gte=fecha_desde)
-    if fecha_hasta:
-        consumos = consumos.filter(fecha_consumo__lte=fecha_hasta)
-    if material_id:
-        consumos = consumos.filter(material_id=material_id)
-    if actividad:
-        consumos = consumos.filter(componente_actividad__icontains=actividad)
-
-    # Obtener lista de materiales para el filtro
-    from catalog.models import Material
-    materiales_usados = Material.objects.filter(
-        consumos__proyecto=project
-    ).distinct().order_by('name')
+    ).select_related(
+        'material__unit',
+        'etapa_presupuesto',
+        'registrado_por'
+    ).order_by('-fecha_consumo', '-fecha_registro')
+    
+    # ✅ FILTRO POR ETAPA DEL PRESUPUESTO (RF17B - Criterio 4)
+    etapa_filtro = request.GET.get('etapa')
+    if etapa_filtro:
+        try:
+            etapa_id = int(etapa_filtro)
+            consumos = consumos.filter(etapa_presupuesto_id=etapa_id)
+        except (ValueError, TypeError):
+            pass
+    
+    # Obtener todas las etapas para el filtro
+    etapas_disponibles = BudgetSection.objects.all().order_by('order')
+    
+    # Calcular totales por material
+    from django.db.models import Sum
+    totales_por_material = consumos.values(
+        'material__name',
+        'material__unit__symbol'
+    ).annotate(
+        total_consumido=Sum('cantidad_consumida')
+    ).order_by('material__name')
 
     context = {
         'project': project,
         'consumos': consumos,
-        'materiales_usados': materiales_usados,
-        'fecha_desde': fecha_desde,
-        'fecha_hasta': fecha_hasta,
-        'material_id': material_id,
-        'actividad': actividad,
+        'etapas_disponibles': etapas_disponibles,
+        'etapa_filtro': etapa_filtro,
+        'totales_por_material': totales_por_material,
     }
 
     return render(request, 'projects/listar_consumos.html', context)
-
 
 @project_owner_or_jefe_required
 def obtener_consumos_fecha(request, project_id):
@@ -1076,29 +1155,61 @@ def obtener_consumos_mes(request, project_id):
     })
 
 
-@login_required
+@project_owner_or_jefe_required
 def editar_consumo_material(request, consumo_id):
     """
-    Vista para editar un consumo existente
+    Vista para editar un consumo de material existente
+    Permite cambiar la etapa del presupuesto (RF17B - Criterio 5)
     """
-    from .models import ConsumoMaterial
-    consumo = get_object_or_404(ConsumoMaterial, id=consumo_id)
+    consumo = get_object_or_404(
+        ConsumoMaterial.objects.select_related('proyecto', 'material__unit'),
+        id=consumo_id
+    )
     project = consumo.proyecto
-    
-    # Verificar permisos: JEFE o creador del proyecto
-    if request.user.role != 'JEFE' and not request.user.is_superuser:
-        if project.creado_por != request.user:
-            raise PermissionDenied("No tienes permisos para editar consumos de este proyecto")
+
+    # Variables para manejar el error de stock insuficiente
+    stock_insuficiente = False
+    stock_disponible = None
+    material_info = None
 
     if request.method == 'POST':
         form = ConsumoMaterialForm(request.POST, instance=consumo, proyecto=project)
+
         if form.is_valid():
             try:
-                form.save()
-                messages.success(request, 'Consumo actualizado correctamente.')
+                consumo_actualizado = form.save()
+
+                messages.success(
+                    request,
+                    f'✅ Consumo actualizado correctamente: {consumo_actualizado.cantidad_consumida} '
+                    f'{consumo_actualizado.material.unit.symbol} de {consumo_actualizado.material.name}'
+                )
                 return redirect('projects:listar_consumos_proyecto', project_id=project.id)
+
             except Exception as e:
-                messages.error(request, f'Error al actualizar consumo: {str(e)}')
+                messages.error(request, f'❌ Error al actualizar consumo: {str(e)}')
+        else:
+            # Verificar si el error es de stock insuficiente
+            if '__all__' in form.errors:
+                error_msg = str(form.errors['__all__'][0])
+                if 'Stock insuficiente' in error_msg:
+                    stock_insuficiente = True
+                    if hasattr(form, 'stock_disponible'):
+                        stock_disponible = form.stock_disponible
+                        material_info = {
+                            'nombre': form.material_nombre,
+                            'unidad': form.material_unidad,
+                        }
+                    messages.warning(request, f'⚠️ {error_msg}')
+                else:
+                    messages.error(request, error_msg)
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        if field == '__all__':
+                            messages.error(request, f'{error}')
+                        else:
+                            messages.error(request, f'{field}: {error}')
     else:
         form = ConsumoMaterialForm(instance=consumo, proyecto=project)
 
@@ -1107,10 +1218,13 @@ def editar_consumo_material(request, consumo_id):
         'project': project,
         'consumo': consumo,
         'is_edit': True,
+        'stock_insuficiente': stock_insuficiente,
+        'stock_disponible': stock_disponible,
+        'material_info': material_info,
+        'add_purchases_url': reverse("projects:registrar_entrada_material", kwargs={"project_id": project.id}),
     }
 
     return render(request, 'projects/registrar_consumo_material.html', context)
-
 
 @login_required
 def eliminar_consumo_material(request, consumo_id):
@@ -1285,29 +1399,29 @@ def detailed_budget_edit(request, project_id):
                 try:
                     from decimal import Decimal
                     quantity = Decimal(str(value)) if value else Decimal('0')
-                    if quantity > 0:
-                        # Obtener el BudgetItem para usar su precio unitario
-                        try:
-                            budget_item = BudgetItem.objects.get(id=item_id)
-                            
-                            # Actualizar o crear ProjectBudgetItem
-                            project_item, created = ProjectBudgetItem.objects.get_or_create(
-                                project=project,
-                                budget_item=budget_item,
-                                defaults={
-                                    'quantity': quantity,
-                                    'unit_price': budget_item.unit_price
-                                }
-                            )
-                            if not created:
-                                project_item.quantity = quantity
-                                project_item.unit_price = budget_item.unit_price
-                                project_item.save()
-                            items_updated += 1
-                            print(f"✅ Actualizado ítem {item_id}: cantidad {quantity}, precio {budget_item.unit_price}")
-                        except BudgetItem.DoesNotExist:
-                            print(f"❌ BudgetItem {item_id} no existe")
-                            continue
+                    
+                    # Obtener el BudgetItem para usar su precio unitario
+                    try:
+                        budget_item = BudgetItem.objects.get(id=item_id)
+                        
+                        # Actualizar o crear ProjectBudgetItem (incluso con cantidad 0)
+                        project_item, created = ProjectBudgetItem.objects.get_or_create(
+                            project=project,
+                            budget_item=budget_item,
+                            defaults={
+                                'quantity': quantity,
+                                'unit_price': budget_item.unit_price
+                            }
+                        )
+                        if not created:
+                            project_item.quantity = quantity
+                            project_item.unit_price = budget_item.unit_price
+                            project_item.save()
+                        items_updated += 1
+                        print(f"✅ Actualizado ítem {item_id}: cantidad {quantity}, precio {budget_item.unit_price}")
+                    except BudgetItem.DoesNotExist:
+                        print(f"❌ BudgetItem {item_id} no existe")
+                        continue
                 except (ValueError, ProjectBudgetItem.DoesNotExist):
                     continue
         
@@ -1472,6 +1586,46 @@ def detailed_budget_view(request, project_id):
     }
     
     return render(request, "projects/detailed_budget_view.html", context)
+
+
+@login_required
+def update_project_image(request, project_id):
+    """
+    Vista para actualizar la imagen del proyecto
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'})
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar permisos
+    if request.user.role != User.JEFE and not request.user.is_superuser and project.creado_por != request.user:
+        return JsonResponse({'success': False, 'error': 'No tienes permisos para modificar este proyecto'})
+    
+    # Obtener la imagen del request
+    imagen_proyecto = request.FILES.get('imagen_proyecto')
+    if not imagen_proyecto:
+        return JsonResponse({'success': False, 'error': 'No se proporcionó ninguna imagen'})
+    
+    try:
+        # Actualizar la imagen del proyecto
+        project.imagen_proyecto = imagen_proyecto
+        project.save()
+        
+        # Verificar que la imagen se guardó correctamente
+        if project.imagen_proyecto and hasattr(project.imagen_proyecto, 'url'):
+            image_url = project.imagen_proyecto.url
+        else:
+            return JsonResponse({'success': False, 'error': 'Error al guardar la imagen'})
+        
+        return JsonResponse({
+            'success': True,
+            'image_url': image_url,
+            'message': 'Imagen actualizada correctamente'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 
 @role_required(User.JEFE)

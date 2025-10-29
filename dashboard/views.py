@@ -60,7 +60,23 @@ def kpis(request):
     except ValueError:
         desviacion_threshold = 10.0
 
+    # === FILTROS ===
+    proyecto_id = request.GET.get("proyecto")
+    fecha_desde = request.GET.get("fecha_desde")
+    fecha_hasta = request.GET.get("fecha_hasta")
+
+    # Base queryset de proyectos (excluye futuros)
     proyectos = Project.objects.filter(~Q(estado="futuro"))
+
+    # Aplicar filtro por proyecto específico
+    if proyecto_id:
+        proyectos = proyectos.filter(id=proyecto_id)
+
+    # Aplicar filtro por período (fecha de creación del proyecto)
+    if fecha_desde:
+        proyectos = proyectos.filter(fecha_creacion__gte=fecha_desde)
+    if fecha_hasta:
+        proyectos = proyectos.filter(fecha_creacion__lte=fecha_hasta)
 
     # Resumen financiero consolidado
     # Use the stored presupuesto field for total_presupuesto but prefer the computed
@@ -92,6 +108,10 @@ def kpis(request):
     
     # Materiales con stock < 10 por proyecto
     materiales_bajo_10 = ProyectoMaterial.objects.filter(stock_proyecto__lt=10)
+    
+    # Filtrar materiales bajo stock por proyecto si aplica
+    if proyecto_id:
+        materiales_bajo_10 = materiales_bajo_10.filter(proyecto_id=proyecto_id)
 
     # Proyectos con desviación significativa
     proyectos_desviacion = []
@@ -109,6 +129,9 @@ def kpis(request):
                     "porcentaje": porcentaje,
                 })
 
+    # Obtener lista de proyectos para el dropdown de filtros (solo activos y en progreso)
+    todos_proyectos = Project.objects.filter(~Q(estado="futuro")).order_by('-fecha_creacion')
+
     context = {
         "porcentaje_avance": round(porcentaje_avance, 2),
         "materiales_bajo_stock": materiales_bajo[:20],
@@ -121,6 +144,11 @@ def kpis(request):
         },
         "desviacion_threshold": desviacion_threshold,
         "material_threshold": material_threshold,
+        # Filtros
+        "todos_proyectos": todos_proyectos,
+        "proyecto_filter": proyecto_id,
+        "fecha_desde_filter": fecha_desde,
+        "fecha_hasta_filter": fecha_hasta,
     }
 
     return render(request, "dashboard/home_jefe.html", context)
@@ -147,7 +175,23 @@ def kpis_data(request):
     except ValueError:
         desviacion_threshold = 10.0
 
-    proyectos_qs = Project.objects.filter(~Q(estado__in=["futuro", "terminado"]))   
+    # === APLICAR MISMOS FILTROS QUE EN kpis() ===
+    proyecto_id = request.GET.get("proyecto")
+    fecha_desde = request.GET.get("fecha_desde")
+    fecha_hasta = request.GET.get("fecha_hasta")
+
+    # Base queryset de proyectos
+    proyectos_qs = Project.objects.filter(~Q(estado__in=["futuro", "terminado"]))
+    
+    # Aplicar filtros
+    if proyecto_id:
+        proyectos_qs = proyectos_qs.filter(id=proyecto_id)
+    if fecha_desde:
+        proyectos_qs = proyectos_qs.filter(fecha_creacion__gte=fecha_desde)
+    if fecha_hasta:
+        proyectos_qs = proyectos_qs.filter(fecha_creacion__lte=fecha_hasta)
+    
+    # Materiales bajo stock
     materiales_qs = Material.objects.filter(stock__lte=F('presentation_qty') * (material_threshold/100.0))
 
     payload = compute_kpis_from_django(proyectos_qs, materiales_qs, material_threshold=material_threshold, desviacion_threshold=desviacion_threshold)

@@ -27,10 +27,11 @@ class EntradaMaterialForm(forms.ModelForm):
 
 
 # Formulario para registrar consumo diario de materiales (RF17A)
+# Formulario para registrar consumo diario de materiales (RF17A + RF17B)
 class ConsumoMaterialForm(forms.ModelForm):
     """
     Formulario para registrar el consumo diario de materiales
-    Incluye validaciones según criterios de aceptación de RF17A
+    Incluye validaciones según criterios de aceptación de RF17A y RF17B
     """
     class Meta:
         model = ConsumoMaterial
@@ -38,6 +39,7 @@ class ConsumoMaterialForm(forms.ModelForm):
             'material',
             'cantidad_consumida',
             'fecha_consumo',
+            'etapa_presupuesto',  # ✅ NUEVO CAMPO RF17B
             'componente_actividad',
             'observaciones'
         ]
@@ -49,13 +51,17 @@ class ConsumoMaterialForm(forms.ModelForm):
             'cantidad_consumida': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.001',
-                'min': '0.001',
+                'min': '0',
                 'placeholder': 'Ej: 25.5',
                 'required': True
             }),
             'fecha_consumo': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date',
+                'required': True
+            }),
+            'etapa_presupuesto': forms.Select(attrs={
+                'class': 'form-select',
                 'required': True
             }),
             'componente_actividad': forms.TextInput(attrs={
@@ -74,11 +80,13 @@ class ConsumoMaterialForm(forms.ModelForm):
             'material': 'Material *',
             'cantidad_consumida': 'Cantidad consumida *',
             'fecha_consumo': 'Fecha de consumo *',
+            'etapa_presupuesto': 'Etapa del presupuesto *',
             'componente_actividad': 'Componente/Actividad *',
             'observaciones': 'Observaciones'
         }
         help_texts = {
             'cantidad_consumida': 'Cantidad del material que se consumió',
+            'etapa_presupuesto': 'Seleccione la etapa/categoría del presupuesto a la que pertenece este consumo',
             'componente_actividad': 'Actividad o parte del proyecto donde se usó el material',
         }
 
@@ -106,17 +114,19 @@ class ConsumoMaterialForm(forms.ModelForm):
                 f"{obj.unit.symbol}"
             )
 
+        # ✅ CONFIGURAR ETAPAS DEL PRESUPUESTO (RF17B)
+        self.fields['etapa_presupuesto'].queryset = BudgetSection.objects.all().order_by('order')
+        self.fields['etapa_presupuesto'].label_from_instance = lambda obj: f"{obj.order}. {obj.name}"
+        self.fields['etapa_presupuesto'].required = True
+
         # Establecer fecha de hoy por defecto
         from django.utils import timezone
         if not self.instance.pk:
             self.fields['fecha_consumo'].initial = timezone.now().date()
 
     def clean_cantidad_consumida(self):
-        """Validar que la cantidad sea positiva"""
-        cantidad = self.cleaned_data.get('cantidad_consumida')
-        if cantidad and cantidad <= 0:
-            raise forms.ValidationError('La cantidad consumida debe ser mayor a cero.')
-        return cantidad
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get('cantidad_consumida')
 
     def clean_fecha_consumo(self):
         """Validar que la fecha no sea futura"""
@@ -132,6 +142,13 @@ class ConsumoMaterialForm(forms.ModelForm):
         if not componente:
             raise forms.ValidationError('Debe especificar el componente o actividad.')
         return componente
+
+    def clean_etapa_presupuesto(self):
+        """Validar que la etapa del presupuesto esté seleccionada (RF17B)"""
+        etapa = self.cleaned_data.get('etapa_presupuesto')
+        if not etapa:
+            raise forms.ValidationError('Debe seleccionar la etapa del presupuesto.')
+        return etapa
 
     def clean(self):
         """
@@ -696,7 +713,7 @@ class BudgetItemForm(forms.ModelForm):
             "unit_price": forms.NumberInput(attrs={
                 "class": "form-control",
                 "step": "0.01",
-                "min": "0.01"
+                "min": "0"
             }),
         }
     
@@ -706,20 +723,12 @@ class BudgetItemForm(forms.ModelForm):
         self.fields["unit_price"].label = "Precio Unitario (COP)"
     
     def clean_quantity(self):
-        quantity = self.cleaned_data.get("quantity")
-        if quantity is None:
-            raise forms.ValidationError("Este campo es obligatorio.")
-        if quantity <= 0:
-            raise forms.ValidationError("La cantidad debe ser mayor a cero.")
-        return quantity
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get("quantity")
     
     def clean_unit_price(self):
-        unit_price = self.cleaned_data.get("unit_price")
-        if unit_price is None:
-            raise forms.ValidationError("Este campo es obligatorio.")
-        if unit_price <= 0:
-            raise forms.ValidationError("El precio unitario debe ser mayor a cero.")
-        return unit_price
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get("unit_price")
 
 
 class BudgetSectionForm(forms.Form):
@@ -782,24 +791,25 @@ class BudgetSectionForm(forms.Form):
                     # Los precios se envían como campos hidden, no editables
                     unit_price = item.unit_price
                     
-                    # Solo crear/actualizar si hay cantidad > 0
-                    if value and float(value) > 0:
-                        project_item, created = ProjectBudgetItem.objects.get_or_create(
-                            project=project,
-                            budget_item=item,
-                            defaults={
-                                'quantity': value,
-                                'unit_price': unit_price
-                            }
-                        )
-                        
-                        if not created:
-                            project_item.quantity = value
-                            project_item.unit_price = unit_price
-                            project_item.save()
-                        
-                        items_saved += 1
-                        print(f"DEBUG: Guardado {item.code} - Cantidad: {value} - Precio: ${unit_price}")
+                    # Crear/actualizar siempre, incluso con cantidad 0
+                    quantity_value = value if value is not None else 0
+                    
+                    project_item, created = ProjectBudgetItem.objects.get_or_create(
+                        project=project,
+                        budget_item=item,
+                        defaults={
+                            'quantity': quantity_value,
+                            'unit_price': unit_price
+                        }
+                    )
+                    
+                    if not created:
+                        project_item.quantity = quantity_value
+                        project_item.unit_price = unit_price
+                        project_item.save()
+                    
+                    items_saved += 1
+                    print(f"DEBUG: Guardado {item.code} - Cantidad: {quantity_value} - Precio: ${unit_price}")
                         
                 except BudgetItem.DoesNotExist:
                     continue
