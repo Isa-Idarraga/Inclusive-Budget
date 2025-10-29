@@ -1058,6 +1058,12 @@ class BudgetSection(models.Model):
     """
     Secciones del presupuesto detallado (23 secciones)
     """
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='budget_sections',  # ← Esto te permitirá usar project.budget_sections.all()
+        verbose_name="Proyecto"
+    )
     name = models.CharField(max_length=200, verbose_name="Nombre de la sección")
     order = models.PositiveIntegerField(verbose_name="Orden", default=0)
     description = models.TextField(blank=True, verbose_name="Descripción")
@@ -1069,7 +1075,7 @@ class BudgetSection(models.Model):
         verbose_name="Valor porcentual",
         help_text="Para secciones como Administración (12%)"
     )
-    
+
     class Meta:
         verbose_name = "Sección de Presupuesto"
         verbose_name_plural = "Secciones de Presupuesto"
@@ -1077,7 +1083,6 @@ class BudgetSection(models.Model):
     
     def __str__(self):
         return f"{self.order}. {self.name}"
-
 
 class BudgetItem(models.Model):
     """
