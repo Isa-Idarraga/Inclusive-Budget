@@ -5,6 +5,7 @@ app_name = "projects"
 
 urlpatterns = [
     path("", views.project_list, name="project_list"),
+    path("history/", views.project_history, name="project_history"),
     path("create/", views.project_create, name="project_create"),
     path("<int:project_id>/", views.project_detail, name="project_detail"),
     path("<int:project_id>/update/", views.project_update, name="project_update"),
@@ -59,6 +60,9 @@ urlpatterns = [
     
     # URL para gestión de trabajadores del proyecto
     path('<int:project_id>/workers/', views.project_workers, name='project_workers'),
+    
+    # URL para actualizar imagen del proyecto
+    path('<int:project_id>/update-image/', views.update_project_image, name='update_project_image'),
     
     # URL para exportar presupuesto a Excel (solo JEFE)
     path('<int:project_id>/export-budget-excel/', views.export_budget_to_excel, name='export_budget_to_excel'),

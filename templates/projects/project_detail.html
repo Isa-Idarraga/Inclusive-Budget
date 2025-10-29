@@ -193,12 +193,6 @@
                                 </div>
                             </div>
                             
-                            <div class="mt-4 text-center">
-                                <a href="{% url 'projects:detailed_budget_view' project.id %}" class="btn btn-inclusive-primary">
-                                    <i class="fas fa-chart-bar me-2"></i>
-                                    Ver Presupuesto Detallado Completo
-                                </a>
-                            </div>
                         {% else %}
                         <div class="row g-3">
                             <div class="col-md-6 col-lg-4">
@@ -355,11 +349,13 @@
                                 </span>
                             </a>
                             
-                            <a href="{% url 'projects:detailed_budget_view' project.id %}" class="btn btn-outline-primary d-flex align-items-center justify-content-center rounded-3">
-                                <i class="fas fa-chart-bar me-2"></i>
-                                Ver Presupuesto Detallado
-                            </a>
                             {% endif %}
+                            
+                            <!-- Cambiar Foto del Proyecto -->
+                            <button type="button" class="btn btn-inclusive-primary d-flex align-items-center justify-content-center rounded-3" onclick="changeProjectImage()">
+                                <i class="fas fa-camera me-2"></i>
+                                Cambiar Foto del Proyecto
+                            </button>
                             
                             <!-- Gestión de Trabajadores -->
                             <a href="{% url 'projects:project_workers' project.id %}" class="btn btn-inclusive-primary d-flex align-items-center justify-content-center rounded-3">
@@ -451,5 +447,81 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Función para cambiar la imagen del proyecto
+function changeProjectImage() {
+    // Crear input file oculto
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validar tamaño del archivo (máximo 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('El archivo es demasiado grande. Por favor selecciona una imagen menor a 5MB.');
+                return;
+            }
+            
+            // Validar tipo de archivo
+            if (!file.type.startsWith('image/')) {
+                alert('Por favor selecciona un archivo de imagen válido.');
+                return;
+            }
+            
+            // Crear FormData para enviar el archivo
+            const formData = new FormData();
+            formData.append('imagen_proyecto', file);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            
+            // Mostrar indicador de carga
+            const button = document.querySelector('button[onclick="changeProjectImage()"]');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Subiendo...';
+            button.disabled = true;
+            
+            // Enviar archivo al servidor
+            fetch(`{% url 'projects:update_project_image' project.id %}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar la imagen en la página
+                    const imgElement = document.querySelector('.card-img-top');
+                    if (imgElement) {
+                        imgElement.src = data.image_url + '?t=' + new Date().getTime();
+                    } else {
+                        // Si no existe el elemento de imagen, recargar la página
+                        location.reload();
+                    }
+                    alert('Imagen actualizada correctamente');
+                } else {
+                    alert('Error al actualizar la imagen: ' + (data.error || 'Error desconocido'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al subir la imagen');
+            })
+            .finally(() => {
+                // Restaurar botón
+                button.innerHTML = originalText;
+                button.disabled = false;
+            });
+        }
+    };
+    
+    // Agregar input al DOM y hacer clic
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+}
 </script>
 {% endblock %}

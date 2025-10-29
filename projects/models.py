@@ -983,9 +983,9 @@ class ConsumoMaterial(models.Model):
         """Validación a nivel de modelo"""
         from django.core.exceptions import ValidationError
 
-        if self.cantidad_consumida and self.cantidad_consumida <= 0:
+        if self.cantidad_consumida and self.cantidad_consumida < 0:
             raise ValidationError({
-                'cantidad_consumida': 'La cantidad consumida debe ser mayor a cero.'
+                'cantidad_consumida': 'La cantidad consumida no puede ser negativa.'
             })
 
         # Validar que la fecha de consumo no sea futura
