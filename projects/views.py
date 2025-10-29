@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.core.paginator import Paginator
 from django.db.models import Q, Max, Sum, F, Count
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
@@ -245,6 +245,56 @@ def project_list(request):
     }
 
     return render(request, "projects/project_list.html", context)
+
+
+@login_required
+def project_history(request):
+    """
+    Vista para mostrar el historial cronológico de proyectos
+    Muestra todos los proyectos activos y finalizados ordenados cronológicamente
+    """
+    # Obtener parámetros de búsqueda y ordenamiento
+    search_query = request.GET.get("search", "")
+    status_filter = request.GET.get("status", "")
+    order_by = request.GET.get("order", "oldest")  # oldest o newest
+    
+    # Obtener todos los proyectos activos y finalizados
+    projects = Project.objects.filter(estado__in=['en_proceso', 'terminado', 'futuro'])
+    
+    # Filtro por búsqueda
+    if search_query:
+        projects = projects.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(location_address__icontains=search_query)
+        )
+    
+    # Filtro por estado
+    if status_filter:
+        projects = projects.filter(estado=status_filter)
+    
+    # Ordenar cronológicamente según la opción seleccionada
+    if order_by == "newest":
+        projects = projects.order_by('-fecha_creacion')  # Más recientes primero
+    else:
+        projects = projects.order_by('fecha_creacion')   # Más antiguos primero (default)
+    
+    # Separar por estado manteniendo el orden cronológico
+    projects_en_proceso = projects.filter(estado='en_proceso')
+    projects_terminados = projects.filter(estado='terminado')
+    projects_futuros = projects.filter(estado='futuro')
+    
+    context = {
+        "projects_en_proceso": projects_en_proceso,
+        "projects_terminados": projects_terminados,
+        "projects_futuros": projects_futuros,
+        "search_query": search_query,
+        "status_filter": status_filter,
+        "order_by": order_by,
+        "is_history_view": True,  # Flag para identificar que es la vista de historial
+    }
+    
+    return render(request, "projects/project_history.html", context)
 
 
 @login_required
@@ -514,8 +564,12 @@ def update_project_status(request, project_id):
     """
     if request.method == "POST":
         try:
-            # Obtener proyecto
-            project = get_object_or_404(Project, id=project_id, creado_por=request.user)
+            # Obtener proyecto - los jefes pueden modificar cualquier proyecto
+            if request.user.role == User.JEFE or request.user.is_superuser:
+                project = get_object_or_404(Project, id=project_id)
+            else:
+                # Los constructores solo pueden modificar sus propios proyectos
+                project = get_object_or_404(Project, id=project_id, creado_por=request.user)
 
             # Verificar si es AJAX o formulario normal
             if request.content_type == "application/json":
@@ -549,12 +603,24 @@ def update_project_status(request, project_id):
                 )
                 return redirect("projects:project_detail", project_id=project.id)
 
+        except Http404:
+            # Proyecto no encontrado o usuario sin permisos
+            if request.user.role == User.JEFE or request.user.is_superuser:
+                error_msg = "El proyecto no existe."
+            else:
+                error_msg = "No tienes permisos para modificar este proyecto o el proyecto no existe."
+            if request.content_type == "application/json":
+                return JsonResponse({"success": False, "error": error_msg})
+            else:
+                messages.error(request, f"❌ {error_msg}")
+                return redirect("projects:project_list")
+                
         except Exception as e:
             if request.content_type == "application/json":
                 return JsonResponse({"success": False, "error": str(e)})
             else:
                 messages.error(request, f"❌ Error al cambiar estado: {str(e)}")
-                return redirect("projects:project_detail", project_id=project.id)
+                return redirect("projects:project_list")
 
     return JsonResponse({"success": False, "error": "Método no permitido"})
 
@@ -902,7 +968,7 @@ def listar_consumos_proyecto(request, project_id):
     ).annotate(
         total_consumido=Sum('cantidad_consumida')
     ).order_by('material__name')
-    
+
     context = {
         'project': project,
         'consumos': consumos,
@@ -910,7 +976,7 @@ def listar_consumos_proyecto(request, project_id):
         'etapa_filtro': etapa_filtro,
         'totales_por_material': totales_por_material,
     }
-    
+
     return render(request, 'projects/listar_consumos.html', context)
 
 @project_owner_or_jefe_required
@@ -1249,29 +1315,29 @@ def detailed_budget_edit(request, project_id):
                 try:
                     from decimal import Decimal
                     quantity = Decimal(str(value)) if value else Decimal('0')
-                    if quantity > 0:
-                        # Obtener el BudgetItem para usar su precio unitario
-                        try:
-                            budget_item = BudgetItem.objects.get(id=item_id)
-                            
-                            # Actualizar o crear ProjectBudgetItem
-                            project_item, created = ProjectBudgetItem.objects.get_or_create(
-                                project=project,
-                                budget_item=budget_item,
-                                defaults={
-                                    'quantity': quantity,
-                                    'unit_price': budget_item.unit_price
-                                }
-                            )
-                            if not created:
-                                project_item.quantity = quantity
-                                project_item.unit_price = budget_item.unit_price
-                                project_item.save()
-                            items_updated += 1
-                            print(f"✅ Actualizado ítem {item_id}: cantidad {quantity}, precio {budget_item.unit_price}")
-                        except BudgetItem.DoesNotExist:
-                            print(f"❌ BudgetItem {item_id} no existe")
-                            continue
+                    
+                    # Obtener el BudgetItem para usar su precio unitario
+                    try:
+                        budget_item = BudgetItem.objects.get(id=item_id)
+                        
+                        # Actualizar o crear ProjectBudgetItem (incluso con cantidad 0)
+                        project_item, created = ProjectBudgetItem.objects.get_or_create(
+                            project=project,
+                            budget_item=budget_item,
+                            defaults={
+                                'quantity': quantity,
+                                'unit_price': budget_item.unit_price
+                            }
+                        )
+                        if not created:
+                            project_item.quantity = quantity
+                            project_item.unit_price = budget_item.unit_price
+                            project_item.save()
+                        items_updated += 1
+                        print(f"✅ Actualizado ítem {item_id}: cantidad {quantity}, precio {budget_item.unit_price}")
+                    except BudgetItem.DoesNotExist:
+                        print(f"❌ BudgetItem {item_id} no existe")
+                        continue
                 except (ValueError, ProjectBudgetItem.DoesNotExist):
                     continue
         
@@ -1436,6 +1502,46 @@ def detailed_budget_view(request, project_id):
     }
     
     return render(request, "projects/detailed_budget_view.html", context)
+
+
+@login_required
+def update_project_image(request, project_id):
+    """
+    Vista para actualizar la imagen del proyecto
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'})
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar permisos
+    if request.user.role != User.JEFE and not request.user.is_superuser and project.creado_por != request.user:
+        return JsonResponse({'success': False, 'error': 'No tienes permisos para modificar este proyecto'})
+    
+    # Obtener la imagen del request
+    imagen_proyecto = request.FILES.get('imagen_proyecto')
+    if not imagen_proyecto:
+        return JsonResponse({'success': False, 'error': 'No se proporcionó ninguna imagen'})
+    
+    try:
+        # Actualizar la imagen del proyecto
+        project.imagen_proyecto = imagen_proyecto
+        project.save()
+        
+        # Verificar que la imagen se guardó correctamente
+        if project.imagen_proyecto and hasattr(project.imagen_proyecto, 'url'):
+            image_url = project.imagen_proyecto.url
+        else:
+            return JsonResponse({'success': False, 'error': 'Error al guardar la imagen'})
+        
+        return JsonResponse({
+            'success': True,
+            'image_url': image_url,
+            'message': 'Imagen actualizada correctamente'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 
 @role_required(User.JEFE)

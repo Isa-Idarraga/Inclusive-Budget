@@ -751,13 +751,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const detailsDiv = document.createElement('div');
             detailsDiv.className = 'empty-sections-details mt-3';
             detailsDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <h6><i class="fas fa-exclamation-circle me-2"></i>Secciones sin ítems (${validation.emptySections.length}):</h6>
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Secciones sin ítems (${validation.emptySections.length}):</h6>
                     ${validation.emptySections.map(section => 
                         `<small class="d-block">• ${section.name}</small>`
                     ).join('')}
                     <hr>
-                    <small><strong>Recomendación:</strong> Agrega al menos 1 ítem por sección para un presupuesto más completo.</small>
+                    <small><strong>Nota:</strong> Puedes continuar con el proyecto. Los campos en 0 se guardarán normalmente.</small>
                 </div>
             `;
             warningDiv.appendChild(detailsDiv);
@@ -776,8 +776,8 @@ document.addEventListener('DOMContentLoaded', function() {
             detailsDiv.className = 'empty-fields-details mt-2';
             detailsDiv.innerHTML = `
                 <div class="alert alert-info">
-                    <h6><i class="fas fa-info-circle me-2"></i>Campos opcionales vacíos (${validation.emptyFields.length}):</h6>
-                    <small class="text-muted">Todas las secciones tienen al menos 1 ítem, pero hay campos adicionales sin completar.</small>
+                    <h6><i class="fas fa-info-circle me-2"></i>Campos con cantidad 0 (${validation.emptyFields.length}):</h6>
+                    <small class="text-muted">Todas las secciones tienen al menos 1 ítem. Los campos con cantidad 0 se guardarán normalmente.</small>
                 </div>
             `;
             warningDiv.appendChild(detailsDiv);
@@ -811,35 +811,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Validación antes de enviar
+    // Validación antes de enviar - COMPLETAMENTE OPCIONAL
     document.getElementById('detailedProjectForm').addEventListener('submit', function(e) {
+        // Permitir envío directo sin validaciones bloqueantes
+        // Solo mostrar información si el usuario quiere
         const validation = validateForm();
         
-        if (validation.emptySections.length > 0) {
-            e.preventDefault();
-            const proceed = confirm(
-                `⚠️ ATENCIÓN: ${validation.emptySections.length} secciones están completamente vacías.\n\n` +
-                `Secciones vacías: ${validation.emptySections.map(s => s.name.split('.')[1] || s.name).join(', ')}\n\n` +
-                `¿Deseas continuar? Se recomienda completar al menos 1 ítem por sección.`
+        if (validation.emptySections.length > 0 || validation.emptyFields.length > 0) {
+            const skipValidation = confirm(
+                `ℹ️ INFORMACIÓN: Hay ${validation.emptySections.length} secciones vacías y ${validation.emptyFields.length} campos en 0.\n\n` +
+                `Los campos en 0 se guardarán normalmente.\n\n` +
+                `¿Deseas continuar con el proyecto? (Cancelar para revisar)`
             );
-            if (proceed) {
-                // Permitir envío después de confirmación
-                this.removeEventListener('submit', arguments.callee);
-                this.submit();
-            } else {
-                document.getElementById('validate-form-btn').click();
-            }
-        } else if (validation.emptyFields.length > 10) {
-            // Solo advertir si hay muchos campos vacíos
-            const proceed = confirm(
-                `ℹ️ Hay ${validation.emptyFields.length} campos opcionales sin completar.\n\n` +
-                `¿Deseas continuar? Los campos vacíos se guardarán como cantidad 0.`
-            );
-            if (!proceed) {
+            
+            if (!skipValidation) {
                 e.preventDefault();
+                // Opcional: mostrar la validación detallada
                 document.getElementById('validate-form-btn').click();
+                return false;
             }
         }
+        // Permitir envío en todos los casos
     });
 });
 </script>

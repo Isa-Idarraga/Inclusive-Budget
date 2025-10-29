@@ -51,7 +51,7 @@ class ConsumoMaterialForm(forms.ModelForm):
             'cantidad_consumida': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.001',
-                'min': '0.001',
+                'min': '0',
                 'placeholder': 'Ej: 25.5',
                 'required': True
             }),
@@ -125,11 +125,8 @@ class ConsumoMaterialForm(forms.ModelForm):
             self.fields['fecha_consumo'].initial = timezone.now().date()
 
     def clean_cantidad_consumida(self):
-        """Validar que la cantidad sea positiva"""
-        cantidad = self.cleaned_data.get('cantidad_consumida')
-        if cantidad and cantidad <= 0:
-            raise forms.ValidationError('La cantidad consumida debe ser mayor a cero.')
-        return cantidad
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get('cantidad_consumida')
 
     def clean_fecha_consumo(self):
         """Validar que la fecha no sea futura"""
@@ -716,7 +713,7 @@ class BudgetItemForm(forms.ModelForm):
             "unit_price": forms.NumberInput(attrs={
                 "class": "form-control",
                 "step": "0.01",
-                "min": "0.01"
+                "min": "0"
             }),
         }
     
@@ -726,20 +723,12 @@ class BudgetItemForm(forms.ModelForm):
         self.fields["unit_price"].label = "Precio Unitario (COP)"
     
     def clean_quantity(self):
-        quantity = self.cleaned_data.get("quantity")
-        if quantity is None:
-            raise forms.ValidationError("Este campo es obligatorio.")
-        if quantity <= 0:
-            raise forms.ValidationError("La cantidad debe ser mayor a cero.")
-        return quantity
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get("quantity")
     
     def clean_unit_price(self):
-        unit_price = self.cleaned_data.get("unit_price")
-        if unit_price is None:
-            raise forms.ValidationError("Este campo es obligatorio.")
-        if unit_price <= 0:
-            raise forms.ValidationError("El precio unitario debe ser mayor a cero.")
-        return unit_price
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get("unit_price")
 
 
 class BudgetSectionForm(forms.Form):
@@ -802,24 +791,25 @@ class BudgetSectionForm(forms.Form):
                     # Los precios se envían como campos hidden, no editables
                     unit_price = item.unit_price
                     
-                    # Solo crear/actualizar si hay cantidad > 0
-                    if value and float(value) > 0:
-                        project_item, created = ProjectBudgetItem.objects.get_or_create(
-                            project=project,
-                            budget_item=item,
-                            defaults={
-                                'quantity': value,
-                                'unit_price': unit_price
-                            }
-                        )
-                        
-                        if not created:
-                            project_item.quantity = value
-                            project_item.unit_price = unit_price
-                            project_item.save()
-                        
-                        items_saved += 1
-                        print(f"DEBUG: Guardado {item.code} - Cantidad: {value} - Precio: ${unit_price}")
+                    # Crear/actualizar siempre, incluso con cantidad 0
+                    quantity_value = value if value is not None else 0
+                    
+                    project_item, created = ProjectBudgetItem.objects.get_or_create(
+                        project=project,
+                        budget_item=item,
+                        defaults={
+                            'quantity': quantity_value,
+                            'unit_price': unit_price
+                        }
+                    )
+                    
+                    if not created:
+                        project_item.quantity = quantity_value
+                        project_item.unit_price = unit_price
+                        project_item.save()
+                    
+                    items_saved += 1
+                    print(f"DEBUG: Guardado {item.code} - Cantidad: {quantity_value} - Precio: ${unit_price}")
                         
                 except BudgetItem.DoesNotExist:
                     continue
