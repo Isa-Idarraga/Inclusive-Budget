@@ -144,7 +144,7 @@
                 <h3 class="mt-5">Avance por Etapas del Presupuesto</h3>
                 <div class="card shadow-sm mt-3">
                     <div class="card-body">
-                        {% if etapas_resumen %}
+                        {% if etapas_con_avance %}
                         <div class="table-responsive">
                             <table class="table table-striped table-hover align-middle">
                             <thead>
@@ -158,7 +158,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for etapa in etapas_resumen %}
+                                {% for etapa in etapas_con_avance %}
                                 <tr class="{% if etapa.estado == 'Pendiente de inicio' %}table-light{% elif etapa.estado == 'Bajo presupuesto' %}table-success{% elif etapa.estado == 'En el límite' %}table-warning{% else %}table-danger{% endif %}">
                                     <td>{{ etapa.nombre }}</td>
                                     <td>${{ etapa.presupuesto|floatformat:0|intcomma }}</td>
@@ -179,7 +179,7 @@
                                     {% endif %}
                                     </td>
                                     <td>
-                                    <a href="{% url 'projects:detalle_etapa_consumos' project.id etapa.id %}" class="btn btn-sm btn-outline-primary">
+                                    <a href="{% url 'projects:detalle_etapa_consumos' etapa.id %}" class="btn btn-sm btn-outline-primary">
                                         Ver Detalle
                                     </a>
                                     </td>

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <h2>Detalle de Consumos - Etapa: {{ etapa.name }}</h2>
+
+    {% if consumos %}
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Material</th>
+                <th>Cantidad</th>
+                <th>Costo Unitario</th>
+                <th>Total</th>
+                <th>Responsable</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for consumo in consumos %}
+            <tr>
+                <td>{{ consumo.fecha|date:"d/m/Y" }}</td>
+                <td>{{ consumo.material }}</td>
+                <td>{{ consumo.cantidad|floatformat:2 }}</td>
+                <td>${{ consumo.unit_cost|floatformat:0 }}</td>
+                <td><strong>${{ consumo.total|floatformat:0 }}</strong></td>
+                <td>{{ consumo.responsable }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="alert alert-info">
+            Esta etapa aún no tiene consumos registrados.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
