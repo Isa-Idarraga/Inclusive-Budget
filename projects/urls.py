@@ -80,4 +80,7 @@ urlpatterns = [
     path('<int:project_id>/api/datos-graficos/', views.api_datos_graficos, name='api_datos_graficos'),
     
     path("reporte-etapas/<int:project_id>/", views.budget_progress_report, name="budget_progress_report"),
+    path('etapas/<int:etapa_id>/consumos/', views.detalle_etapa_consumos, name='detalle_etapa_consumos'),
+    path('projects/<int:project_id>/exportar_avance_etapas_excel/', views.exportar_avance_etapas_excel, name='exportar_avance_etapas_excel'),
+    
 ]

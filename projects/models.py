@@ -1087,6 +1087,10 @@ class BudgetSection(models.Model):
         verbose_name="Valor porcentual",
         help_text="Para secciones como Administración (12%)"
     )
+    
+    @property
+    def total_presupuesto(self):
+        return sum(item.unit_price for item in self.items.all())
 
     class Meta:
         verbose_name = "Sección de Presupuesto"
@@ -1095,6 +1099,8 @@ class BudgetSection(models.Model):
     
     def __str__(self):
         return f"{self.order}. {self.name}"
+    
+
 
 class BudgetItem(models.Model):
     """

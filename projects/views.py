@@ -556,6 +556,10 @@ def project_detail(request, project_id):
 
     # Obtener avance por etapa del presupuesto
     etapas_con_avance = get_etapas_con_avance(project)
+    
+    avance_por_etapas = get_etapas_con_avance(project)
+    # print("DEBUG avance_por_etapas:", avance_por_etapas)
+
 
     context = {
         'project': project,
@@ -567,6 +571,66 @@ def project_detail(request, project_id):
     return render(request, "projects/project_detail.html", context)
 
 
+@login_required
+def detalle_etapa_consumos(request, etapa_id):
+    etapa = get_object_or_404(BudgetSection, id=etapa_id)
+
+    # ← Corrección aquí: "registrado_por" en vez de "responsable"
+    consumos = etapa.consumos_materiales.select_related("material", "registrado_por").all()
+
+    consumos_con_totales = []
+    for c in consumos:
+        total = (c.cantidad_consumida or 0) * (c.material.unit_cost or 0)
+        consumos_con_totales.append({
+            "fecha": c.fecha_registro,
+            "material": c.material.name,
+            "cantidad": c.cantidad_consumida,
+            "unit_cost": c.material.unit_cost,
+            "total": total,
+            "responsable": c.registrado_por.get_full_name() if c.registrado_por else "—",
+        })
+
+    return render(request, "projects/detalle_etapa_consumos.html", {
+        "etapa": etapa,
+        "consumos": consumos_con_totales
+    })
+
+
+@login_required
+def exportar_avance_etapas_excel(request, project_id):
+    """
+    Exporta el avance por etapas del presupuesto a un archivo Excel.
+    """
+    project = get_object_or_404(Project, id=project_id)
+    etapas_con_avance = get_etapas_con_avance(project)
+
+    # Crear un nuevo workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Avance por Etapas"
+
+    # Encabezados
+    headers = ["Etapa", "Presupuesto (COP)", "Gasto Ejecutado (COP)", "% Ejecutado", "Estado"]
+    ws.append(headers)
+
+    # Datos
+    for etapa in etapas_con_avance:
+        ws.append([
+            etapa["nombre"],
+            float(etapa["presupuesto"]),
+            float(etapa["gasto"]),
+            round(etapa["porcentaje"], 2),
+            etapa["estado"]
+        ])
+
+    # Configurar la respuesta HTTP
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response['Content-Disposition'] = f'attachment; filename=avance_etapas_proyecto_{project.id}.xlsx'
+    wb.save(response)
+
+    return response
 
 
 @login_required

@@ -9,30 +9,22 @@ def get_etapas_con_avance(proyecto):
     - estado visual (Pendiente, Bajo presupuesto, En el límite, Sobrecosto)
     """
 
-    # ✅ En tu modelo, las etapas se relacionan como 'budget_sections'
-    etapas = proyecto.budget_sections.all().prefetch_related(
-        "budget_items",
-        "budget_items__consumos",
-        "budget_items__consumos__material"
-    )
+    # Traer las etapas (budget_sections) con sus consumos relacionados
+    etapas = proyecto.budget_sections.all().prefetch_related("consumos_materiales", "items")
 
     resultado = []
 
     for etapa in etapas:
-        presupuesto = etapa.total_presupuesto or 0  # campo acumulado de la sección
+        presupuesto = etapa.total_presupuesto or 0
         gasto = 0
 
-        # 🔄 Sumar todos los consumos de los ítems de esta etapa
-        for item in etapa.budget_items.all():
-            consumos = getattr(item, "consumos", None)
-            if consumos:
-                for c in consumos.all():
-                    gasto += (c.cantidad or 0) * (c.material.unit_cost or 0)
+        # Sumar todos los consumos relacionados con la etapa
+        for c in etapa.consumos_materiales.all():
+            gasto += (c.cantidad_consumida or 0) * (c.material.unit_cost or 0)
 
-        # 📊 Calcular porcentaje
         porcentaje = (gasto / presupuesto) * 100 if presupuesto > 0 else 0
 
-        # 🟢🟡🔴 Determinar el estado visual
+        # Determinar estado visual
         if gasto == 0:
             estado = "Pendiente de inicio"
         elif porcentaje < 80:
@@ -44,7 +36,7 @@ def get_etapas_con_avance(proyecto):
 
         resultado.append({
             "id": etapa.id,
-            "nombre": etapa.nombre,
+            "nombre": etapa.name,
             "presupuesto": presupuesto,
             "gasto": gasto,
             "porcentaje": porcentaje,
