@@ -33,7 +33,10 @@ from .utils import get_etapas_con_avance
 @login_required
 def budget_progress_report(request, project_id):
     project = get_object_or_404(Project, id=project_id)
+    # Usar las secciones específicas del proyecto si existen, sino usar las plantillas globales
     secciones = BudgetSection.objects.filter(project=project)
+    if not secciones.exists():
+        secciones = BudgetSection.objects.filter(project__isnull=True)
 
     reporte = []
     for seccion in secciones:
@@ -1277,7 +1280,8 @@ def detailed_project_create(request):
     Vista para crear proyectos con presupuesto detallado completo
     Solo para CONSTRUCTOR y JEFE
     """
-    sections = BudgetSection.objects.all().order_by('order')
+    # Usar solo las secciones plantilla (sin proyecto asignado)
+    sections = BudgetSection.objects.filter(project__isnull=True).order_by('order')
     workers = Worker.objects.all()
     
     if request.method == "POST":
