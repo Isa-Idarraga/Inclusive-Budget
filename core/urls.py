@@ -12,6 +12,7 @@ urlpatterns = [
     path("projects/", include("projects.urls")),
     path("catalog/", include("catalog.urls")),  # Catálogo de materiales
     path('chatbot/', include('chatbot.urls')),
+    path('manual/', include('manual.urls')),  # Manual de usuario
 ]
 
 # Configuración para servir archivos media en desarrollo
