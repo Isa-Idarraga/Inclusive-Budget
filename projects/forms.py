@@ -90,40 +90,27 @@ class ConsumoMaterialForm(forms.ModelForm):
             'componente_actividad': 'Actividad o parte del proyecto donde se usó el material',
         }
 
-    def __init__(self, *args, proyecto=None, **kwargs):
+    def __init__(self, *args, **kwargs):
+        # Recibimos el proyecto desde la vista
+        proyecto = kwargs.pop("proyecto", None)
         super().__init__(*args, **kwargs)
 
-        # Si se proporciona un proyecto, filtrar solo materiales con stock
-        if proyecto:
-            self.proyecto = proyecto
-            # Filtrar materiales que tengan stock en este proyecto
-            from .models import ProyectoMaterial
-            materiales_con_stock = ProyectoMaterial.objects.filter(
-                proyecto=proyecto,
-                stock_proyecto__gt=0
-            ).values_list('material_id', flat=True)
+        # 🔹 Filtrar las etapas para mostrar SOLO las 23 secciones base globales
+        self.fields["etapa_presupuesto"].queryset = (
+            BudgetSection.objects.filter(project__isnull=True).order_by("order")
+        )
 
-            self.fields['material'].queryset = Material.objects.filter(
-                id__in=materiales_con_stock
-            ).select_related('unit')
+        # 🔹 Mejorar la etiqueta visual del combo
+        self.fields["etapa_presupuesto"].label_from_instance = (
+            lambda obj: f"{obj.order}. {obj.name}"
+        )
 
-            # Personalizar la visualización del material con stock disponible
-            self.fields['material'].label_from_instance = lambda obj: (
-                f"{obj.name} ({obj.sku}) - Disponible: "
-                f"{ProyectoMaterial.objects.get(proyecto=proyecto, material=obj).stock_proyecto} "
-                f"{obj.unit.symbol}"
-            )
+        # 🔹 Hacer obligatorio el campo
+        self.fields["etapa_presupuesto"].required = True
 
-        # ✅ CONFIGURAR ETAPAS DEL PRESUPUESTO (RF17B)
-        self.fields['etapa_presupuesto'].queryset = BudgetSection.objects.all().order_by('order')
-        self.fields['etapa_presupuesto'].label_from_instance = lambda obj: f"{obj.order}. {obj.name}"
-        self.fields['etapa_presupuesto'].required = True
-
-        # Establecer fecha de hoy por defecto
-        from django.utils import timezone
-        if not self.instance.pk:
-            self.fields['fecha_consumo'].initial = timezone.now().date()
-
+        # Guardar el proyecto actual (opcional, por si lo usas luego)
+        self._proyecto = proyecto
+        
     def clean_cantidad_consumida(self):
         """Sin validaciones - permite cualquier valor"""
         return self.cleaned_data.get('cantidad_consumida')

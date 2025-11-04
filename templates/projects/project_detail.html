@@ -189,8 +189,9 @@
                             </table>
                         </div>
                         <div class="mt-3 text-end">
-                            <a href="{% url 'projects:exportar_avance_etapas_excel' project.id %}" class="btn btn-success">
-                            <i class="fas fa-file-excel me-2"></i> Exportar a Excel
+                            <a href="{% url 'projects:export_comparativo_to_excel' project.id %}"
+                            class="btn btn-success">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar Avances a Excel
                             </a>
                         </div>
                         {% else %}
