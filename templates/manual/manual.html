@@ -1,0 +1,922 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    :root {
+        --manual-bg-primary: #1C1E21;
+        --manual-bg-secondary: #ffffff;
+        --manual-text-primary: #1C1E21;
+        --manual-text-secondary: #555F66;
+        --manual-accent: #6FA98E;
+        --manual-accent-hover: #5e8a75;
+        --manual-accent-neon: #A4D65E;
+        --manual-gray-light: #F2F2F5;
+        --manual-gray-med: #ffffff;
+    }
+
+    body {
+        background: linear-gradient(135deg, #F2F2F5 0%, #ffffff 100%);
+        color: var(--manual-text-primary);
+        min-height: 100vh;
+    }
+
+    /* Ocultar borde del navbar solo en esta página */
+    body .navbar {
+        border-bottom: none !important;
+    }
+
+    /* Separador verde decorativo en lugar de la línea gris */
+    .manual-separator {
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--manual-accent), var(--manual-accent-neon));
+        margin-bottom: 40px;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 15px rgba(111, 169, 142, 0.2);
+    }
+
+    .manual-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 40px 20px 40px 20px;
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 40px;
+    }
+
+    /* Columna izquierda - Índice */
+    .manual-index {
+        position: sticky;
+        top: 100px;
+        height: fit-content;
+        background: var(--manual-gray-med);
+        border: 2px solid rgba(111, 169, 142, 0.3);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(111, 169, 142, 0.1);
+    }
+
+    .index-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 24px;
+        color: var(--manual-accent);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .index-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 8px;
+        margin-bottom: 4px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: var(--manual-text-secondary);
+    }
+
+    .index-item:hover {
+        background: rgba(111, 169, 142, 0.1);
+        color: var(--manual-accent);
+    }
+
+    .index-item.active {
+        background: linear-gradient(135deg, rgba(111, 169, 142, 0.15), rgba(164, 214, 94, 0.1));
+        color: var(--manual-accent);
+        border-left: 4px solid var(--manual-accent);
+        padding-left: 12px;
+    }
+
+    .index-number {
+        font-size: 16px;
+        font-weight: 600;
+        min-width: 32px;
+        color: var(--manual-accent);
+    }
+
+    .index-item.active .index-number {
+        color: var(--manual-accent);
+        font-weight: 700;
+    }
+
+    .index-text {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    /* Columna derecha - Contenido */
+    .manual-content {
+        padding-bottom: 60px;
+    }
+
+    .manual-header {
+        text-align: center;
+        margin-bottom: 48px;
+    }
+
+    .manual-title {
+        font-size: 48px;
+        font-weight: 800;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, var(--manual-accent), var(--manual-accent-neon));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .manual-subtitle {
+        font-size: 18px;
+        color: var(--manual-text-secondary);
+        line-height: 1.6;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    /* Cards de contenido */
+    .content-card {
+        background: var(--manual-gray-med);
+        border: 2px solid rgba(111, 169, 142, 0.3);
+        border-radius: 16px;
+        padding: 32px;
+        margin-bottom: 32px;
+        box-shadow: 0 10px 30px rgba(111, 169, 142, 0.1);
+        scroll-margin-top: 120px;
+        transition: all 0.3s ease;
+    }
+
+    .content-card:hover {
+        border-color: var(--manual-accent);
+        box-shadow: 0 20px 40px rgba(111, 169, 142, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .card-number {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--manual-accent), var(--manual-accent-neon));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 700;
+        flex-shrink: 0;
+        box-shadow: 0 4px 15px rgba(111, 169, 142, 0.3);
+    }
+
+    .card-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--manual-accent);
+        margin: 0;
+    }
+
+    .card-body {
+        color: var(--manual-text-secondary);
+        line-height: 1.8;
+        font-size: 16px;
+    }
+
+    /* Cuando el card-body tiene un video, reducir padding-top */
+    .card-body:has(.video-container) {
+        padding-top: 16px;
+    }
+
+    .card-body p {
+        margin-bottom: 16px;
+    }
+
+    .card-body ul, .card-body ol {
+        margin: 16px 0;
+        padding-left: 24px;
+    }
+
+    .card-body li {
+        margin-bottom: 8px;
+    }
+
+    /* Video container */
+    .video-container {
+        display: flex;
+        justify-content: center;
+        margin: 0 0 24px 0;
+    }
+    
+    /* Reducir espacio cuando hay video para subirlo más */
+    .card-body:has(.video-container) .video-container {
+        margin-top: -16px;
+    }
+    
+    .video-container .video-thumbnail {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .video-thumbnail {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #000;
+        cursor: pointer;
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .video-thumbnail img {
+        width: 100%;
+        height: auto;
+        display: block;
+        object-fit: cover;
+        aspect-ratio: 16 / 9;
+        min-height: 200px;
+        background: #1a1a1a;
+    }
+    
+    .video-thumbnail img[src=""],
+    .video-thumbnail img:not([src]) {
+        background: linear-gradient(135deg, #2d2d2d, #1a1a1a);
+    }
+
+    .video-play-button {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, var(--manual-accent), var(--manual-accent-neon));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 20px rgba(111, 169, 142, 0.4);
+        transition: all 0.3s ease;
+    }
+
+    .video-play-button:hover {
+        transform: translate(-50%, -50%) scale(1.1);
+        box-shadow: 0 6px 30px rgba(111, 169, 142, 0.6);
+        background: linear-gradient(135deg, var(--manual-accent-hover), #8bc247);
+    }
+
+    .video-play-button i {
+        color: white;
+        font-size: 24px;
+        margin-left: 4px;
+    }
+
+    /* Form snippet styling */
+    .form-snippet {
+        background: var(--manual-gray-light);
+        border-radius: 12px;
+        padding: 24px;
+        border: 2px solid rgba(111, 169, 142, 0.2);
+    }
+
+    .form-snippet-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--manual-accent);
+    }
+
+    .form-snippet-subtitle {
+        font-size: 14px;
+        color: var(--manual-text-secondary);
+        margin-bottom: 20px;
+    }
+
+    .form-input-group {
+        margin-bottom: 16px;
+    }
+
+    .form-input-label {
+        display: block;
+        font-size: 14px;
+        color: var(--manual-text-secondary);
+        margin-bottom: 8px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px;
+        background: var(--manual-gray-med);
+        border: 2px solid rgba(111, 169, 142, 0.3);
+        border-radius: 8px;
+        color: var(--manual-text-primary);
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--manual-accent);
+        box-shadow: 0 0 0 0.2rem rgba(111, 169, 142, 0.25);
+    }
+
+    /* Botón scroll to top */
+    .scroll-to-top {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--manual-accent), var(--manual-accent-neon));
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 20px rgba(111, 169, 142, 0.4);
+        transition: all 0.3s ease;
+        z-index: 1000;
+    }
+
+    .scroll-to-top:hover {
+        transform: translateY(-4px) scale(1.1);
+        box-shadow: 0 6px 30px rgba(111, 169, 142, 0.6);
+        background: linear-gradient(135deg, var(--manual-accent-hover), #8bc247);
+    }
+
+    .scroll-to-top i {
+        font-size: 20px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .manual-container {
+            grid-template-columns: 1fr;
+        }
+
+        .manual-index {
+            position: static;
+            margin-bottom: 32px;
+        }
+
+        .video-container {
+            width: 100%;
+        }
+    }
+
+    /* Botón Inicio */
+    .btn-inicio {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: var(--manual-gray-med);
+        color: var(--manual-accent);
+        text-decoration: none;
+        border: 2px solid rgba(111, 169, 142, 0.3);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        margin-bottom: 20px;
+    }
+
+    .btn-inicio:hover {
+        background: linear-gradient(135deg, rgba(111, 169, 142, 0.1), rgba(164, 214, 94, 0.1));
+        border-color: var(--manual-accent);
+        color: var(--manual-accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(111, 169, 142, 0.2);
+    }
+
+    .highlight-link {
+        color: var(--manual-accent);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .highlight-link:hover {
+        color: var(--manual-accent-hover);
+        text-decoration: underline;
+    }
+</style>
+
+<div class="manual-container">
+    <!-- Columna Izquierda - Índice -->
+    <div class="manual-index">
+        <a href="{% url 'dashboard:home' %}" class="btn-inicio">
+            <i class="fas fa-home"></i> Inicio
+        </a>
+        <div class="index-title">
+            <i class="fas fa-bars"></i> Índice
+        </div>
+        <nav id="manualIndex">
+            <a href="#intro" class="index-item active" data-section="intro">
+                <span class="index-number">01</span>
+                <span class="index-text">Introducción</span>
+            </a>
+            <a href="#requisitos" class="index-item" data-section="requisitos">
+                <span class="index-number">02</span>
+                <span class="index-text">Requisitos del Sistema</span>
+            </a>
+            <a href="#acceso" class="index-item" data-section="acceso">
+                <span class="index-number">03</span>
+                <span class="index-text">Acceso a la Plataforma</span>
+            </a>
+            <a href="#login" class="index-item" data-section="login">
+                <span class="index-number">04</span>
+                <span class="index-text">Inicio de Sesión</span>
+            </a>
+            <a href="#dashboard" class="index-item" data-section="dashboard">
+                <span class="index-number">05</span>
+                <span class="index-text">Dashboard (Inicio)</span>
+            </a>
+            <a href="#chatbot" class="index-item" data-section="chatbot">
+                <span class="index-number">06</span>
+                <span class="index-text">Chatbot - Generar Presupuesto con IA</span>
+            </a>
+            <a href="#lista-proyectos" class="index-item" data-section="lista-proyectos">
+                <span class="index-number">07</span>
+                <span class="index-text">Lista de Proyectos</span>
+            </a>
+            <a href="#historial" class="index-item" data-section="historial">
+                <span class="index-number">08</span>
+                <span class="index-text">Historial Cronológico</span>
+            </a>
+            <a href="#detalle-proyecto" class="index-item" data-section="detalle-proyecto">
+                <span class="index-number">09</span>
+                <span class="index-text">Detalle de Proyecto</span>
+            </a>
+            <a href="#presupuesto-detallado" class="index-item" data-section="presupuesto-detallado">
+                <span class="index-number">10</span>
+                <span class="index-text">Presupuesto Detallado</span>
+            </a>
+            <a href="#materiales" class="index-item" data-section="materiales">
+                <span class="index-number">11</span>
+                <span class="index-text">Gestión de Materiales</span>
+            </a>
+            <a href="#entrada-materiales" class="index-item" data-section="entrada-materiales">
+                <span class="index-number">12</span>
+                <span class="index-text">Registrar Entrada de Materiales</span>
+            </a>
+            <a href="#consumo-materiales" class="index-item" data-section="consumo-materiales">
+                <span class="index-number">13</span>
+                <span class="index-text">Registrar Consumo de Materiales</span>
+            </a>
+            <a href="#trabajadores" class="index-item" data-section="trabajadores">
+                <span class="index-number">14</span>
+                <span class="index-text">Gestión de Trabajadores</span>
+            </a>
+            <a href="#roles" class="index-item" data-section="roles">
+                <span class="index-number">15</span>
+                <span class="index-text">Roles y Salarios</span>
+            </a>
+            <a href="#gestion-presupuesto" class="index-item" data-section="gestion-presupuesto">
+                <span class="index-number">16</span>
+                <span class="index-text">Gestión de Presupuesto</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Columna Derecha - Contenido -->
+    <div class="manual-content">
+        <!-- Separador verde decorativo -->
+        <div class="manual-separator"></div>
+        <div class="manual-header">
+            <h1 class="manual-title">Manual de Uso</h1>
+            <p class="manual-subtitle">
+                Guía completa para utilizar Inclusive Budget, la plataforma de gestión de presupuestos y proyectos de construcción.
+            </p>
+        </div>
+
+        <!-- Sección 01: Introducción -->
+        <div id="intro" class="content-card">
+            <div class="card-header">
+                <div class="card-number">01</div>
+                <h2 class="card-title">Introducción</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    Inclusive Budget es una plataforma web diseñada para mejorar la gestión de presupuestos y proyectos de construcción. 
+                    Permite a los usuarios crear y administrar proyectos, gestionar materiales, realizar cálculos de presupuesto detallado, 
+                    y llevar un control completo del consumo de recursos en obras de construcción.
+                </p>
+                <p>
+                    El sistema está diseñado para diferentes roles de usuario: <strong>Jefe de Obra</strong>, <strong>Constructor</strong>, 
+                    y <strong>Comercial</strong>, cada uno con permisos y funcionalidades específicas según sus necesidades.
+                </p>
+            </div>
+        </div>
+
+        <!-- Sección 02: Requisitos del Sistema -->
+        <div id="requisitos" class="content-card">
+            <div class="card-header">
+                <div class="card-number">02</div>
+                <h2 class="card-title">Requisitos del Sistema</h2>
+            </div>
+            <div class="card-body">
+                <ul>
+                    <li>Navegador web actualizado (Google Chrome, Safari, Firefox, Edge).</li>
+                    <li>Acceso a internet.</li>
+                    <li>Cuenta de usuario creada por el administrador del sistema.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 03: Acceso a la Plataforma -->
+        <div id="acceso" class="content-card">
+            <div class="card-header">
+                <div class="card-number">03</div>
+                <h2 class="card-title">Acceso a la Plataforma</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    Para utilizar Inclusive Budget, accede desde cualquier navegador a la URL proporcionada por tu administrador. 
+                    La plataforma es compatible con dispositivos de escritorio y móviles.
+                </p>
+            </div>
+        </div>
+
+        <!-- Sección 04: Inicio de Sesión -->
+        <div id="login" class="content-card">
+            <div class="card-header">
+                <div class="card-number">04</div>
+                <h2 class="card-title">Inicio de Sesión</h2>
+            </div>
+            <div class="card-body">
+                <div class="video-container">
+                    <div class="video-thumbnail">
+                        <img src="https://img.youtube.com/vi/MzEUeBOv-e0/maxresdefault.jpg" alt="Video tutorial de inicio de sesión">
+                        <div class="video-play-button" onclick="openVideo('MzEUeBOv-e0')">
+                            <i class="fas fa-play"></i>
+                        </div>
+                    </div>
+                </div>
+                <p>
+                    Para iniciar sesión, ingresa tus credenciales (usuario y contraseña) en el formulario de acceso. 
+                    Si olvidaste tu contraseña, contacta al administrador del sistema.
+                </p>
+            </div>
+        </div>
+
+        <!-- Sección 05: Dashboard -->
+        <div id="dashboard" class="content-card">
+            <div class="card-header">
+                <div class="card-number">05</div>
+                <h2 class="card-title">Dashboard (Inicio)</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    El dashboard es la pantalla principal que verás al iniciar sesión. Muestra información relevante según tu rol:
+                </p>
+                <ul>
+                    <li><strong>Jefe de Obra:</strong> Vista general de todos los proyectos, estadísticas y acceso rápido a funciones administrativas.</li>
+                    <li><strong>Constructor:</strong> Lista de proyectos asignados y acceso a herramientas de trabajo.</li>
+                    <li><strong>Comercial:</strong> Información de proyectos y funcionalidades comerciales.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 06: ChatBot -->
+        <div id="chatbot" class="content-card">
+            <div class="card-header">
+                <div class="card-number">06</div>
+                <h2 class="card-title">Chatbot - Generar Presupuesto con IA</h2>
+            </div>
+            <div class="card-body">
+                <div class="video-container">
+                    <div class="video-thumbnail">
+                        <img src="https://img.youtube.com/vi/dFs9rbwZr3s/maxresdefault.jpg" alt="Video tutorial de ChatBot">
+                        <div class="video-play-button" onclick="openVideo('dFs9rbwZr3s')">
+                            <i class="fas fa-play"></i>
+                        </div>
+                    </div>
+                </div>
+                <p>
+                    El Chatbot genera presupuestos con IA. Accede al menú "ChatBot" en la barra de navegación y escribe "presupuesto con IA" para iniciar uno nuevo.
+                </p>
+            </div>
+        </div>
+
+        <!-- Sección 07: Lista de Proyectos -->
+        <div id="lista-proyectos" class="content-card">
+            <div class="card-header">
+                <div class="card-number">07</div>
+                <h2 class="card-title">Lista de Proyectos</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    La lista de proyectos muestra todos los proyectos accesibles según tu rol. Puedes:
+                </p>
+                <ul>
+                    <li>Filtrar proyectos por estado (Futuro, En proceso, Terminado)</li>
+                    <li>Buscar proyectos por nombre</li>
+                    <li>Ver información resumida de cada proyecto</li>
+                    <li>Acceder al detalle del proyecto haciendo clic en él</li>
+                    <li>Acceder al historial cronológico de proyectos</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 08: Historial Cronológico -->
+        <div id="historial" class="content-card">
+            <div class="card-header">
+                <div class="card-number">08</div>
+                <h2 class="card-title">Historial Cronológico de Proyectos</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    El historial cronológico muestra todos los proyectos activos y finalizados ordenados por fecha de creación. 
+                    Desde esta vista puedes:
+                </p>
+                <ul>
+                    <li>Ver estadísticas de proyectos (total, en proceso, terminados, futuros)</li>
+                    <li>Ordenar proyectos del más antiguo al más reciente o viceversa</li>
+                    <li>Ver el estado de cada proyecto claramente identificado</li>
+                    <li>Acceder al detalle de cualquier proyecto</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 09: Detalle de Proyecto -->
+        <div id="detalle-proyecto" class="content-card">
+            <div class="card-header">
+                <div class="card-number">09</div>
+                <h2 class="card-title">Detalle de Proyecto</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    Al hacer clic en un proyecto, accedes a su vista detallada donde puedes:
+                </p>
+                <ul>
+                    <li>Ver información completa del proyecto</li>
+                    <li>Gestionar el presupuesto detallado</li>
+                    <li>Registrar entradas y consumos de materiales</li>
+                    <li>Ver el tablero de control del proyecto</li>
+                    <li>Actualizar el estado del proyecto (si tienes permisos)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 10: Presupuesto Detallado -->
+        <div id="presupuesto-detallado" class="content-card">
+            <div class="card-header">
+                <div class="card-number">10</div>
+                <h2 class="card-title">Presupuesto Detallado</h2>
+            </div>
+            <div class="card-body">
+                <div class="video-container">
+                    <div class="video-thumbnail">
+                        <img src="https://img.youtube.com/vi/pbhGMbvlBnY/maxresdefault.jpg" alt="Video tutorial de presupuesto detallado">
+                        <div class="video-play-button" onclick="openVideo('pbhGMbvlBnY')">
+                            <i class="fas fa-play"></i>
+                        </div>
+                    </div>
+                </div>
+                <p>
+                    El presupuesto detallado permite crear un proyecto con las 23 secciones estándar de construcción. 
+                    Cada sección contiene múltiples ítems con sus respectivas unidades y precios unitarios.
+                </p>
+                <p>
+                    <strong>Características:</strong>
+                </p>
+                <ul>
+                    <li>23 secciones predefinidas (Preliminares, Excavaciones, Cimentaciones, Estructura, etc.)</li>
+                    <li>Cantidades editables por cada ítem</li>
+                    <li>Cálculo automático de totales por sección y proyecto</li>
+                    <li>Posibilidad de dejar campos en 0 si no aplican</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 11: Gestión de Materiales -->
+        <div id="materiales" class="content-card">
+            <div class="card-header">
+                <div class="card-number">11</div>
+                <h2 class="card-title">Gestión de Materiales</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    En la sección de Materiales puedes gestionar el catálogo de materiales disponibles:
+                </p>
+                <ul>
+                    <li><strong>Listar materiales:</strong> Ver todos los materiales con su información (nombre, SKU, unidad, precio)</li>
+                    <li><strong>Crear material:</strong> Agregar nuevos materiales al catálogo</li>
+                    <li><strong>Editar material:</strong> Modificar información de materiales existentes</li>
+                    <li><strong>Gestionar proveedores:</strong> Asociar proveedores a cada material y establecer precios</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 12: Registrar Entrada de Materiales -->
+        <div id="entrada-materiales" class="content-card">
+            <div class="card-header">
+                <div class="card-number">12</div>
+                <h2 class="card-title">Registrar Entrada de Materiales</h2>
+            </div>
+            <div class="card-body">
+                <div class="video-container">
+                    <div class="video-thumbnail">
+                        <img src="https://img.youtube.com/vi/b15pJrq30Zs/maxresdefault.jpg" alt="Video tutorial de entrada de materiales">
+                        <div class="video-play-button" onclick="openVideo('b15pJrq30Zs')">
+                            <i class="fas fa-play"></i>
+                        </div>
+                    </div>
+                </div>
+                <p>
+                    Para registrar la entrada de materiales a un proyecto:
+                </p>
+                <ol>
+                    <li>Accede al detalle del proyecto</li>
+                    <li>Selecciona "Registrar Entrada de Material"</li>
+                    <li>Selecciona el material, la cantidad y la fecha de ingreso</li>
+                    <li>El sistema actualizará automáticamente el stock del proyecto</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Sección 13: Registrar Consumo de Materiales -->
+        <div id="consumo-materiales" class="content-card">
+            <div class="card-header">
+                <div class="card-number">13</div>
+                <h2 class="card-title">Registrar Consumo de Materiales</h2>
+            </div>
+            <div class="card-body">
+                <div class="video-container">
+                    <div class="video-thumbnail">
+                        <img src="https://img.youtube.com/vi/7UNWjgSHsvc/maxresdefault.jpg" alt="Video tutorial de consumo de materiales">
+                        <div class="video-play-button" onclick="openVideo('7UNWjgSHsvc')">
+                            <i class="fas fa-play"></i>
+                        </div>
+                    </div>
+                </div>
+                <p>
+                    El registro de consumo permite documentar el uso diario de materiales en el proyecto:
+                </p>
+                <ul>
+                    <li>Selecciona el material (solo aparecen materiales con stock disponible)</li>
+                    <li>Ingresa la cantidad consumida</li>
+                    <li>Selecciona la fecha de consumo</li>
+                    <li>Asocia el consumo a una etapa del presupuesto</li>
+                    <li>Agrega componente/actividad y observaciones</li>
+                </ul>
+                <p>
+                    El sistema descontará automáticamente el consumo del stock del proyecto.
+                </p>
+            </div>
+        </div>
+
+        <!-- Sección 14: Gestión de Trabajadores -->
+        <div id="trabajadores" class="content-card">
+            <div class="card-header">
+                <div class="card-number">14</div>
+                <h2 class="card-title">Gestión de Trabajadores</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    <strong>Disponible solo para Jefe de Obra.</strong> Permite gestionar los trabajadores asignados a proyectos:
+                </p>
+                <ul>
+                    <li><strong>Listar trabajadores:</strong> Ver todos los trabajadores con su información y proyectos asignados</li>
+                    <li><strong>Crear trabajador:</strong> Agregar nuevos trabajadores al sistema</li>
+                    <li><strong>Editar trabajador:</strong> Modificar información y asignaciones</li>
+                    <li><strong>Asignar a proyectos:</strong> Asociar trabajadores a uno o más proyectos</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 15: Roles y Salarios -->
+        <div id="roles" class="content-card">
+            <div class="card-header">
+                <div class="card-number">15</div>
+                <h2 class="card-title">Roles y Salarios</h2>
+            </div>
+            <div class="card-body">
+                <p>
+                    <strong>Disponible solo para Jefe de Obra.</strong> Gestiona los roles de trabajo y sus salarios base:
+                </p>
+                <ul>
+                    <li><strong>Listar roles:</strong> Ver todos los roles definidos (Obrero, Maestro, etc.)</li>
+                    <li><strong>Crear rol:</strong> Definir nuevos roles con su salario base diario</li>
+                    <li><strong>Editar rol:</strong> Modificar el salario base de un rol</li>
+                    <li>Los salarios se utilizan para calcular costos de mano de obra en proyectos</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección 16: Gestión de Presupuesto -->
+        <div id="gestion-presupuesto" class="content-card">
+            <div class="card-header">
+                <div class="card-number">16</div>
+                <h2 class="card-title">Gestión de Presupuesto</h2>
+            </div>
+            <div class="card-body">
+                <div class="video-container">
+                    <div class="video-thumbnail">
+                        <img src="https://img.youtube.com/vi/75FtPV0adcc/hqdefault.jpg" 
+                             onerror="this.onerror=null; this.src='https://img.youtube.com/vi/75FtPV0adcc/sddefault.jpg';" 
+                             alt="Video tutorial de gestión de presupuesto">
+                        <div class="video-play-button" onclick="openVideo('75FtPV0adcc')">
+                            <i class="fas fa-play"></i>
+                        </div>
+                    </div>
+                </div>
+                <p>
+                    <strong>Disponible solo para Jefe de Obra.</strong> Funciones administrativas del presupuesto:
+                </p>
+                <ul>
+                    <li><strong>Gestión de Precios:</strong> Actualizar precios unitarios de los ítems del presupuesto</li>
+                    <li><strong>Administrar Ítems:</strong> Gestionar los ítems disponibles en cada sección del presupuesto</li>
+                    <li><strong>Ver estadísticas:</strong> Revisar cálculos y totales del presupuesto</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botón Scroll to Top -->
+<button class="scroll-to-top" onclick="scrollToTop()" id="scrollToTopBtn" style="display: none;">
+    <i class="fas fa-arrow-up"></i>
+</button>
+
+<script>
+    // Navegación suave y resaltado de sección activa
+    document.querySelectorAll('.index-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            const targetElement = document.querySelector(targetId);
+            
+            if (targetElement) {
+                // Remover active de todos
+                document.querySelectorAll('.index-item').forEach(i => i.classList.remove('active'));
+                // Agregar active al clickeado
+                this.classList.add('active');
+                
+                // Scroll suave
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+
+    // Detectar sección activa al hacer scroll
+    const sections = document.querySelectorAll('.content-card');
+    const indexItems = document.querySelectorAll('.index-item');
+
+    function updateActiveSection() {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.clientHeight;
+            if (window.pageYOffset >= sectionTop - 150) {
+                current = section.getAttribute('id');
+            }
+        });
+
+        indexItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('href') === `#${current}`) {
+                item.classList.add('active');
+            }
+        });
+    }
+
+    window.addEventListener('scroll', updateActiveSection);
+    updateActiveSection(); // Llamar al inicio
+
+    // Mostrar/ocultar botón scroll to top
+    window.addEventListener('scroll', function() {
+        const scrollBtn = document.getElementById('scrollToTopBtn');
+        if (window.pageYOffset > 300) {
+            scrollBtn.style.display = 'flex';
+        } else {
+            scrollBtn.style.display = 'none';
+        }
+    });
+
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Abrir video de YouTube
+    function openVideo(videoId) {
+        if (videoId && videoId !== 'YOUR_VIDEO_ID_HERE') {
+            window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+        } else {
+            alert('El video aún no está disponible. El administrador agregará el enlace próximamente.');
+        }
+    }
+</script>
+{% endblock %}
+

@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'projects',
     'catalog',
     'dashboard',
-    'chatbot'
+    'chatbot',
+    'manual'
 ]
 
 AUTH_USER_MODEL = "users.User"

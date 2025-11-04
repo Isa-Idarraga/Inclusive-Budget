@@ -401,6 +401,12 @@
                         <div class="d-grid gap-3">
                             <!-- Botones para Presupuesto Detallado -->
                             {% if user.role == 'JEFE' or user.role == 'CONSTRUCTOR' or user.is_superuser %}
+                            {% if project.has_detailed_budget_items %}
+                            <a href="{% url 'projects:detailed_budget_view' project.id %}" class="btn btn-inclusive-primary d-flex align-items-center justify-content-center rounded-3">
+                                <i class="fas fa-eye me-2"></i>
+                                Ver Presupuesto Detallado
+                            </a>
+                            {% endif %}
                             <a href="{% url 'projects:detailed_budget_edit' project.id %}" class="btn btn-inclusive-warning d-flex align-items-center justify-content-center rounded-3" id="edit-budget-btn">
                                 <i class="fas fa-calculator me-2"></i>
                                 <span class="btn-text">Editar Presupuesto Detallado</span>
