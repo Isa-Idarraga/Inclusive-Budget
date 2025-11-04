@@ -5,7 +5,10 @@
   <h3>Reporte de avance por etapas – {{ project.name }}</h3>
 
   <div class="text-end">
-    <a href="?export=1" class="btn btn-sm btn-success">📥 Exportar a Excel</a>
+    <a href="{% url 'projects:export_comparativo_to_excel' project.id %}"
+      class="btn btn-success">
+      <i class="bi bi-file-earmark-excel"></i> Exportar Avances a Excel
+    </a>
   </div>
 
   <table class="table table-bordered mt-3">

@@ -486,6 +486,7 @@ def project_create(request):
                 project.creado_por = request.user
 
                 from decimal import Decimal
+                from .utils import create_default_budget_sections
                 project.built_area = project.area_construida_total or Decimal("0")
                 project.exterior_area = project.area_exterior_intervenir or Decimal("0")
                 project.columns_count = project.columns_count or 0
@@ -495,9 +496,13 @@ def project_create(request):
                 project.doors_height = Decimal("2.1")
 
                 project.save()
+                # ✅ Crear automáticamente las secciones del presupuesto
+                # create_default_budget_sections(project)
+                
                 project.calculate_legacy_fields()
                 project.presupuesto = project.calculate_final_budget()
                 project.save()
+                
 
                 if selected_workers:
                     project.workers.set(selected_workers)
@@ -531,10 +536,6 @@ def project_create(request):
             "no_workers": not workers.exists(),
         },
     )
-
-
-
-
 
 @login_required
 def project_detail(request, project_id):
@@ -1341,26 +1342,23 @@ def eliminar_consumo_material(request, consumo_id):
 @login_required
 def detailed_project_create(request):
     """
-    Vista para crear proyectos con presupuesto detallado completo
-    Solo para CONSTRUCTOR y JEFE
+    Crea proyectos con presupuesto detallado completo.
+    Usa las 23 secciones predefinidas (plantillas globales) sin modificarlas.
     """
     # Usar solo las secciones plantilla (sin proyecto asignado)
     sections = BudgetSection.objects.filter(project__isnull=True).order_by('order')
     workers = Worker.objects.all()
-    
+
     if request.method == "POST":
-        # Procesar formulario básico del proyecto
         project_form = DetailedProjectForm(request.POST, request.FILES)
         selected_workers = request.POST.getlist("workers")
-        
+
         if project_form.is_valid():
             try:
-                # Crear el proyecto
+                from decimal import Decimal
+
                 project = project_form.save(commit=False)
                 project.creado_por = request.user
-                
-                # Establecer valores por defecto para campos obligatorios
-                from decimal import Decimal
                 project.built_area = Decimal("0")
                 project.exterior_area = Decimal("0")
                 project.columns_count = 0
@@ -1368,59 +1366,47 @@ def detailed_project_create(request):
                 project.windows_area = Decimal("0")
                 project.doors_count = 0
                 project.doors_height = Decimal("2.1")
-                
                 project.save()
+
+                # from .utils import create_default_budget_sections
+                # create_default_budget_sections(project)
                 
-                # Asignar trabajadores si se seleccionaron
                 if selected_workers:
                     project.workers.set(selected_workers)
-                
-                # Procesar cada sección del presupuesto (FUNCIONA)
-                print("🔍 DEBUG: Iniciando procesamiento de presupuesto detallado")
-                
+
+                # Procesar cada sección (las plantillas base)
                 items_processed = 0
                 for section in sections:
                     section_form = BudgetSectionForm(section, project, request.POST)
                     if section_form.is_valid():
                         section_form.save(project)
                         items_processed += 1
-                        print(f"✅ Sección procesada: {section.name}")
-                    else:
-                        print(f"❌ Errores en sección {section.name}: {section_form.errors}")
-                
-                print(f"🔍 DEBUG: Total secciones procesadas: {items_processed}")
-                
-                # Calcular presupuesto total usando SOLO la suma de ítems detallados
+
+                # Calcular presupuesto final
                 presupuesto_calculado = project.calculate_final_budget()
                 project.presupuesto = presupuesto_calculado
                 project.save()
-                
-                print(f"DEBUG: Presupuesto calculado: ${presupuesto_calculado:,.0f}")
-                print(f"DEBUG: Total ProjectBudgetItems: {project.budget_items.count()}")
-                
+
                 messages.success(
                     request,
-                    f'✅ Proyecto "{project.name}" creado exitosamente con presupuesto detallado! '
-                    f'Presupuesto total: ${project.presupuesto:,.0f}'
+                    f'✅ Proyecto "{project.name}" creado exitosamente con presupuesto detallado. '
+                    f'Presupuesto total: ${project.presupuesto:,.0f}',
                 )
-                
+
                 return redirect("projects:detailed_budget_view", project_id=project.id)
-                
+
             except Exception as e:
                 messages.error(request, f"❌ Error al crear el proyecto: {str(e)}")
+
         else:
-            messages.error(request, "❌ Por favor corrige los errores en el formulario")
+            messages.error(request, "❌ Por favor corrige los errores en el formulario.")
     else:
         project_form = DetailedProjectForm()
-    
-    # Preparar formularios para cada sección
-    section_forms = []
-    for section in sections:
-        form = BudgetSectionForm(section, None)  # Sin proyecto aún
-        section_forms.append({
-            'section': section,
-            'form': form
-        })
+
+    # Generar formularios por sección (render inicial)
+    section_forms = [
+        {"section": s, "form": BudgetSectionForm(s, None)} for s in sections
+    ]
 
     return render(
         request,
@@ -1430,8 +1416,9 @@ def detailed_project_create(request):
             "section_forms": section_forms,
             "workers": workers,
             "no_workers": not workers.exists(),
-        }
+        },
     )
+
 
 
 @role_required(User.CONSTRUCTOR, User.JEFE)
