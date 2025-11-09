@@ -28,7 +28,56 @@
                     </div>
                     <div class="card-body p-4 bg-gray-green-accent">
                         
-                        <!-- Navegación por Secciones -->
+                        <!-- Macro-secciones Agrupadas -->
+                        <div class="mb-5">
+                            <h5 class="fw-bold mb-4">
+                                <i class="fas fa-layer-group me-2"></i>
+                                Presupuesto por Macro-secciones
+                            </h5>
+                            <div class="row g-3">
+                                {% for macro in macro_sections %}
+                                    {% if macro.sections %}
+                                        <div class="col-md-6 col-lg-4">
+                                            <div class="card h-100 border-{{ macro.color }} shadow-sm">
+                                                <div class="card-header bg-{{ macro.color }} text-white">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div>
+                                                            <i class="{{ macro.icon }} me-2"></i>
+                                                            <strong>{{ macro.name }}</strong>
+                                                        </div>
+                                                        <span class="badge bg-light text-{{ macro.color }} price-display" data-price="{{ macro.total }}">
+                                                            ${{ macro.total|floatformat:0|default:"0" }}
+                                                        </span>
+                                                    </div>
+                                                    <small class="text-white-50">{{ macro.description }}</small>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="list-group list-group-flush">
+                                                        {% for section in macro.sections %}
+                                                            <a href="#section-{{ section.section.id }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                                                <span>
+                                                                    <strong>{{ section.section.order }}.</strong>
+                                                                    {% if section.section.is_percentage and section.section.order == 21 %}
+                                                                        ADMINISTRACIÓN
+                                                                    {% else %}
+                                                                        {{ section.section.name|truncatechars:30 }}
+                                                                    {% endif %}
+                                                                </span>
+                                                                <span class="badge bg-{{ macro.color }} rounded-pill price-display" data-price="{% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica }}{% else %}{{ section.total }}{% endif %}">
+                                                                    ${% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica|floatformat:0|default:"0" }}{% else %}{{ section.total|floatformat:0|default:"0" }}{% endif %}
+                                                                </span>
+                                                            </a>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Navegación Rápida por Secciones (mantener para compatibilidad) -->
                         <div class="mb-4">
                             <h5 class="fw-bold mb-3">
                                 <i class="fas fa-list-ol me-2"></i>

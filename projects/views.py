@@ -1756,9 +1756,128 @@ def detailed_budget_view(request, project_id):
     # ✅ USAR EL CÁLCULO CORRECTO QUE INCLUYE ADMINISTRACIÓN
     total_budget = project.calculate_final_budget()
     
+    # Agrupar secciones en macro-secciones lógicas
+    macro_sections = {
+        'Obra Negra': {
+            'name': 'Obra Negra',
+            'description': 'Cimientos, estructura, columnas, vigas',
+            'icon': 'fas fa-building',
+            'color': 'primary',
+            'sections': [],
+            'total': Decimal('0')
+        },
+        'Obra Blanca': {
+            'name': 'Obra Blanca',
+            'description': 'Mampostería, revoques, instalaciones básicas',
+            'icon': 'fas fa-paint-roller',
+            'color': 'info',
+            'sections': [],
+            'total': Decimal('0')
+        },
+        'Acabados': {
+            'name': 'Acabados',
+            'description': 'Pisos, pintura, carpintería, ventanas, puertas',
+            'icon': 'fas fa-hammer',
+            'color': 'success',
+            'sections': [],
+            'total': Decimal('0')
+        },
+        'Instalaciones': {
+            'name': 'Instalaciones',
+            'description': 'Hidráulicas, eléctricas, gas',
+            'icon': 'fas fa-plug',
+            'color': 'warning',
+            'sections': [],
+            'total': Decimal('0')
+        },
+        'Exteriores': {
+            'name': 'Exteriores',
+            'description': 'Fachada, zonas comunes, paisajismo',
+            'icon': 'fas fa-tree',
+            'color': 'secondary',
+            'sections': [],
+            'total': Decimal('0')
+        },
+        'Otros': {
+            'name': 'Otros',
+            'description': 'Preliminares, supervisión, administración, impuestos',
+            'icon': 'fas fa-list',
+            'color': 'dark',
+            'sections': [],
+            'total': Decimal('0')
+        }
+    }
+    
+    # Mapeo de secciones a macro-secciones según su order
+    section_to_macro = {
+        # Obra Negra
+        2: 'Obra Negra',   # EXCAVACIONES Y LLENOS
+        3: 'Obra Negra',   # CIMENTACIONES
+        4: 'Obra Negra',   # ESTRUCTURA
+        5: 'Obra Negra',   # ACERO
+        
+        # Obra Blanca
+        6: 'Obra Blanca',  # MAMPOSTERÍA
+        7: 'Obra Blanca',  # ESTUCOS, REVOQUES, PINTURAS, DRYWALL
+        
+        # Acabados
+        8: 'Acabados',     # PISOS, ENCHAPES Y SÓCALOS
+        9: 'Acabados',     # JUNTAS
+        10: 'Acabados',    # CARPINTERÍA METÁLICA Y VIDRIOS
+        11: 'Acabados',    # CARPINTERÍA EN MADERA, MESONES Y ACCESORIOS
+        
+        # Instalaciones
+        12: 'Instalaciones',  # APARATOS SANITARIOS E INSTALACIONES HIDRÁULICAS
+        13: 'Instalaciones',  # INSTALACIONES ELÉCTRICAS Y REDES DE GAS
+        
+        # Exteriores
+        14: 'Exteriores',  # CUBIERTAS
+        17: 'Exteriores',  # PISOS EXTERIORES
+        19: 'Exteriores',  # PAISAJISMO
+        
+        # Otros (por defecto)
+        1: 'Otros',        # PRELIMINARES Y MANTENIMIENTOS
+        15: 'Otros',       # ELECTRODOMÉSTICOS
+        16: 'Otros',       # IMPERMEABILIZACIONES
+        18: 'Otros',       # LIMPIEZA GENERAL Y VIDRIOS
+        20: 'Otros',       # SUPERVISIÓN Y CONTROL DE OBRA
+        21: 'Otros',       # ADMINISTRACIÓN
+        22: 'Otros',       # IMPUESTOS Y ESCRITURACIONES
+        23: 'Otros',       # ESTUDIOS Y DISEÑO
+    }
+    
+    # Agrupar secciones
+    for section_item in section_data:
+        section_order = section_item['section'].order
+        macro_key = section_to_macro.get(section_order, 'Otros')
+        
+        # Calcular total de la sección
+        if section_item['section'].is_percentage and section_item['section'].order == 21:
+            section_total = administracion_automatica
+        else:
+            section_total = Decimal(str(section_item['total']))
+        
+        macro_sections[macro_key]['sections'].append(section_item)
+        macro_sections[macro_key]['total'] += section_total
+    
+    # Convertir totales a float para el template
+    for macro_key in macro_sections:
+        macro_sections[macro_key]['total'] = float(macro_sections[macro_key]['total'])
+    
+    # Ordenar macro-secciones según el orden deseado
+    macro_sections_ordered = [
+        macro_sections['Obra Negra'],
+        macro_sections['Obra Blanca'],
+        macro_sections['Acabados'],
+        macro_sections['Instalaciones'],
+        macro_sections['Exteriores'],
+        macro_sections['Otros']
+    ]
+    
     context = {
         'project': project,
         'section_data': section_data,
+        'macro_sections': macro_sections_ordered,
         'total_budget': total_budget,
         'administration_percentage': project.administration_percentage,
         'costo_directo': costo_directo_total,
