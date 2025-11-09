@@ -13,9 +13,13 @@ urlpatterns = [
     ),
     path("logout/", views.logout_view, name="logout"),
 
+    # Perfil del usuario (Todos los roles)
+    path("profile/", views.user_profile, name="profile"),
+
     # Gestión de usuarios (Solo JEFE)
     path("manage/", views.user_list, name="user_list"),
     path("manage/create/", views.user_create, name="user_create"),
     path("manage/<int:user_id>/edit/", views.user_update, name="user_update"),
     path("manage/<int:user_id>/delete/", views.user_delete, name="user_delete"),
+    path("manage/<int:user_id>/reset-password/", views.user_reset_password, name="user_reset_password"),
 ]

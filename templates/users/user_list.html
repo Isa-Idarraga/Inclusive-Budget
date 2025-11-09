@@ -10,7 +10,7 @@
         </a>
     </div>
 
-    {% if users %}
+    {% if users_with_passwords %}
     <div class="card shadow-sm">
         <div class="card-body">
             <div class="table-responsive">
@@ -21,13 +21,15 @@
                             <th>Nombre</th>
                             <th>Email</th>
                             <th>Rol</th>
+                            <th>Contraseña</th>
                             <th>Estado</th>
                             <th>Fecha registro</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for user_obj in users %}
+                        {% for item in users_with_passwords %}
+                        {% with user_obj=item.user %}
                         <tr>
                             <td>
                                 <strong>{{ user_obj.username }}</strong>
@@ -47,6 +49,31 @@
                                 {% endif %}
                             </td>
                             <td>
+                                {% if user_obj.role == "JEFE" %}
+                                <span class="text-muted">
+                                    <i class="fas fa-lock"></i> Oculta
+                                </span>
+                                {% else %}
+                                    {% if item.password %}
+                                    <div class="input-group input-group-sm" style="max-width: 250px;">
+                                        <input type="password" class="form-control password-field" 
+                                               value="{{ item.password }}" 
+                                               readonly id="pwd-{{ user_obj.id }}">
+                                        <button class="btn btn-outline-secondary toggle-password" 
+                                                type="button" 
+                                                onclick="togglePassword('pwd-{{ user_obj.id }}', this)"
+                                                title="Mostrar/Ocultar contraseña">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">
+                                        <i class="fas fa-info-circle"></i> No disponible
+                                    </span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if user_obj.is_active %}
                                 <span class="badge bg-success">Activo</span>
                                 {% else %}
@@ -58,6 +85,9 @@
                                 <a href="{% url 'users:user_update' user_obj.id %}" class="btn btn-sm btn-warning" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                <a href="{% url 'users:user_reset_password' user_obj.id %}" class="btn btn-sm btn-info" title="Resetear contraseña">
+                                    <i class="fas fa-key"></i>
+                                </a>
                                 {% if user_obj.id != user.id %}
                                 <a href="{% url 'users:user_delete' user_obj.id %}" class="btn btn-sm btn-danger" title="Eliminar">
                                     <i class="fas fa-trash"></i>
@@ -65,6 +95,7 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        {% endwith %}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -77,5 +108,23 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Script para mostrar/ocultar contraseñas -->
+<script>
+function togglePassword(fieldId, button) {
+    const field = document.getElementById(fieldId);
+    const icon = button.querySelector('i');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        field.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+</script>
 {% endblock %}
 

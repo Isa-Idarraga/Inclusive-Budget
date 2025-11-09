@@ -600,10 +600,43 @@ class Command(BaseCommand):
             }
         ]
         
-        # Crear secciones e ítems
+        # Limpiar ítems existentes primero (no tienen restricciones de protección)
+        self.stdout.write(self.style.WARNING('Limpiando ítems existentes...'))
+        BudgetItem.objects.all().delete()
+        self.stdout.write(self.style.SUCCESS('✅ Ítems antiguos eliminados'))
+        
+        # Eliminar secciones duplicadas (mantener solo la primera por order)
+        self.stdout.write(self.style.WARNING('Eliminando secciones duplicadas...'))
+        from django.db.models import Count
+        from projects.models import ConsumoMaterial
+        
+        # Encontrar orders con múltiples secciones
+        duplicate_orders = BudgetSection.objects.values('order').annotate(
+            count=Count('id')
+        ).filter(count__gt=1).values_list('order', flat=True)
+        
+        for order in duplicate_orders:
+            # Mantener la primera, eliminar las demás
+            sections = BudgetSection.objects.filter(order=order)
+            section_to_keep = sections.first()
+            
+            if section_to_keep and sections.count() > 1:
+                # Reasignar consumos de las secciones a eliminar a la que mantenemos
+                sections_to_delete = sections.exclude(id=section_to_keep.id)
+                for section_to_delete in sections_to_delete:
+                    consumos_count = ConsumoMaterial.objects.filter(etapa_presupuesto=section_to_delete).count()
+                    if consumos_count > 0:
+                        ConsumoMaterial.objects.filter(etapa_presupuesto=section_to_delete).update(
+                            etapa_presupuesto=section_to_keep
+                        )
+                        self.stdout.write(f'  🔄 {consumos_count} consumos reasignados de orden {order}')
+                    section_to_delete.delete()
+                self.stdout.write(f'  ✅ Duplicados de orden {order} eliminados')
+        
+        # Crear o actualizar secciones e ítems
         for section_data in sections_data:
-            # Crear o actualizar sección
-            section, created = BudgetSection.objects.get_or_create(
+            # Actualizar o crear sección
+            section, created = BudgetSection.objects.update_or_create(
                 order=section_data['order'],
                 defaults={
                     'name': section_data['name'],
@@ -616,7 +649,7 @@ class Command(BaseCommand):
             if created:
                 self.stdout.write(f'✅ Sección creada: {section.name}')
             else:
-                self.stdout.write(f'⚠️ Sección ya existe: {section.name}')
+                self.stdout.write(f'🔄 Sección actualizada: {section.name}')
             
             # Crear ítems de la sección
             for item_data in section_data['items']:

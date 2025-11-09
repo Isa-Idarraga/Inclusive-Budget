@@ -5,6 +5,7 @@ app_name = "projects"
 
 urlpatterns = [
     path("", views.project_list, name="project_list"),
+    path("history/", views.project_history, name="project_history"),
     path("create/", views.project_create, name="project_create"),
     path("<int:project_id>/", views.project_detail, name="project_detail"),
     path("<int:project_id>/update/", views.project_update, name="project_update"),
@@ -45,6 +46,7 @@ urlpatterns = [
     # URLs para gestión de precios (solo JEFE)
     path('budget/management/', views.budget_management, name='budget_management'),
     path('budget/item/<int:item_id>/update/', views.budget_item_update, name='budget_item_update'),
+    path('budget/section/<int:section_id>/update-percentage/', views.update_section_percentage, name='update_section_percentage'),
     
     # URLs para gestión de ítems del presupuesto
     path('budget/items/', views.budget_items_list, name='budget_items_list'),
@@ -60,6 +62,12 @@ urlpatterns = [
     # URL para gestión de trabajadores del proyecto
     path('<int:project_id>/workers/', views.project_workers, name='project_workers'),
     
+    # URL para actualizar imagen del proyecto
+    path('<int:project_id>/update-image/', views.update_project_image, name='update_project_image'),
+    
+    # URL para actualizar porcentaje de administración
+    path('<int:project_id>/update-administration-percentage/', views.update_administration_percentage, name='update_administration_percentage'),
+    
     # URL para exportar presupuesto a Excel (solo JEFE)
     path('<int:project_id>/export-budget-excel/', views.export_budget_to_excel, name='export_budget_to_excel'),
     
@@ -74,4 +82,9 @@ urlpatterns = [
     path('<int:project_id>/graficos/', views.project_graficos, name='project_graficos'),
     # API para obtener datos de gráficos
     path('<int:project_id>/api/datos-graficos/', views.api_datos_graficos, name='api_datos_graficos'),
+    
+    path("reporte-etapas/<int:project_id>/", views.budget_progress_report, name="budget_progress_report"),
+    path('etapas/<int:etapa_id>/consumos/', views.detalle_etapa_consumos, name='detalle_etapa_consumos'),
+    path('projects/<int:project_id>/exportar_avance_etapas_excel/', views.exportar_avance_etapas_excel, name='exportar_avance_etapas_excel'),
+    
 ]

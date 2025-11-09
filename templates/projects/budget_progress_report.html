@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+<div class="container mt-5">
+  <h3>Reporte de avance por etapas – {{ project.name }}</h3>
+
+  <div class="text-end">
+    <a href="{% url 'projects:export_comparativo_to_excel' project.id %}"
+      class="btn btn-success">
+      <i class="bi bi-file-earmark-excel"></i> Exportar Avances a Excel
+    </a>
+  </div>
+
+  <table class="table table-bordered mt-3">
+    <thead>
+      <tr>
+        <th>Etapa</th>
+        <th>Presupuesto</th>
+        <th>Gastado</th>
+        <th>% Ejecutado</th>
+        <th>Estado</th>
+        <th>Alerta</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reporte %}
+        <tr>
+          <td>{{ r.seccion.name }}</td>
+          <td>${{ r.presupuesto|floatformat:0|intcomma }}</td>
+          <td>${{ r.gastado|floatformat:0|intcomma }}</td>
+          <td>{{ r.porcentaje }}%</td>
+          <td><span class="badge bg-{{ r.color }}">{{ r.estado|capfirst }}</span></td>
+          <td>{{ r.alerta }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

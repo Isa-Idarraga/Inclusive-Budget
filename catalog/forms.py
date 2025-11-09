@@ -106,6 +106,14 @@ class MaterialForm(forms.ModelForm):
             raise forms.ValidationError("El precio debe ser mayor a cero.")
         return price
     
+    def clean_presentation_qty(self):
+        qty = self.cleaned_data.get("presentation_qty")
+        if qty is None:
+            raise forms.ValidationError("Este campo es obligatorio.")
+        if qty <= 0:
+            raise forms.ValidationError("La cantidad debe ser mayor a cero.")
+        return qty
+    
     def clean_supplier_name(self):
         name = (self.cleaned_data.get("supplier_name") or "").strip()
         if not name:

@@ -22,13 +22,19 @@ document.addEventListener('DOMContentLoaded', function() {
         errorContainer.textContent = '';
         input.classList.remove('is-invalid');
         
-        if (isNaN(value) || cleanValue === '' || cleanValue === null) {
-            showError(input, errorContainer, `El ${fieldName} es obligatorio.`);
+        if (isNaN(value) && cleanValue !== '' && cleanValue !== null) {
+            showError(input, errorContainer, `El ${fieldName} debe ser un número válido.`);
             return false;
         }
         
-        if (value <= 0) {
-            showError(input, errorContainer, `El ${fieldName} debe ser mayor a cero.`);
+        // Permitir campos vacíos (se interpretan como 0)
+        if (cleanValue === '' || cleanValue === null) {
+            input.classList.add('is-valid');
+            return true;
+        }
+        
+        if (value < 0) {
+            showError(input, errorContainer, `El ${fieldName} no puede ser negativa.`);
             return false;
         }
         
@@ -157,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alertDiv.innerHTML = `
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     <strong>Error:</strong> Por favor corrige los errores en los campos marcados. 
-                    Los precios y cantidades deben ser mayores a cero.
+                    Los precios y cantidades no pueden ser negativos.
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 `;
                 

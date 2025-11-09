@@ -2,10 +2,10 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.contrib.admin.sites import NotRegistered
 
-from .models import Unit, Material
+from .models import Unit, Material, Category
 
 # Asegura estado limpio por si hubo un registro previo
-for model in (Unit, Material):
+for model in (Unit, Material, Category):
     try:
         admin.site.unregister(model)
     except NotRegistered:
@@ -19,13 +19,20 @@ class UnitAdmin(admin.ModelAdmin):
     ordering = ("name",)
 
 
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "code")
+    search_fields = ("name", "code")
+    ordering = ("name",)
+
+
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
     # columnas de la lista
     list_display = (
         "sku",
         "name",
-        "category_label",
+        "category",
         "unit",
         "presentation_qty",
         "unit_cost_display",
@@ -33,10 +40,10 @@ class MaterialAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("category", "unit")
-    search_fields = ("sku", "name", "category")
+    search_fields = ("sku", "name", "category__name")
     ordering = ("name",)
     list_per_page = 25
-    autocomplete_fields = ("unit",)
+    autocomplete_fields = ("unit", "category")
 
     readonly_fields = ("image_preview", "created_at", "updated_at")
     fields = (
@@ -54,11 +61,6 @@ class MaterialAdmin(admin.ModelAdmin):
     )
 
     # helpers para mostrar bonito
-    def category_label(self, obj):
-        return obj.get_category_display()
-
-    category_label.short_description = "Categoría"
-
     def unit_cost_display(self, obj):
         formatted = f"{obj.unit_cost:,.0f}".replace(",", ".")
         return format_html("${} COP", formatted)

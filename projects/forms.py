@@ -51,7 +51,7 @@ class ConsumoMaterialForm(forms.ModelForm):
             'cantidad_consumida': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.001',
-                'min': '0.001',
+                'min': '0',
                 'placeholder': 'Ej: 25.5',
                 'required': True
             }),
@@ -90,46 +90,30 @@ class ConsumoMaterialForm(forms.ModelForm):
             'componente_actividad': 'Actividad o parte del proyecto donde se usó el material',
         }
 
-    def __init__(self, *args, proyecto=None, **kwargs):
+    def __init__(self, *args, **kwargs):
+        # Recibimos el proyecto desde la vista
+        proyecto = kwargs.pop("proyecto", None)
         super().__init__(*args, **kwargs)
 
-        # Si se proporciona un proyecto, filtrar solo materiales con stock
-        if proyecto:
-            self.proyecto = proyecto
-            # Filtrar materiales que tengan stock en este proyecto
-            from .models import ProyectoMaterial
-            materiales_con_stock = ProyectoMaterial.objects.filter(
-                proyecto=proyecto,
-                stock_proyecto__gt=0
-            ).values_list('material_id', flat=True)
+        # 🔹 Filtrar las etapas para mostrar SOLO las 23 secciones base globales
+        self.fields["etapa_presupuesto"].queryset = (
+            BudgetSection.objects.filter(project__isnull=True).order_by("order")
+        )
 
-            self.fields['material'].queryset = Material.objects.filter(
-                id__in=materiales_con_stock
-            ).select_related('unit')
+        # 🔹 Mejorar la etiqueta visual del combo
+        self.fields["etapa_presupuesto"].label_from_instance = (
+            lambda obj: f"{obj.order}. {obj.name}"
+        )
 
-            # Personalizar la visualización del material con stock disponible
-            self.fields['material'].label_from_instance = lambda obj: (
-                f"{obj.name} ({obj.sku}) - Disponible: "
-                f"{ProyectoMaterial.objects.get(proyecto=proyecto, material=obj).stock_proyecto} "
-                f"{obj.unit.symbol}"
-            )
+        # 🔹 Hacer obligatorio el campo
+        self.fields["etapa_presupuesto"].required = True
 
-        # ✅ CONFIGURAR ETAPAS DEL PRESUPUESTO (RF17B)
-        self.fields['etapa_presupuesto'].queryset = BudgetSection.objects.all().order_by('order')
-        self.fields['etapa_presupuesto'].label_from_instance = lambda obj: f"{obj.order}. {obj.name}"
-        self.fields['etapa_presupuesto'].required = True
-
-        # Establecer fecha de hoy por defecto
-        from django.utils import timezone
-        if not self.instance.pk:
-            self.fields['fecha_consumo'].initial = timezone.now().date()
-
+        # Guardar el proyecto actual (opcional, por si lo usas luego)
+        self._proyecto = proyecto
+        
     def clean_cantidad_consumida(self):
-        """Validar que la cantidad sea positiva"""
-        cantidad = self.cleaned_data.get('cantidad_consumida')
-        if cantidad and cantidad <= 0:
-            raise forms.ValidationError('La cantidad consumida debe ser mayor a cero.')
-        return cantidad
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get('cantidad_consumida')
 
     def clean_fecha_consumo(self):
         """Validar que la fecha no sea futura"""
@@ -654,6 +638,22 @@ class DetailedProjectForm(forms.ModelForm):
     Formulario para crear proyectos con presupuesto detallado
     Solo para JEFE y CONSTRUCTOR
     """
+    administration_percentage = forms.DecimalField(
+        label="Porcentaje de Administración",
+        max_digits=5,
+        decimal_places=2,
+        min_value=0,
+        max_value=100,
+        required=False,
+        help_text="Porcentaje sobre el costo directo (0-100%)",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'min': '0',
+            'max': '100'
+        })
+    )
+    
     class Meta:
         model = Project
         fields = [
@@ -663,6 +663,7 @@ class DetailedProjectForm(forms.ModelForm):
             "description",
             "estado",
             "imagen_proyecto",
+            "administration_percentage",
         ]
         widgets = {
             'name': forms.TextInput(attrs={
@@ -716,7 +717,7 @@ class BudgetItemForm(forms.ModelForm):
             "unit_price": forms.NumberInput(attrs={
                 "class": "form-control",
                 "step": "0.01",
-                "min": "0.01"
+                "min": "0"
             }),
         }
     
@@ -726,20 +727,12 @@ class BudgetItemForm(forms.ModelForm):
         self.fields["unit_price"].label = "Precio Unitario (COP)"
     
     def clean_quantity(self):
-        quantity = self.cleaned_data.get("quantity")
-        if quantity is None:
-            raise forms.ValidationError("Este campo es obligatorio.")
-        if quantity <= 0:
-            raise forms.ValidationError("La cantidad debe ser mayor a cero.")
-        return quantity
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get("quantity")
     
     def clean_unit_price(self):
-        unit_price = self.cleaned_data.get("unit_price")
-        if unit_price is None:
-            raise forms.ValidationError("Este campo es obligatorio.")
-        if unit_price <= 0:
-            raise forms.ValidationError("El precio unitario debe ser mayor a cero.")
-        return unit_price
+        """Sin validaciones - permite cualquier valor"""
+        return self.cleaned_data.get("unit_price")
 
 
 class BudgetSectionForm(forms.Form):
@@ -802,24 +795,25 @@ class BudgetSectionForm(forms.Form):
                     # Los precios se envían como campos hidden, no editables
                     unit_price = item.unit_price
                     
-                    # Solo crear/actualizar si hay cantidad > 0
-                    if value and float(value) > 0:
-                        project_item, created = ProjectBudgetItem.objects.get_or_create(
-                            project=project,
-                            budget_item=item,
-                            defaults={
-                                'quantity': value,
-                                'unit_price': unit_price
-                            }
-                        )
-                        
-                        if not created:
-                            project_item.quantity = value
-                            project_item.unit_price = unit_price
-                            project_item.save()
-                        
-                        items_saved += 1
-                        print(f"DEBUG: Guardado {item.code} - Cantidad: {value} - Precio: ${unit_price}")
+                    # Crear/actualizar siempre, incluso con cantidad 0
+                    quantity_value = value if value is not None else 0
+                    
+                    project_item, created = ProjectBudgetItem.objects.get_or_create(
+                        project=project,
+                        budget_item=item,
+                        defaults={
+                            'quantity': quantity_value,
+                            'unit_price': unit_price
+                        }
+                    )
+                    
+                    if not created:
+                        project_item.quantity = quantity_value
+                        project_item.unit_price = unit_price
+                        project_item.save()
+                    
+                    items_saved += 1
+                    print(f"DEBUG: Guardado {item.code} - Cantidad: {quantity_value} - Precio: ${unit_price}")
                         
                 except BudgetItem.DoesNotExist:
                     continue

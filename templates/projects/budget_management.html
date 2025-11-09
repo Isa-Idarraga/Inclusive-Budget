@@ -57,18 +57,64 @@
                                     </div>
                                     <div>
                                         <h4 class="fw-bold text-inclusive-dark mb-0">
-                                            {{ section.section.order }}. {{ section.section.name }}
+                                            {{ section.section.order }}. 
+                                            {% if section.section.is_percentage and section.section.order == 21 %}
+                                                <span id="section-name-{{ section.section.id }}">
+                                                    ADMINISTRACIÓN ({{ section.section.percentage_value|floatformat:0 }}%)
+                                                </span>
+                                            {% else %}
+                                                {{ section.section.name }}
+                                            {% endif %}
                                         </h4>
                                         {% if section.section.description %}
-                                            <p class="text-muted mb-0">{{ section.section.description }}</p>
+                                            <p class="text-muted mb-0">
+                                                {% if section.section.is_percentage and section.section.order == 21 %}
+                                                    Gastos administrativos (<span id="section-desc-percentage-{{ section.section.id }}">{{ section.section.percentage_value|floatformat:2 }}</span>% sobre costo directo)
+                                                {% else %}
+                                                    {{ section.section.description }}
+                                                {% endif %}
+                                            </p>
                                         {% endif %}
                                     </div>
                                 </div>
                                 
                                 {% if section.section.is_percentage %}
                                     <div class="alert alert-warning">
-                                        <i class="fas fa-percentage me-2"></i>
-                                        <strong>Sección Porcentual:</strong> Esta sección se calcula automáticamente como el {{ section.section.percentage_value }}% del costo directo.
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                            <div class="d-flex align-items-center flex-grow-1">
+                                                <i class="fas fa-percentage me-2"></i>
+                                                <div>
+                                                    <strong>Sección Porcentual:</strong> Esta sección se calcula automáticamente como el 
+                                                    <span id="percentage-display-{{ section.section.id }}">{{ section.section.percentage_value|floatformat:2 }}</span>% del costo directo.
+                                                    {% if section.section.order == 21 %}
+                                                        <br><small class="text-muted"><i class="fas fa-info-circle me-1"></i>Este es el porcentaje por defecto que aparecerá en los proyectos a crear.</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {% if section.section.order == 21 %}
+                                            <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+                                                <input 
+                                                    type="number" 
+                                                    id="percentage-input-{{ section.section.id }}" 
+                                                    class="form-control form-control-sm" 
+                                                    style="width: 100px;"
+                                                    value="{{ section.section.percentage_value|floatformat:2 }}" 
+                                                    min="0" 
+                                                    max="100" 
+                                                    step="0.01"
+                                                    title="Editar porcentaje de administración">
+                                                <span>%</span>
+                                                <button 
+                                                    type="button" 
+                                                    class="btn btn-sm btn-success save-percentage-btn" 
+                                                    data-section-id="{{ section.section.id }}"
+                                                    style="display: none;"
+                                                    title="Guardar porcentaje">
+                                                    <i class="fas fa-save"></i>
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 {% else %}
                                     <div class="table-responsive">
@@ -208,6 +254,120 @@
          if (!isNaN(price)) {
              const formattedPrice = price.toLocaleString('es-CO');
              element.textContent = '$' + formattedPrice;
+         }
+     });
+     
+     // Manejar edición de porcentaje de administración (sección 21)
+     const percentageInputs = document.querySelectorAll('input[id^="percentage-input-"]');
+     const saveButtons = document.querySelectorAll('.save-percentage-btn');
+     
+     percentageInputs.forEach(function(input) {
+         const sectionId = input.id.replace('percentage-input-', '');
+         const displayElement = document.getElementById('percentage-display-' + sectionId);
+         const saveBtn = document.querySelector(`.save-percentage-btn[data-section-id="${sectionId}"]`);
+         const originalValue = input.value;
+         
+         if (input && saveBtn && displayElement) {
+             // Mostrar botón de guardar cuando cambie el valor
+             input.addEventListener('input', function() {
+                 if (this.value !== originalValue) {
+                     saveBtn.style.display = 'inline-block';
+                     const percentage = parseFloat(this.value || 0);
+                     displayElement.textContent = percentage.toFixed(2);
+                     
+                     // Actualizar el nombre de la sección dinámicamente
+                     const sectionNameElement = document.getElementById('section-name-' + sectionId);
+                     if (sectionNameElement) {
+                         sectionNameElement.textContent = `ADMINISTRACIÓN (${Math.round(percentage)}%)`;
+                     }
+                     
+                     // Actualizar la descripción
+                     const sectionDescElement = document.getElementById('section-desc-percentage-' + sectionId);
+                     if (sectionDescElement) {
+                         sectionDescElement.textContent = percentage.toFixed(2);
+                     }
+                 } else {
+                     saveBtn.style.display = 'none';
+                 }
+             });
+             
+             // Guardar cuando se hace clic en el botón
+             saveBtn.addEventListener('click', function() {
+                 const percentage = parseFloat(input.value);
+                 
+                 if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                     alert('Por favor ingrese un porcentaje válido entre 0 y 100');
+                     return;
+                 }
+                 
+                 // Deshabilitar botón mientras se guarda
+                 saveBtn.disabled = true;
+                 saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                 
+                 // Enviar petición al servidor
+                 const formData = new FormData();
+                 formData.append('percentage', percentage);
+                 formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                 
+                 fetch(`/projects/budget/section/${sectionId}/update-percentage/`, {
+                     method: 'POST',
+                     body: formData,
+                     headers: {
+                         'X-CSRFToken': '{{ csrf_token }}'
+                     }
+                 })
+                 .then(response => response.json())
+                 .then(data => {
+                     if (data.success) {
+                         // Actualizar el valor original
+                         input.setAttribute('value', data.percentage);
+                         saveBtn.style.display = 'none';
+                         saveBtn.disabled = false;
+                         saveBtn.innerHTML = '<i class="fas fa-save"></i>';
+                         
+                         // Actualizar el nombre de la sección con el nuevo porcentaje
+                         const sectionNameElement = document.getElementById('section-name-' + sectionId);
+                         if (sectionNameElement) {
+                             sectionNameElement.textContent = `ADMINISTRACIÓN (${Math.round(data.percentage)}%)`;
+                         }
+                         
+                         // Actualizar la descripción
+                         const sectionDescElement = document.getElementById('section-desc-percentage-' + sectionId);
+                         if (sectionDescElement) {
+                             sectionDescElement.textContent = parseFloat(data.percentage).toFixed(2);
+                         }
+                         
+                         // Actualizar el display del porcentaje
+                         if (displayElement) {
+                             displayElement.textContent = parseFloat(data.percentage).toFixed(2);
+                         }
+                         
+                         // Mostrar mensaje de éxito
+                         const alertDiv = document.createElement('div');
+                         alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                         alertDiv.innerHTML = `
+                             <strong>¡Éxito!</strong> ${data.message}
+                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                         `;
+                         document.querySelector('.card-body').prepend(alertDiv);
+                         
+                         // Ocultar alerta después de 3 segundos
+                         setTimeout(() => {
+                             alertDiv.remove();
+                         }, 3000);
+                     } else {
+                         alert('Error: ' + data.error);
+                         saveBtn.disabled = false;
+                         saveBtn.innerHTML = '<i class="fas fa-save"></i>';
+                     }
+                 })
+                 .catch(error => {
+                     console.error('Error:', error);
+                     alert('Error al guardar el porcentaje. Por favor intente nuevamente.');
+                     saveBtn.disabled = false;
+                     saveBtn.innerHTML = '<i class="fas fa-save"></i>';
+                 });
+             });
          }
      });
  });

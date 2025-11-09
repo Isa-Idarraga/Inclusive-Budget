@@ -21,6 +21,9 @@
            href="{% url 'dashboard:home' %}">Inicio</a>
 
         <a class="nav-link" href="{% url 'chatbot:chat' %}">ChatBot</a>
+        <a class="nav-link {% if current == 'manual' %}active{% endif %}" href="{% url 'manual:manual' %}">
+          <i class="fas fa-book"></i> Manual
+        </a>
         
         <!-- Gestión de Presupuesto: SOLO para JEFE -->
         {% if user.role == 'JEFE' or user.is_superuser %}
@@ -56,9 +59,17 @@
         {% endif %}
 
         {% if user.is_authenticated %}
-          <a class="nav-link" href="{% url 'users:logout' %}" title="Cerrar sesión">
-            <i class="fas fa-sign-out-alt"></i> Salir
-          </a>
+          <!-- Menú de Usuario -->
+          <div class="nav-item dropdown d-inline-block">
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-user-circle"></i> {{ user.username }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+              <li><a class="dropdown-item" href="{% url 'users:profile' %}"><i class="fas fa-id-card"></i> Mi Perfil</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{% url 'users:logout' %}"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a></li>
+            </ul>
+          </div>
         {% else %}
           <a class="nav-link right {% if current == 'login' %}active{% endif %}"
              href="{% url 'users:login' %}">Ingresar</a>
