@@ -191,7 +191,11 @@
                                                 <div class="col-md-6 col-lg-4">
                                                     <a href="#section-{{ section_form.section.id }}" class="btn btn-outline-primary btn-sm w-100 text-start">
                                                         <span class="badge bg-inclusive-primary me-2">{{ section_form.section.order }}</span>
-                                                        {{ section_form.section.name|truncatechars:40 }}
+                                                        {% if section_form.section.is_percentage and section_form.section.order == 21 %}
+                                                            ADMINISTRACIÓN
+                                                        {% else %}
+                                                            {{ section_form.section.name|truncatechars:40 }}
+                                                        {% endif %}
                                                     </a>
                                                 </div>
                                             {% endfor %}
@@ -207,18 +211,61 @@
                                         </div>
                                         <div>
                                             <h4 class="fw-bold text-inclusive-dark mb-0">
-                                                {{ section_form.section.order }}. {{ section_form.section.name }}
+                                                {{ section_form.section.order }}. 
+                                                {% if section_form.section.is_percentage and section_form.section.order == 21 %}
+                                                    <span id="section-name-{{ section_form.section.id }}">
+                                                        ADMINISTRACIÓN
+                                                    </span>
+                                                {% else %}
+                                                    {{ section_form.section.name }}
+                                                {% endif %}
                                             </h4>
                                             {% if section_form.section.description %}
-                                                <p class="text-muted mb-0">{{ section_form.section.description }}</p>
+                                                <p class="text-muted mb-0">
+                                                    {% if section_form.section.is_percentage and section_form.section.order == 21 %}
+                                                        Gastos administrativos
+                                                    {% else %}
+                                                        {{ section_form.section.description }}
+                                                    {% endif %}
+                                                </p>
                                             {% endif %}
                                         </div>
                                     </div>
                                     
                                     {% if section_form.section.is_percentage %}
-                                        <div class="alert alert-warning">
+                                        <div class="alert alert-warning mb-3">
                                             <i class="fas fa-percentage me-2"></i>
-                                            <strong>Sección Porcentual:</strong> Esta sección se calculará automáticamente como el {{ section_form.section.percentage_value }}% del costo directo.
+                                            <strong>Sección Porcentual:</strong> Esta sección se calculará automáticamente como el 
+                                            <span id="section-alert-percentage-{{ section_form.section.id }}">{{ section_form.section.percentage_value|floatformat:2 }}</span>% del costo directo (porcentaje por defecto definido en gestión de precios).
+                                        </div>
+                                        
+                                        <!-- Campo de Porcentaje de Administración -->
+                                        <div class="mb-4">
+                                            <div class="accent-green-border rounded-3 p-3">
+                                                <label for="{{ project_form.administration_percentage.id_for_label }}" class="form-label fw-semibold text-inclusive-dark mb-2">
+                                                    <i class="fas fa-percentage text-inclusive-primary me-2"></i>
+                                                    {{ project_form.administration_percentage.label }}
+                                                </label>
+                                                <div class="input-group" style="max-width: 300px;">
+                                                    {{ project_form.administration_percentage }}
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                {% if project_form.administration_percentage.errors %}
+                                                    <div class="text-danger small mt-1">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                                        {{ project_form.administration_percentage.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                                <small class="text-muted d-block mt-2">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    Establece un nuevo porcentaje de administración para el proyecto actual. Valor por defecto definido en gestión de precios: 
+                                                    {% for section_form_check in section_forms %}
+                                                        {% if section_form_check.section.order == 21 %}
+                                                            {{ section_form_check.section.percentage_value|floatformat:2 }}%
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </small>
+                                            </div>
                                         </div>
                                     {% else %}
                                         <div class="alert alert-info mb-3">
@@ -314,7 +361,18 @@
                                                 <small class="text-muted">Suma de ítems (sin administración)</small>
                                             </div>
                                             <div class="col-md-4">
-                                                <h6 class="text-muted">Administración (12%)</h6>
+                                                <h6 class="text-muted">
+                                                    Administración 
+                                                    <span id="admin-percentage-display-summary">
+                                                        (<span id="admin-percentage-value">
+                                                            {% for section_form in section_forms %}
+                                                                {% if section_form.section.order == 21 %}
+                                                                    {{ section_form.section.percentage_value|floatformat:2 }}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </span>%)
+                                                    </span>
+                                                </h6>
                                                 <h4 class="text-warning" id="admin-cost">$0</h4>
                                                 <small class="text-muted">Calculado automáticamente</small>
                                             </div>
@@ -602,8 +660,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Calcular administración automática (12% sobre costo directo)
-        const administracionAutomatica = costoDirecto * 0.12;
+        // Obtener el porcentaje de administración del campo del formulario
+        let adminPercentage = 12; // Valor por defecto
+        
+        // Buscar el input de porcentaje de administración (múltiples formas de búsqueda)
+        const adminPercentageInput = document.querySelector('input[name="administration_percentage"]') || 
+                                     document.getElementById('id_administration_percentage') ||
+                                     document.getElementById('administration_percentage') ||
+                                     document.querySelector('input[id*="administration_percentage"]');
+        
+        if (adminPercentageInput && adminPercentageInput.value) {
+            const inputValue = parseFloat(adminPercentageInput.value);
+            if (!isNaN(inputValue) && inputValue > 0) {
+                adminPercentage = inputValue;
+                console.log(`🔍 DEBUG calculateBudgetSummary: Porcentaje obtenido del input: ${adminPercentage}%`);
+            }
+        } else {
+            // Fallback: usar el valor por defecto de la sección 21
+            console.log('🔍 DEBUG calculateBudgetSummary: No se encontró el input, usando valor por defecto: 12%');
+        }
+        
+        // Calcular administración automática usando el porcentaje de la sección
+        const administracionAutomatica = costoDirecto * (adminPercentage / 100);
         const totalPresupuesto = costoDirecto + administracionAutomatica;
         
         // Actualizar la interfaz
@@ -617,10 +695,119 @@ document.addEventListener('DOMContentLoaded', function() {
             maximumFractionDigits: 0
         });
         
+        // Actualizar el display del porcentaje en el resumen
+        const adminPercentageValue = document.getElementById('admin-percentage-value');
+        if (adminPercentageValue) {
+            adminPercentageValue.textContent = adminPercentage.toFixed(2);
+        }
+        
         document.getElementById('total-budget').textContent = '$' + totalPresupuesto.toLocaleString('es-CO', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
+    
+    // Función para actualizar todos los valores de administración
+    function updateAdministrationPercentage() {
+        // Buscar el input de porcentaje de administración
+        const input = document.querySelector('input[name="administration_percentage"]') || 
+                      document.getElementById('id_administration_percentage') ||
+                      document.querySelector('input[id*="administration_percentage"]');
+        
+        if (!input) {
+            console.warn('⚠️ No se encontró el campo de porcentaje de administración');
+            return;
+        }
+        
+        const percentage = parseFloat(input.value) || 12;
+        console.log(`🔍 DEBUG: Actualizando porcentaje de administración a ${percentage}%`);
+        
+        // Formatear el porcentaje con coma como separador decimal (formato colombiano)
+        const percentageFormatted = percentage.toFixed(2).replace('.', ',');
+        const percentageRounded = Math.round(percentage);
+        
+        // Buscar la sección 21 por el orden (21) en el header
+        const allSections = document.querySelectorAll('[id^="section-"]');
+        let section21 = null;
+        
+        for (let section of allSections) {
+            const sectionHeader = section.querySelector('h4');
+            if (sectionHeader) {
+                // Buscar por el número "21." al inicio del texto
+                const headerText = sectionHeader.textContent.trim();
+                if (headerText.startsWith('21.') && headerText.includes('ADMINISTRACIÓN')) {
+                    section21 = section;
+                    break;
+                }
+            }
+        }
+        
+        if (section21) {
+            updateSection21Elements(section21, percentage, percentageFormatted, percentageRounded);
+        } else {
+            console.warn('⚠️ No se encontró la sección 21');
+        }
+        
+        // Actualizar el porcentaje en el resumen del presupuesto
+        const adminPercentageValue = document.getElementById('admin-percentage-value');
+        if (adminPercentageValue) {
+            adminPercentageValue.textContent = percentageFormatted;
+            console.log(`🔍 DEBUG: Resumen actualizado a ${percentageFormatted}%`);
+        }
+        
+        // Recalcular el resumen del presupuesto
+        calculateBudgetSummary();
+    }
+    
+    // Función auxiliar para actualizar los elementos de la sección 21
+    function updateSection21Elements(section, percentage, percentageFormatted, percentageRounded) {
+        console.log('🔍 DEBUG: Sección 21 encontrada, actualizando elementos...');
+        
+        // Actualizar el título de la sección (solo "ADMINISTRACIÓN" sin porcentaje)
+        const sectionNameElement = section.querySelector('span[id^="section-name-"]');
+        if (sectionNameElement) {
+            sectionNameElement.textContent = `ADMINISTRACIÓN`;
+            console.log(`🔍 DEBUG: Título actualizado a "ADMINISTRACIÓN"`);
+        } else {
+            console.warn('⚠️ No se encontró el elemento section-name-');
+        }
+        
+        // La descripción ahora solo dice "Gastos administrativos", no necesita actualización
+        // (Se mantiene el código por si se necesita en el futuro, pero no se actualiza)
+        
+        // Actualizar el alert con el porcentaje
+        const sectionAlertElement = section.querySelector('span[id^="section-alert-percentage-"]');
+        if (sectionAlertElement) {
+            sectionAlertElement.textContent = percentageFormatted;
+            console.log(`🔍 DEBUG: Alert actualizado a ${percentageFormatted}%`);
+        } else {
+            console.warn('⚠️ No se encontró el elemento section-alert-percentage-');
+        }
+    }
+    
+    // Actualizar el porcentaje cuando cambie el campo del formulario
+    // Buscar el input inmediatamente (el script está al final del documento)
+    const adminPercentageInputField = document.querySelector('input[name="administration_percentage"]') || 
+                                      document.getElementById('id_administration_percentage') ||
+                                      document.querySelector('input[id*="administration_percentage"]');
+    
+    if (adminPercentageInputField) {
+        adminPercentageInputField.addEventListener('input', updateAdministrationPercentage);
+        adminPercentageInputField.addEventListener('change', updateAdministrationPercentage);
+        console.log('✅ Event listener agregado al campo de porcentaje de administración');
+    } else {
+        console.warn('⚠️ No se encontró el campo de porcentaje de administración para agregar event listener');
+        // Intentar de nuevo cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminPercentageInputRetry = document.querySelector('input[name="administration_percentage"]') || 
+                                               document.getElementById('id_administration_percentage') ||
+                                               document.querySelector('input[id*="administration_percentage"]');
+            if (adminPercentageInputRetry) {
+                adminPercentageInputRetry.addEventListener('input', updateAdministrationPercentage);
+                adminPercentageInputRetry.addEventListener('change', updateAdministrationPercentage);
+                console.log('✅ Event listener agregado al campo de porcentaje de administración (retry)');
+            }
+        });
+    }
         
         // ✅ CONTROLAR VISIBILIDAD DEL RESUMEN
         const budgetSummaryCard = document.getElementById('budget-summary-card');

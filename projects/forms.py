@@ -638,6 +638,22 @@ class DetailedProjectForm(forms.ModelForm):
     Formulario para crear proyectos con presupuesto detallado
     Solo para JEFE y CONSTRUCTOR
     """
+    administration_percentage = forms.DecimalField(
+        label="Porcentaje de Administración",
+        max_digits=5,
+        decimal_places=2,
+        min_value=0,
+        max_value=100,
+        required=False,
+        help_text="Porcentaje sobre el costo directo (0-100%)",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'min': '0',
+            'max': '100'
+        })
+    )
+    
     class Meta:
         model = Project
         fields = [
@@ -647,6 +663,7 @@ class DetailedProjectForm(forms.ModelForm):
             "description",
             "estado",
             "imagen_proyecto",
+            "administration_percentage",
         ]
         widgets = {
             'name': forms.TextInput(attrs={

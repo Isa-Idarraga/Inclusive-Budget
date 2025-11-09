@@ -46,6 +46,7 @@ urlpatterns = [
     # URLs para gestión de precios (solo JEFE)
     path('budget/management/', views.budget_management, name='budget_management'),
     path('budget/item/<int:item_id>/update/', views.budget_item_update, name='budget_item_update'),
+    path('budget/section/<int:section_id>/update-percentage/', views.update_section_percentage, name='update_section_percentage'),
     
     # URLs para gestión de ítems del presupuesto
     path('budget/items/', views.budget_items_list, name='budget_items_list'),
@@ -63,6 +64,9 @@ urlpatterns = [
     
     # URL para actualizar imagen del proyecto
     path('<int:project_id>/update-image/', views.update_project_image, name='update_project_image'),
+    
+    # URL para actualizar porcentaje de administración
+    path('<int:project_id>/update-administration-percentage/', views.update_administration_percentage, name='update_administration_percentage'),
     
     # URL para exportar presupuesto a Excel (solo JEFE)
     path('<int:project_id>/export-budget-excel/', views.export_budget_to_excel, name='export_budget_to_excel'),
