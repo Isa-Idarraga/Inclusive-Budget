@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 
 {% block content %}
 <div class="project-detail-bg py-5">
@@ -36,8 +37,15 @@
                             <div class="d-flex flex-wrap gap-2">
                                 {% for section in section_data %}
                                     <a href="#section-{{ section.section.id }}" class="btn btn-outline-primary btn-sm">
-                                        <strong>{{ section.section.order }}.</strong> {{ section.section.name|truncatechars:25 }}
-                                        <span class="badge bg-primary ms-1 price-display" data-price="{{ section.total }}">${{ section.total|floatformat:0|default:"0" }}</span>
+                                        <strong>{{ section.section.order }}.</strong> 
+                                        {% if section.section.is_percentage and section.section.order == 21 %}
+                                            ADMINISTRACIÓN
+                                        {% else %}
+                                            {{ section.section.name|truncatechars:25 }}
+                                        {% endif %}
+                                        <span class="badge bg-primary ms-1 price-display" data-price="{% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica }}{% else %}{{ section.total }}{% endif %}">
+                                            ${% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica|floatformat:0|default:"0" }}{% else %}{{ section.total|floatformat:0|default:"0" }}{% endif %}
+                                        </span>
                                     </a>
                                 {% endfor %}
                             </div>
@@ -52,15 +60,27 @@
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <h6 class="card-title fw-bold">
                                                     <span class="badge bg-inclusive-primary me-2">{{ section.section.order }}</span>
-                                                    {{ section.section.name }}
+                                                    {% if section.section.is_percentage and section.section.order == 21 %}
+                                                        ADMINISTRACIÓN
+                                                    {% else %}
+                                                        {{ section.section.name }}
+                                                    {% endif %}
                                                 </h6>
-                                                <span class="badge bg-primary price-display" data-price="{{ section.total }}">${{ section.total|floatformat:0|default:"0" }}</span>
+                                                <span class="badge bg-primary price-display" data-price="{% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica }}{% else %}{{ section.total }}{% endif %}">
+                                                    ${% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica|floatformat:0|default:"0" }}{% else %}{{ section.total|floatformat:0|default:"0" }}{% endif %}
+                                                </span>
                                             </div>
-                                            <p class="card-text text-muted small">{{ section.section.description|truncatechars:100 }}</p>
+                                            <p class="card-text text-muted small">
+                                                {% if section.section.is_percentage and section.section.order == 21 %}
+                                                    Gastos administrativos ({{ administration_percentage|floatformat:2 }}% sobre costo directo)
+                                                {% else %}
+                                                    {{ section.section.description|truncatechars:100 }}
+                                                {% endif %}
+                                            </p>
                                             <div class="progress" style="height: 4px;">
                                                 <div class="progress-bar" role="progressbar" 
                                                      style="width: 0%"
-                                                     data-section-total="{{ section.total }}" 
+                                                     data-section-total="{% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica }}{% else %}{{ section.total }}{% endif %}" 
                                                      data-total-budget="{{ total_budget }}"></div>
                                             </div>
                                         </div>
@@ -78,21 +98,44 @@
                                     </div>
                                     <div class="flex-grow-1">
                                         <h4 class="fw-bold text-inclusive-dark mb-0">
-                                            {{ section.section.order }}. {{ section.section.name }}
+                                            {{ section.section.order }}. 
+                                            {% if section.section.is_percentage and section.section.order == 21 %}
+                                                <span id="section-name-{{ section.section.id }}">
+                                                    ADMINISTRACIÓN ({{ administration_percentage|floatformat:0 }}%)
+                                                </span>
+                                            {% else %}
+                                                {{ section.section.name }}
+                                            {% endif %}
                                         </h4>
                                         {% if section.section.description %}
-                                            <p class="text-muted mb-0">{{ section.section.description }}</p>
+                                            <p class="text-muted mb-0">
+                                                {% if section.section.is_percentage and section.section.order == 21 %}
+                                                    Gastos administrativos (<span id="section-desc-percentage-{{ section.section.id }}">{{ administration_percentage|floatformat:2 }}</span>% sobre costo directo)
+                                                {% else %}
+                                                    {{ section.section.description }}
+                                                {% endif %}
+                                            </p>
                                         {% endif %}
                                     </div>
                                     <div class="text-end">
-                                        <span class="h5 fw-bold text-inclusive-primary price-display" data-price="{{ section.total }}">${{ section.total|floatformat:0|default:"0" }}</span>
+                                        {% if section.section.is_percentage and section.section.order == 21 %}
+                                            <span class="h5 fw-bold text-inclusive-primary price-display" data-price="{{ administracion_automatica }}">${{ administracion_automatica|floatformat:0|default:"0" }}</span>
+                                        {% else %}
+                                            <span class="h5 fw-bold text-inclusive-primary price-display" data-price="{{ section.total }}">${{ section.total|floatformat:0|default:"0" }}</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 
                                 {% if section.section.is_percentage %}
                                     <div class="alert alert-warning">
                                         <i class="fas fa-percentage me-2"></i>
-                                        <strong>Sección Porcentual:</strong> Esta sección se calcula automáticamente como el {{ section.section.percentage_value }}% del costo directo.
+                                        <strong>Sección Porcentual:</strong> Esta sección se calcula automáticamente como el 
+                                        {% if section.section.order == 21 %}
+                                            <span id="section-alert-percentage-{{ section.section.id }}">{{ administration_percentage|floatformat:2 }}</span>%
+                                        {% else %}
+                                            {{ section.section.percentage_value|floatformat:2 }}%
+                                        {% endif %}
+                                        del costo directo.
                                     </div>
                                 {% else %}
                                     <div class="table-responsive">
@@ -184,9 +227,16 @@
                                             {% for section in section_data %}
                                                 <div class="list-group-item d-flex justify-content-between align-items-center">
                                                     <span>
-                                                        <strong>{{ section.section.order }}.</strong> {{ section.section.name }}
+                                                        <strong>{{ section.section.order }}.</strong> 
+                                                        {% if section.section.is_percentage and section.section.order == 21 %}
+                                                            ADMINISTRACIÓN ({{ administration_percentage|floatformat:0 }}%)
+                                                        {% else %}
+                                                            {{ section.section.name }}
+                                                        {% endif %}
                                                     </span>
-                                                    <span class="badge bg-primary rounded-pill price-display" data-price="{{ section.total }}">${{ section.total|floatformat:0|default:"0" }}</span>
+                                                    <span class="badge bg-primary rounded-pill price-display" data-price="{% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica }}{% else %}{{ section.total }}{% endif %}">
+                                                        ${% if section.section.is_percentage and section.section.order == 21 %}{{ administracion_automatica|floatformat:0|default:"0" }}{% else %}{{ section.total|floatformat:0|default:"0" }}{% endif %}
+                                                    </span>
                                                 </div>
                                             {% endfor %}
                                         </div>
@@ -214,21 +264,24 @@
                                                 <div class="row text-center">
                                                     <div class="col-md-4">
                                                         <h6 class="text-muted">Costo Directo</h6>
-                                                        <h4 class="text-success" id="direct-cost-summary">
-                                                            $0
+                                                        <h4 class="text-success" id="direct-cost-summary" data-price="{{ costo_directo }}">
+                                                            ${{ costo_directo|floatformat:0|default:"0" }}
                                                         </h4>
                                                         <small class="text-muted">Suma de todas las secciones</small>
                                                     </div>
                                                     <div class="col-md-4">
-                                                        <h6 class="text-muted">Administración (12%)</h6>
-                                                        <h4 class="text-warning" id="admin-cost-summary">
-                                                            $0
+                                                        <h6 class="text-muted">
+                                                            Administración 
+                                                            <span id="admin-percentage-display">({{ administration_percentage|floatformat:2 }}%)</span>
+                                                        </h6>
+                                                        <h4 class="text-warning" id="admin-cost-summary" data-price="{{ administracion_automatica }}">
+                                                            ${{ administracion_automatica|floatformat:0|default:"0" }}
                                                         </h4>
                                                         <small class="text-muted">Calculado automáticamente</small>
                                                     </div>
                                                     <div class="col-md-4">
                                                         <h6 class="text-muted">Total Presupuesto</h6>
-                                                        <h3 class="text-primary fw-bold" id="total-budget-summary">
+                                                        <h3 class="text-primary fw-bold" id="total-budget-summary" data-price="{{ total_budget }}">
                                                             ${{ total_budget|floatformat:0|default:"0" }}
                                                         </h3>
                                                         <small class="text-muted">Costo directo + administración</small>
@@ -342,7 +395,12 @@ document.addEventListener('DOMContentLoaded', function() {
     priceElements.forEach(function(element) {
         const price = parseFloat(element.getAttribute('data-price'));
         if (!isNaN(price)) {
-            const formattedPrice = price.toLocaleString('es-CO');
+            // Formatear con puntos como separador de miles (formato colombiano)
+            const formattedPrice = price.toLocaleString('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+                useGrouping: true
+            });
             
             // Mantener el prefijo "Total: " si existe
             if (element.textContent.includes('Total: ')) {
@@ -352,6 +410,35 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // Formatear específicamente el desglose financiero
+    const directCostElement = document.getElementById('direct-cost-summary');
+    const adminCostElement = document.getElementById('admin-cost-summary');
+    const totalBudgetElement = document.getElementById('total-budget-summary');
+    
+    if (directCostElement) {
+        const price = parseFloat(directCostElement.getAttribute('data-price')) || 0;
+        directCostElement.textContent = '$' + price.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
+    
+    if (adminCostElement) {
+        const price = parseFloat(adminCostElement.getAttribute('data-price')) || 0;
+        adminCostElement.textContent = '$' + price.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
+    
+    if (totalBudgetElement) {
+        const price = parseFloat(totalBudgetElement.getAttribute('data-price')) || 0;
+        totalBudgetElement.textContent = '$' + price.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
     
     // Calcular porcentajes para las barras de progreso
     const progressBars = document.querySelectorAll('.progress-bar[data-section-total]');
@@ -372,52 +459,40 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelectorAll('.list-group-item').length > 0) {
         calculateAdministrationSummary();
     }
+    
+    // Esta vista es solo lectura, no hay edición de porcentaje aquí
 });
 
 function calculateAdministrationSummary() {
-    // Calcular costo directo (suma de todas las secciones, excluyendo administración manual)
-    let costoDirecto = 0;
-    let administracionManual = 0;
+    // Los valores ya vienen calculados del servidor, solo formatear
+    const directCostElement = document.getElementById('direct-cost-summary');
+    const adminCostElement = document.getElementById('admin-cost-summary');
+    const totalBudgetElement = document.getElementById('total-budget-summary');
     
-    // Sumar todas las secciones
-    document.querySelectorAll('.list-group-item').forEach(function(item) {
-        const sectionText = item.querySelector('span:first-child').textContent.trim();
-        const sectionTotal = parseFloat(item.querySelector('.badge').getAttribute('data-price')) || 0;
-        
-        // Verificar si es sección de administración (sección 21)
-        if (sectionText.includes('21.') && sectionText.includes('ADMINISTRACIÓN')) {
-            administracionManual += sectionTotal;
-        } else {
-            costoDirecto += sectionTotal;
-        }
-    });
+    // Formatear valores si es necesario (ya vienen formateados del servidor)
+    if (directCostElement && !directCostElement.textContent.includes('$')) {
+        const costoDirecto = parseFloat(directCostElement.textContent.replace(/[$,.]/g, '')) || 0;
+        directCostElement.textContent = '$' + costoDirecto.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
     
-    // Calcular administración automática (12% sobre costo directo)
-    const administracionAutomatica = costoDirecto * 0.12;
-    const totalPresupuesto = costoDirecto + administracionAutomatica + administracionManual;
+    if (adminCostElement && !adminCostElement.textContent.includes('$')) {
+        const adminCost = parseFloat(adminCostElement.textContent.replace(/[$,.]/g, '')) || 0;
+        adminCostElement.textContent = '$' + adminCost.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
     
-    // Actualizar la interfaz
-    document.getElementById('direct-cost-summary').textContent = '$' + costoDirecto.toLocaleString('es-CO', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    });
-    
-    document.getElementById('admin-cost-summary').textContent = '$' + administracionAutomatica.toLocaleString('es-CO', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    });
-    
-    document.getElementById('total-budget-summary').textContent = '$' + totalPresupuesto.toLocaleString('es-CO', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    });
-    
-    console.log('🔍 DEBUG Administración:', {
-        costoDirecto: costoDirecto,
-        administracionAutomatica: administracionAutomatica,
-        administracionManual: administracionManual,
-        total: totalPresupuesto
-    });
+    if (totalBudgetElement && !totalBudgetElement.textContent.includes('$')) {
+        const total = parseFloat(totalBudgetElement.textContent.replace(/[$,.]/g, '')) || 0;
+        totalBudgetElement.textContent = '$' + total.toLocaleString('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
     
     // Calcular porcentajes para las barras de progreso de secciones
     const progressBars = document.querySelectorAll('.progress-bar[data-section-total]');
@@ -431,5 +506,6 @@ function calculateAdministrationSummary() {
         }
     });
 }
+
 </script>
 {% endblock %}

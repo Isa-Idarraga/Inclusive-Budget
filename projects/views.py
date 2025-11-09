@@ -1403,6 +1403,23 @@ def detailed_project_create(request):
                 project.windows_area = Decimal("0")
                 project.doors_count = 0
                 project.doors_height = Decimal("2.1")
+                
+                # Usar el porcentaje de administración del formulario, o el de la sección plantilla como fallback
+                admin_percentage = request.POST.get('administration_percentage')
+                if admin_percentage:
+                    try:
+                        project.administration_percentage = Decimal(str(admin_percentage))
+                    except (ValueError, TypeError):
+                        # Si hay error, usar el valor de la sección plantilla
+                        admin_section = sections.filter(order=21).first()
+                        if admin_section and admin_section.percentage_value:
+                            project.administration_percentage = admin_section.percentage_value
+                else:
+                    # Si no se proporciona, usar el valor de la sección plantilla
+                    admin_section = sections.filter(order=21).first()
+                    if admin_section and admin_section.percentage_value:
+                        project.administration_percentage = admin_section.percentage_value
+                
                 project.save()
 
                 # from .utils import create_default_budget_sections
@@ -1439,6 +1456,10 @@ def detailed_project_create(request):
             messages.error(request, "❌ Por favor corrige los errores en el formulario.")
     else:
         project_form = DetailedProjectForm()
+        # Inicializar el porcentaje de administración con el valor de la sección plantilla
+        admin_section = sections.filter(order=21).first()
+        if admin_section and admin_section.percentage_value:
+            project_form.fields['administration_percentage'].initial = admin_section.percentage_value
 
     # Generar formularios por sección (render inicial)
     section_forms = [
@@ -1528,8 +1549,8 @@ def detailed_budget_edit(request, project_id):
         messages.success(request, f'✅ Presupuesto actualizado! {items_updated} ítems modificados.')
         return redirect("projects:detailed_budget_view", project_id=project.id)
     
-    # Obtener TODAS las secciones (las 23)
-    all_sections = BudgetSection.objects.all().order_by('order')
+    # Obtener TODAS las secciones (las 23) - optimizar consulta
+    all_sections = BudgetSection.objects.select_related().prefetch_related('items').order_by('order')
     
     # Obtener ítems configurados del proyecto
     project_items = ProjectBudgetItem.objects.filter(project=project).select_related(
@@ -1539,11 +1560,25 @@ def detailed_budget_edit(request, project_id):
     # Crear diccionario de ítems por ID para búsqueda rápida
     project_items_dict = {item.budget_item.id: item for item in project_items}
     
-    # Preparar datos para TODAS las secciones
+    # Preparar datos para TODAS las secciones - optimizar consultas
+    # Pre-cargar todos los ítems de una vez
+    all_budget_items = BudgetItem.objects.filter(
+        section__in=all_sections, 
+        is_active=True
+    ).select_related('section').order_by('section__order', 'order')
+    
+    # Crear diccionario de ítems por sección
+    items_by_section = {}
+    for item in all_budget_items:
+        section_id = item.section.id
+        if section_id not in items_by_section:
+            items_by_section[section_id] = []
+        items_by_section[section_id].append(item)
+    
     sections_data = {}
     for section in all_sections:
-        # Obtener todos los ítems de esta sección
-        section_items = BudgetItem.objects.filter(section=section, is_active=True).order_by('order')
+        # Obtener ítems de esta sección del diccionario pre-cargado
+        section_items = items_by_section.get(section.id, [])
         
         # Preparar ítems para esta sección
         items_for_section = []
@@ -1553,22 +1588,30 @@ def detailed_budget_edit(request, project_id):
             
             if project_item:
                 # Ya está configurado, usar valores del proyecto
+                # Convertir Decimal a float y luego a string sin formato para evitar problemas de renderizado
+                quantity_value = float(project_item.quantity)
+                # Convertir precio unitario a float y luego a string sin formato
+                unit_price_value = float(project_item.unit_price)
                 items_for_section.append({
                     'budget_item': budget_item,
                     'project_item': project_item,
-                    'quantity': float(project_item.quantity),
-                    'unit_price': float(project_item.unit_price),
+                    'quantity': quantity_value,
+                    'quantity_str': str(quantity_value).rstrip('0').rstrip('.') if quantity_value % 1 == 0 else str(quantity_value),
+                    'unit_price': unit_price_value,
+                    'unit_price_str': str(unit_price_value).rstrip('0').rstrip('.') if unit_price_value % 1 == 0 else str(unit_price_value),
                     'total_price': float(project_item.total_price),
                     'is_configured': True
                 })
-                print(f"🔍 DEBUG: Ítem configurado {budget_item.description[:30]}: cantidad={project_item.quantity}, precio={project_item.unit_price}")
+                print(f"🔍 DEBUG: Ítem configurado {budget_item.description[:30]}: cantidad={project_item.quantity}, cantidad_str={str(quantity_value).rstrip('0').rstrip('.') if quantity_value % 1 == 0 else str(quantity_value)}, precio={project_item.unit_price}")
             else:
                 # No está configurado, usar valores por defecto
+                unit_price_default = float(budget_item.unit_price)
                 items_for_section.append({
                     'budget_item': budget_item,
                     'project_item': None,
                     'quantity': 0.0,
-                    'unit_price': float(budget_item.unit_price),
+                    'unit_price': unit_price_default,
+                    'unit_price_str': str(unit_price_default).rstrip('0').rstrip('.') if unit_price_default % 1 == 0 else str(unit_price_default),
                     'total_price': 0.0,
                     'is_configured': False
                 })
@@ -1589,18 +1632,33 @@ def detailed_budget_edit(request, project_id):
         for item in data['items']:
             print(f"    - {item['budget_item'].description[:30]}: cantidad={item['quantity']}, precio={item['unit_price']}, total={item['total_price']}")
     
+    # Calcular costo directo y administración para el contexto
+    from decimal import Decimal
+    costo_directo_total = 0
+    for section_id, data in sections_data.items():
+        if not data['section'].is_percentage:
+            for item in data['items']:
+                if item['project_item']:
+                    costo_directo_total += Decimal(str(item['total_price']))
+    
+    admin_percentage = project.administration_percentage / Decimal('100')
+    administracion_automatica = costo_directo_total * admin_percentage
+    
     try:
         context = {
             'project': project,
             'sections_data': sections_data,
-            'total_budget': project.calculate_final_budget()
+            'total_budget': project.calculate_final_budget(),
+            'administration_percentage': project.administration_percentage,
+            'costo_directo': costo_directo_total,
+            'administracion_automatica': administracion_automatica
         }
         
         print(f"🔍 DEBUG: ===== RENDERIZANDO TEMPLATE =====")
         print(f"🔍 DEBUG: Secciones en context: {len(sections_data)}")
         print(f"🔍 DEBUG: Presupuesto total: ${project.calculate_final_budget():,.0f}")
         
-        return render(request, "projects/simple_budget_edit.html", context)
+        return render(request, "projects/detailed_budget_edit.html", context)
         
     except Exception as e:
         print(f"❌ ERROR en detailed_budget_edit: {str(e)}")
@@ -1625,9 +1683,12 @@ def detailed_budget_view(request, project_id):
     if request.user.role == User.CONSTRUCTOR and project.creado_por != request.user:
         raise PermissionDenied("No tienes permisos para ver este proyecto")
     
-    # OPTIMIZACIÓN: Solo cargar secciones que tienen ítems configurados
+    # Obtener secciones con ítems configurados Y secciones porcentuales (como Administración)
+    # Usar Q objects para combinar ambas condiciones en una sola consulta
+    from django.db.models import Q
     sections = BudgetSection.objects.filter(
-        items__projectbudgetitem__project=project
+        Q(items__projectbudgetitem__project=project) | 
+        Q(is_percentage=True, project__isnull=True)
     ).distinct().order_by('order')
     
     # Obtener todos los ProjectBudgetItem del proyecto de una vez
@@ -1638,35 +1699,51 @@ def detailed_budget_view(request, project_id):
     
     section_data = []
     total_budget = 0
+    costo_directo_total = 0
     
     for section in sections:
         items = []
         section_total = 0
         
-        # Solo obtener ítems que están configurados en el proyecto
-        section_items = BudgetItem.objects.filter(
-            section=section, 
-            is_active=True,
-            projectbudgetitem__project=project
-        ).order_by('order')
-        
-        for item in section_items:
-            project_item = project_items_dict.get(item.id)
-            item_total = project_item.total_price if project_item else 0
-            
-            items.append({
-                'item': item,
-                'project_item': project_item,
-                'total': item_total
+        # Si es una sección porcentual, no tiene ítems individuales
+        if section.is_percentage:
+            # Para secciones porcentuales, no hay ítems que mostrar
+            # El cálculo se hace automáticamente en el resumen
+            section_data.append({
+                'section': section,
+                'items': [],
+                'total': 0  # Se calcula automáticamente en el resumen
             })
-            section_total += item_total
-        
-        section_data.append({
-            'section': section,
-            'items': items,
-            'total': section_total
-        })
-        total_budget += section_total
+        else:
+            # Solo obtener ítems que están configurados en el proyecto
+            section_items = BudgetItem.objects.filter(
+                section=section, 
+                is_active=True,
+                projectbudgetitem__project=project
+            ).order_by('order')
+            
+            for item in section_items:
+                project_item = project_items_dict.get(item.id)
+                item_total = project_item.total_price if project_item else 0
+                
+                items.append({
+                    'item': item,
+                    'project_item': project_item,
+                    'total': item_total
+                })
+                section_total += item_total
+            
+            section_data.append({
+                'section': section,
+                'items': items,
+                'total': section_total
+            })
+            costo_directo_total += section_total
+    
+    # Calcular administración automática usando el porcentaje del proyecto
+    from decimal import Decimal
+    admin_percentage = project.administration_percentage / Decimal('100')
+    administracion_automatica = costo_directo_total * admin_percentage
     
     # ✅ USAR EL CÁLCULO CORRECTO QUE INCLUYE ADMINISTRACIÓN
     total_budget = project.calculate_final_budget()
@@ -1674,7 +1751,10 @@ def detailed_budget_view(request, project_id):
     context = {
         'project': project,
         'section_data': section_data,
-        'total_budget': total_budget
+        'total_budget': total_budget,
+        'administration_percentage': project.administration_percentage,
+        'costo_directo': costo_directo_total,
+        'administracion_automatica': administracion_automatica
     }
     
     return render(request, "projects/detailed_budget_view.html", context)
@@ -1720,13 +1800,57 @@ def update_project_image(request, project_id):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+@login_required
+def update_administration_percentage(request, project_id):
+    """
+    Vista para actualizar el porcentaje de administración del proyecto
+    Solo JEFE, superuser o el creador del proyecto pueden modificar
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'})
+    
+    project = get_object_or_404(Project, id=project_id)
+    
+    # Verificar permisos: JEFE, superuser o creador del proyecto
+    if request.user.role != User.JEFE and not request.user.is_superuser and project.creado_por != request.user:
+        return JsonResponse({'success': False, 'error': 'No tienes permisos para modificar este proyecto'})
+    
+    # Obtener el porcentaje del request
+    try:
+        percentage = float(request.POST.get('percentage', 0))
+        
+        # Validar que esté en el rango 0-100
+        if percentage < 0 or percentage > 100:
+            return JsonResponse({'success': False, 'error': 'El porcentaje debe estar entre 0 y 100'})
+        
+        # Actualizar el porcentaje del proyecto
+        from decimal import Decimal
+        project.administration_percentage = Decimal(str(percentage))
+        project.save()
+        
+        # Recalcular el presupuesto total
+        total_budget = project.calculate_final_budget()
+        
+        return JsonResponse({
+            'success': True,
+            'percentage': float(project.administration_percentage),
+            'total_budget': float(total_budget),
+            'message': f'Porcentaje de administración actualizado a {percentage}%'
+        })
+        
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Porcentaje inválido'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
 @role_required(User.JEFE)
 @login_required
 def budget_management(request):
     """
     Vista para gestionar precios unitarios (solo JEFE)
     """
-    sections = BudgetSection.objects.all().order_by('order')
+    sections = BudgetSection.objects.filter(project__isnull=True).order_by('order')
     section_data = []
     
     for section in sections:
@@ -1741,6 +1865,51 @@ def budget_management(request):
     }
     
     return render(request, "projects/budget_management.html", context)
+
+
+@role_required(User.JEFE)
+@login_required
+def update_section_percentage(request, section_id):
+    """
+    Vista para actualizar el porcentaje de una sección plantilla (solo JEFE)
+    Solo se puede actualizar secciones plantilla (project=None) y solo la sección 21 (Administración)
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'})
+    
+    section = get_object_or_404(BudgetSection, id=section_id)
+    
+    # Solo permitir actualizar secciones plantilla (project=None)
+    if section.project is not None:
+        return JsonResponse({'success': False, 'error': 'Solo se pueden actualizar secciones plantilla'})
+    
+    # Solo permitir actualizar la sección 21 (Administración)
+    if section.order != 21:
+        return JsonResponse({'success': False, 'error': 'Solo se puede actualizar el porcentaje de la sección de Administración'})
+    
+    # Obtener el porcentaje del request
+    try:
+        percentage = float(request.POST.get('percentage', 0))
+        
+        # Validar que esté en el rango 0-100
+        if percentage < 0 or percentage > 100:
+            return JsonResponse({'success': False, 'error': 'El porcentaje debe estar entre 0 y 100'})
+        
+        # Actualizar el porcentaje de la sección
+        from decimal import Decimal
+        section.percentage_value = Decimal(str(percentage))
+        section.save()
+        
+        return JsonResponse({
+            'success': True,
+            'percentage': float(section.percentage_value),
+            'message': f'Porcentaje de administración actualizado a {percentage}%'
+        })
+        
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Porcentaje inválido'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 
 @role_required(User.JEFE)
@@ -1912,7 +2081,7 @@ def budget_item_toggle(request, item_id):
 def calculate_detailed_budget_total(project):
     """
     FUNCIÓN ESPECÍFICA PARA FORMULARIO DETALLADO
-    Suma ítems del presupuesto + administración automática (12%)
+    Suma ítems del presupuesto + administración automática (usando porcentaje del proyecto)
     """
     from decimal import Decimal
     
@@ -1928,8 +2097,9 @@ def calculate_detailed_budget_total(project):
         else:
             costo_directo += item.total_price
     
-    # Calcular administración automática (12% sobre costo directo)
-    administracion_automatica = costo_directo * Decimal('0.12')
+    # Calcular administración automática usando el porcentaje del proyecto (default 12%)
+    admin_percentage = project.administration_percentage / Decimal('100')
+    administracion_automatica = costo_directo * admin_percentage
     
     # Total = Costo Directo + Administración Automática + Administración Manual
     total = costo_directo + administracion_automatica + administracion_manual
@@ -2436,11 +2606,12 @@ def export_budget_to_excel(request, project_id):
     summary_sheet.cell(row=row, column=4).fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
     summary_sheet.cell(row=row, column=4).border = border
     
-    # Administración automática (12%)
-    admin_auto = grand_total * 0.12
+    # Administración automática (usando porcentaje del proyecto)
+    admin_percentage = float(project.administration_percentage)
+    admin_auto = grand_total * (admin_percentage / 100)
     row += 1
     summary_sheet.merge_cells(f'A{row}:B{row}')
-    summary_sheet[f'A{row}'] = "Administración (12%)"
+    summary_sheet[f'A{row}'] = f"Administración ({admin_percentage:.2f}%)"
     summary_sheet[f'A{row}'].font = total_font
     summary_sheet[f'A{row}'].alignment = right_alignment
     summary_sheet[f'A{row}'].fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
@@ -2453,7 +2624,7 @@ def export_budget_to_excel(request, project_id):
     summary_sheet.cell(row=row, column=3).fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
     summary_sheet.cell(row=row, column=3).border = border
     
-    summary_sheet.cell(row=row, column=4).value = 12.0
+    summary_sheet.cell(row=row, column=4).value = admin_percentage
     summary_sheet.cell(row=row, column=4).font = total_font
     summary_sheet.cell(row=row, column=4).alignment = right_alignment
     summary_sheet.cell(row=row, column=4).number_format = '0.00"%"'
@@ -2491,8 +2662,8 @@ def export_budget_to_excel(request, project_id):
     print(f"🔍 DEBUG Excel Export - RESUMEN FINAL:")
     print(f"  - Total secciones procesadas: {len(sections_with_data)}")
     print(f"  - Gran total: ${grand_total:,.0f}")
-    print(f"  - Administración (12%): ${grand_total * 0.12:,.0f}")
-    print(f"  - Total final: ${grand_total + (grand_total * 0.12):,.0f}")
+    print(f"  - Administración ({admin_percentage:.2f}%): ${admin_auto:,.0f}")
+    print(f"  - Total final: ${final_total:,.0f}")
     
     # Generar nombre del archivo
     project_name_clean = "".join(c for c in project.name if c.isalnum() or c in (' ', '_')).strip()

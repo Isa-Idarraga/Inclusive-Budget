@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 
 {% block content %}
 <div class="project-detail-bg py-5">
@@ -11,10 +12,10 @@
                         <div class="d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center">
                                 <div class="bg-white bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 3rem; height: 3rem;">
-                                    <i class="fas fa-calculator text-white fs-4"></i>
+                                    <i class="fas fa-edit text-white fs-4"></i>
                                 </div>
                                 <div>
-                                    <h2 class="h3 fw-bold mb-0">Presupuesto Detallado</h2>
+                                    <h2 class="h3 fw-bold mb-0">Editar Presupuesto Detallado</h2>
                                     <p class="mb-0 text-white-50">{{ project.name }}</p>
                                 </div>
                             </div>
@@ -26,52 +27,160 @@
                         </div>
                     </div>
                     <div class="card-body p-4 bg-gray-green-accent">
-                        <!-- Información de optimización -->
-                        <div class="alert alert-info mb-4">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Vista optimizada:</strong> Se muestran solo las secciones que tienen ítems configurados en este proyecto.
-                            <div class="mt-2">
-                                <small class="text-muted">
-                                    <i class="fas fa-clock me-1"></i>
-                                    Cargando {{ section_forms|length }} secciones con ítems configurados...
-                                </small>
-                            </div>
+                        
+                        <!-- Información -->
+                        <div class="alert alert-success mb-4">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Vista optimizada:</strong> Solo se muestran los ítems que ya están configurados en este proyecto.
+                            <br><small class="text-muted">Puedes modificar las cantidades y el sistema recalculará automáticamente el presupuesto.</small>
                         </div>
                         
-                        {% if section_forms %}
+                        {% if sections_data %}
                         <form method="post" id="budgetForm">
                             {% csrf_token %}
                             
-                            <!-- Navegación por Secciones -->
+                            <!-- Navegación rápida -->
                             <div class="mb-4">
+                                <h5 class="fw-bold mb-3">
+                                    <i class="fas fa-list-ol me-2"></i>
+                                    Navegación Rápida
+                                </h5>
                                 <div class="d-flex flex-wrap gap-2">
-                                    {% for section_form in section_forms %}
-                                        <a href="#section-{{ section_form.section.id }}" class="btn btn-outline-primary btn-sm">
-                                            {{ section_form.section.order }}. {{ section_form.section.name|truncatechars:30 }}
-                                        </a>
+                                    {% for section_id, data in sections_data.items %}
+                                        {% if data.section.is_percentage and data.section.order == 21 %}
+                                            <a href="#section-{{ section_id }}" class="btn btn-success btn-sm">
+                                                <i class="fas fa-percentage me-1"></i>
+                                                {{ data.section.order }}. ADMINISTRACIÓN
+                                                <span class="badge bg-white text-success ms-1">{{ administration_percentage|floatformat:0 }}%</span>
+                                            </a>
+                                        {% else %}
+                                            {% with configured_items=data.items|length %}
+                                                {% if configured_items > 0 %}
+                                                    <a href="#section-{{ section_id }}" class="btn btn-success btn-sm">
+                                                        <i class="fas fa-check-circle me-1"></i>
+                                                        {{ data.section.order }}. {{ data.section.name|truncatechars:25 }}
+                                                        <span class="badge bg-white text-success ms-1">{{ configured_items }}</span>
+                                                    </a>
+                                                {% else %}
+                                                    <a href="#section-{{ section_id }}" class="btn btn-outline-secondary btn-sm">
+                                                        <i class="fas fa-circle me-1"></i>
+                                                        {{ data.section.order }}. {{ data.section.name|truncatechars:25 }}
+                                                        <span class="badge bg-secondary ms-1">0</span>
+                                                    </a>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endif %}
                                     {% endfor %}
                                 </div>
                             </div>
                             
                             <!-- Secciones del Presupuesto -->
-                            {% for section_form in section_forms %}
-                                <div class="mb-5 animate-fade-in" id="section-{{ section_form.section.id }}">
+                            {% for section_id, data in sections_data.items %}
+                                <div class="mb-5 animate-fade-in" id="section-{{ section_id }}">
                                     <div class="d-flex align-items-center mb-4">
                                         <div class="bg-inclusive-primary bg-opacity-10 rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 2.5rem; height: 2.5rem;">
-                                            <span class="fw-bold text-inclusive-primary">{{ section_form.section.order }}</span>
+                                            <span class="fw-bold text-inclusive-primary">{{ data.section.order }}</span>
                                         </div>
-                                        <div>
-                                            <h4 class="fw-bold text-inclusive-dark mb-0">{{ section_form.section.name }}</h4>
-                                            {% if section_form.section.description %}
-                                                <p class="text-muted mb-0">{{ section_form.section.description }}</p>
+                                        <div class="flex-grow-1">
+                                            <h4 class="fw-bold text-inclusive-dark mb-0">
+                                                {% if data.section.is_percentage and data.section.order == 21 %}
+                                                    <span id="section-name-{{ section_id }}">
+                                                        ADMINISTRACIÓN ({{ administration_percentage|floatformat:0 }}%)
+                                                    </span>
+                                                {% else %}
+                                                    {{ data.section.name }}
+                                                {% endif %}
+                                                {% if data.section.is_percentage and data.section.order == 21 %}
+                                                    <span class="badge bg-success ms-2">
+                                                        <i class="fas fa-percentage me-1"></i>
+                                                        Configurado ({{ administration_percentage|floatformat:2 }}%)
+                                                    </span>
+                                                {% else %}
+                                                    {% with configured_count=data.items|length %}
+                                                        {% if configured_count > 0 %}
+                                                            <span class="badge bg-success ms-2">
+                                                                <i class="fas fa-check-circle me-1"></i>
+                                                                {{ configured_count }} configurados
+                                                            </span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary ms-2">
+                                                                <i class="fas fa-circle me-1"></i>
+                                                                Sin configurar
+                                                            </span>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                {% endif %}
+                                            </h4>
+                                            {% if data.section.description %}
+                                                <p class="text-muted mb-0">
+                                                    {% if data.section.is_percentage and data.section.order == 21 %}
+                                                        Gastos administrativos (<span id="section-desc-percentage-{{ section_id }}">{{ administration_percentage|floatformat:2 }}</span>% sobre costo directo)
+                                                    {% else %}
+                                                        {{ data.section.description }}
+                                                    {% endif %}
+                                                </p>
                                             {% endif %}
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="h5 fw-bold text-inclusive-primary section-total" data-section="{{ section_id }}">
+                                                {% if data.section.is_percentage and data.section.order == 21 %}
+                                                    ${{ administracion_automatica|floatformat:0|default:"0" }}
+                                                {% else %}
+                                                    $0
+                                                {% endif %}
+                                            </span>
                                         </div>
                                     </div>
                                     
-                                    {% if section_form.section.is_percentage %}
-                                        <div class="alert alert-warning">
-                                            <i class="fas fa-percentage me-2"></i>
-                                            <strong>Sección Porcentual:</strong> Esta sección se calculará automáticamente como el {{ section_form.section.percentage_value }}% del costo directo.
+                                    {% if data.section.is_percentage and data.section.order == 21 %}
+                                        <!-- Sección porcentual: Administración -->
+                                        <div class="alert alert-info">
+                                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-percentage me-2"></i>
+                                                    <div>
+                                                        <strong>Sección Porcentual:</strong> Esta sección se calcula automáticamente como el 
+                                                        <span id="section-alert-percentage-{{ section_id }}">{{ administration_percentage|floatformat:2 }}</span>%
+                                                        del costo directo.
+                                                    </div>
+                                                </div>
+                                                {% if user.role == 'JEFE' or user.is_superuser or project.creado_por == user %}
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <label for="admin-percentage-input-{{ section_id }}" class="form-label mb-0 align-self-center">
+                                                        <strong>Porcentaje:</strong>
+                                                    </label>
+                                                    <div class="input-group" style="width: 150px;">
+                                                        <input 
+                                                            type="number" 
+                                                            id="admin-percentage-input-{{ section_id }}" 
+                                                            class="form-control form-control-sm" 
+                                                            value="{{ administration_percentage }}" 
+                                                            min="0" 
+                                                            max="100" 
+                                                            step="0.01"
+                                                            title="Editar porcentaje de administración">
+                                                        <span class="input-group-text">%</span>
+                                                    </div>
+                                                    <button 
+                                                        type="button" 
+                                                        class="btn btn-sm btn-success save-admin-percentage-btn" 
+                                                        data-section-id="{{ section_id }}"
+                                                        style="display: none;"
+                                                        title="Guardar porcentaje">
+                                                        <i class="fas fa-save me-1"></i>
+                                                        Guardar
+                                                    </button>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="text-end mt-3">
+                                            <h5 class="fw-bold text-inclusive-primary">
+                                                Total Administración: 
+                                                <span class="section-total" data-section="{{ section_id }}" id="admin-total-{{ section_id }}">
+                                                    ${{ administracion_automatica|floatformat:0|default:"0" }}
+                                                </span>
+                                            </h5>
                                         </div>
                                     {% else %}
                                         <div class="table-responsive">
@@ -79,7 +188,7 @@
                                                 <thead class="table-inclusive">
                                                     <tr>
                                                         <th style="width: 5%">#</th>
-                                                        <th style="width: 45%">Descripción</th>
+                                                        <th style="width: 40%">Descripción</th>
                                                         <th style="width: 10%">Unidad</th>
                                                         <th style="width: 15%">Precio Unitario</th>
                                                         <th style="width: 15%">Cantidad</th>
@@ -87,51 +196,93 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {% for item in section_form.section.items.all %}
+                                                    {% for item in data.items %}
                                                         <tr>
                                                             <td>{{ forloop.counter }}</td>
                                                             <td>
-                                                                <strong>{{ item.description }}</strong>
-                                                                {% if item.code %}
-                                                                    <br><small class="text-muted">Código: {{ item.code }}</small>
+                                                                <strong>{{ item.budget_item.description }}</strong>
+                                                                {% if item.budget_item.code %}
+                                                                    <br><small class="text-muted">Código: {{ item.budget_item.code }}</small>
                                                                 {% endif %}
                                                             </td>
-                                                            <td class="text-center">{{ item.unit }}</td>
+                                                            <td class="text-center">{{ item.budget_item.unit }}</td>
                                                             <td class="text-end">
                                                                 <span class="fw-bold text-inclusive-primary">
-                                                                    ${{ item.unit_price|floatformat:0 }}
+                                                                    ${{ item.unit_price|floatformat:0|intcomma }}
                                                                 </span>
                                                             </td>
                                                             <td>
-                                                                <input type="number" 
-                                                                       name="quantity_{{ item.id }}" 
-                                                                       value="{% for project_item in project.budget_items.all %}{% if project_item.budget_item.id == item.id %}{{ project_item.quantity|floatformat:3 }}{% endif %}{% endfor %}"
-                                                                       class="form-control quantity-input" 
-                                                                       step="0.001" 
+                                                                <input type="text" 
+                                                                       name="quantity_{{ item.budget_item.id }}" 
+                                                                       value=""
+                                                                       class="form-control quantity-input {% if item.is_configured %}border-success{% else %}border-secondary{% endif %}" 
+                                                                       inputmode="decimal"
+                                                                       pattern="[0-9]*\.?[0-9]*"
                                                                        min="0"
-                                                                       data-item-id="{{ item.id }}"
-                                                                       data-unit-price="{{ item.unit_price }}">
+                                                                       data-item-id="{{ item.budget_item.id }}"
+                                                                       data-unit-price="{% if item.unit_price_str %}{{ item.unit_price_str }}{% elif item.unit_price %}{{ item.unit_price }}{% else %}0{% endif %}"
+                                                                       data-configured-value="{% if item.is_configured and item.quantity > 0 %}{% if item.quantity_str %}{{ item.quantity_str }}{% else %}{{ item.quantity }}{% endif %}{% else %}0{% endif %}"
+                                                                       title="Cantidad actual: {{ item.quantity|floatformat:3 }} {% if item.is_configured %}(Configurado){% else %}(No configurado){% endif %}">
+                                                                <small class="text-muted d-block">
+                                                                    {% if item.is_configured %}
+                                                                        <i class="fas fa-check-circle text-success"></i> Configurado: {{ item.quantity|floatformat:3 }}
+                                                                    {% else %}
+                                                                        <i class="fas fa-circle text-secondary"></i> No configurado: 0
+                                                                    {% endif %}
+                                                                </small>
                                                             </td>
                                                             <td class="text-end">
-                                                                <span class="fw-bold text-inclusive-primary item-total" data-item-id="{{ item.id }}">
-                                                                    $0
+                                                                <span class="fw-bold text-inclusive-primary item-total" data-item-id="{{ item.budget_item.id }}" data-initial-total="{{ item.total_price }}">
+                                                                    ${{ item.total_price|floatformat:0|intcomma }}
                                                                 </span>
-                                                            </td>
-                                                        </tr>
-                                                    {% empty %}
-                                                        <tr>
-                                                            <td colspan="6" class="text-center text-muted py-4">
-                                                                <i class="fas fa-info-circle me-2"></i>
-                                                                No hay ítems en esta sección
                                                             </td>
                                                         </tr>
                                                     {% endfor %}
                                                 </tbody>
+                                                <tfoot class="table-light">
+                                                    <tr>
+                                                        <td colspan="5" class="text-end fw-bold">
+                                                            Subtotal {% if data.section.is_percentage and data.section.order == 21 %}ADMINISTRACIÓN{% else %}{{ data.section.name }}{% endif %}:
+                                                        </td>
+                                                        <td class="text-end fw-bold text-inclusive-primary fs-5">
+                                                            <span class="section-total" data-section="{{ section_id }}">$0</span>
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
                                             </table>
                                         </div>
                                     {% endif %}
                                 </div>
                             {% endfor %}
+                            
+                            <!-- Resumen del Presupuesto -->
+                            <div class="card mt-5">
+                                <div class="card-header bg-inclusive-primary text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-calculator me-2"></i>
+                                        Resumen del Presupuesto
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row text-center">
+                                        <div class="col-md-4">
+                                            <h6 class="text-muted">Costo Directo</h6>
+                                            <h4 class="text-success" id="direct-cost">$0</h4>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6 class="text-muted">
+                                                Administración 
+                                                <span id="admin-percentage-display-summary">({{ administration_percentage|floatformat:2 }}%)</span>
+                                            </h6>
+                                            <h4 class="text-warning" id="admin-cost">$0</h4>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6 class="text-muted">Total Presupuesto</h6>
+                                            <h3 class="text-primary fw-bold" id="total-budget">$0</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Botones de Acción -->
                             <div class="d-flex justify-content-between align-items-center mt-5">
@@ -148,13 +299,13 @@
                                     
                                     <button type="submit" class="btn btn-inclusive-primary btn-lg px-5">
                                         <i class="fas fa-save me-2"></i>
-                                        Guardar Presupuesto
+                                        Guardar Cambios
                                     </button>
                                 </div>
                             </div>
                         </form>
                         {% else %}
-                        <!-- Mensaje cuando no hay secciones configuradas -->
+                        <!-- Mensaje cuando no hay ítems configurados -->
                         <div class="text-center py-5">
                             <i class="fas fa-exclamation-triangle text-warning fs-1 mb-3"></i>
                             <h4 class="text-muted">No hay ítems configurados</h4>
@@ -184,81 +335,557 @@
     color: white;
 }
 
-.table-inclusive th {
-    border: none;
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
-}
-
-.table tbody tr:hover {
-    background-color: #f8f9fa;
+.quantity-input:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
 }
 
 .item-total {
     font-size: 1.1rem;
 }
 
-.animate-fade-in {
-    animation: fadeIn 0.6s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.form-control {
-    border: 2px solid #e9ecef;
-    border-radius: 0.5rem;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus {
-    border-color: #28a745;
-    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
-}
-
-.input-group-text {
-    background-color: #f8f9fa;
-    border-color: #e9ecef;
-    font-weight: 600;
+.section-total {
+    font-size: 1.2rem;
 }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Calcular totales automáticamente
+(function() {
+    'use strict';
+    
+    // Función para limpiar y parsear un valor numérico
+    function cleanNumericValue(value) {
+        if (!value) return 0;
+        
+        let cleanValue = value.toString().replace(/,/g, '').replace(/\s/g, '').trim();
+        
+        console.log(`🔍 DEBUG cleanNumericValue: valor original="${value}", después de limpiar comas="${cleanValue}"`);
+        
+        // Contar cuántos puntos tiene
+        const pointCount = (cleanValue.match(/\./g) || []).length;
+        
+        // Si tiene múltiples puntos, son separadores de miles (formato colombiano: 1.234.567)
+        if (pointCount > 1) {
+            // Remover todos los puntos (son separadores de miles)
+            cleanValue = cleanValue.replace(/\./g, '');
+            console.log(`🔍 DEBUG cleanNumericValue: múltiples puntos detectados (separadores de miles), resultado="${cleanValue}"`);
+        } else if (pointCount === 1) {
+            // Un solo punto: puede ser separador de miles o decimal
+            const parts = cleanValue.split('.');
+            if (parts.length === 2) {
+                console.log(`🔍 DEBUG cleanNumericValue: tiene un punto, parte[0]="${parts[0]}", parte[1]="${parts[1]}" (longitud=${parts[1].length})`);
+                
+                // Si después del punto hay exactamente 3 dígitos, verificar si es separador de miles o decimal
+                if (parts[1].length === 3) {
+                    // Verificar si son todos ceros (decimal) o no (separador de miles)
+                    if (parts[1] === '000') {
+                        // Es .000 (decimal), remover el decimal
+                        cleanValue = parts[0];
+                        console.log(`🔍 DEBUG cleanNumericValue: .000 detectado, resultado="${cleanValue}"`);
+                    } else {
+                        // Es separador de miles (ej: 35.000), remover el punto
+                        cleanValue = parts[0] + parts[1];
+                        console.log(`🔍 DEBUG cleanNumericValue: separador de miles detectado, resultado="${cleanValue}"`);
+                    }
+                } else if (parts[1].length === 1 && parts[1] === '0') {
+                    // Es .0, remover el decimal
+                    cleanValue = parts[0];
+                    console.log(`🔍 DEBUG cleanNumericValue: .0 detectado, resultado="${cleanValue}"`);
+                } else if (parts[1].length === 2 && parts[1] === '00') {
+                    // Es .00, remover el decimal
+                    cleanValue = parts[0];
+                    console.log(`🔍 DEBUG cleanNumericValue: .00 detectado, resultado="${cleanValue}"`);
+                } else {
+                    // Es un decimal válido (ej: .5, .25), mantenerlo
+                    console.log(`🔍 DEBUG cleanNumericValue: decimal válido, manteniendo="${cleanValue}"`);
+                }
+            }
+        }
+        
+        const parsed = parseFloat(cleanValue) || 0;
+        console.log(`🔍 DEBUG cleanNumericValue: valor final parseado=${parsed}`);
+        
+        return parsed;
+    }
+    
+    // Calcular total de un ítem
     function calculateItemTotal(itemId) {
         const quantityInput = document.querySelector(`input[name="quantity_${itemId}"]`);
         const totalSpan = document.querySelector(`.item-total[data-item-id="${itemId}"]`);
         
         if (quantityInput && totalSpan) {
-            const quantity = parseFloat(quantityInput.value) || 0;
-            const unitPrice = parseFloat(quantityInput.getAttribute('data-unit-price')) || 0;
+            // Obtener cantidad (limpiar formato)
+            const quantity = cleanNumericValue(quantityInput.value);
+            
+            // Obtener precio unitario (limpiar formato)
+            const unitPriceValue = quantityInput.getAttribute('data-unit-price');
+            const unitPrice = cleanNumericValue(unitPriceValue);
+            
+            console.log(`🔍 DEBUG calculateItemTotal: ítem ${itemId} - cantidad="${quantityInput.value}" → ${quantity}, precio="${unitPriceValue}" → ${unitPrice}`);
+            
             const total = quantity * unitPrice;
+            
+            console.log(`🔍 DEBUG calculateItemTotal: ítem ${itemId} - total calculado: ${quantity} × ${unitPrice} = ${total}`);
             
             totalSpan.textContent = '$' + total.toLocaleString('es-CO', {
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0
             });
+            
+            return total;
         }
+        return 0;
     }
     
-    // Agregar event listeners a todos los inputs de cantidad
+    // Calcular total de una sección
+    function calculateSectionTotal(sectionId) {
+        const sectionDiv = document.getElementById('section-' + sectionId);
+        if (!sectionDiv) {
+            console.log(`🔍 DEBUG: Sección ${sectionId} no encontrada`);
+            return 0;
+        }
+        
+        const sectionHeader = sectionDiv.querySelector('h4');
+        const isAdminSection = sectionHeader && sectionHeader.textContent.includes('ADMINISTRACIÓN');
+        
+        let sectionTotal = 0;
+        
+        if (isAdminSection) {
+            // Para la sección 21, calcular administración basada en costo directo
+            let costoDirecto = 0;
+            document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+                const itemId = input.getAttribute('data-item-id');
+                const total = calculateItemTotal(itemId);
+                
+                // Verificar si NO es de la sección 21
+                const itemSectionDiv = input.closest('.mb-5[id^="section-"]');
+                let isAdminItem = false;
+                if (itemSectionDiv) {
+                    const itemSectionHeader = itemSectionDiv.querySelector('h4');
+                    if (itemSectionHeader && itemSectionHeader.textContent.includes('ADMINISTRACIÓN')) {
+                        isAdminItem = true;
+                    }
+                }
+                
+                if (!isAdminItem) {
+                    costoDirecto += total;
+                }
+            });
+            
+            // Calcular administración usando el porcentaje del input (si existe) o del proyecto
+            let adminPercentage = parseFloat('{{ administration_percentage|default:12 }}') || 12;
+            const adminPercentageInput = document.querySelector('input[id^="admin-percentage-input-"]');
+            if (adminPercentageInput) {
+                const inputValue = parseFloat(adminPercentageInput.value);
+                if (!isNaN(inputValue)) {
+                    adminPercentage = inputValue;
+                }
+            }
+            sectionTotal = costoDirecto * (adminPercentage / 100);
+            console.log(`🔍 DEBUG: Sección ${sectionId} (ADMIN): costo directo=${costoDirecto}, porcentaje=${adminPercentage}, total=${sectionTotal}`);
+        } else {
+            // Para otras secciones, sumar los ítems directamente
+            const sectionInputs = sectionDiv.querySelectorAll('input[name^="quantity_"]');
+            console.log(`🔍 DEBUG: Sección ${sectionId} tiene ${sectionInputs.length} inputs`);
+            
+            sectionInputs.forEach(input => {
+                const itemId = input.getAttribute('data-item-id');
+                
+                // Leer valores directamente del input (limpiar formato)
+                const quantity = cleanNumericValue(input.value);
+                const unitPriceValue = input.getAttribute('data-unit-price');
+                const unitPrice = cleanNumericValue(unitPriceValue);
+                
+                const itemTotal = quantity * unitPrice;
+                
+                console.log(`🔍 DEBUG: Ítem ${itemId} - cantidad: ${quantity}, precio: ${unitPrice}, total: ${itemTotal}`);
+                
+                // Actualizar el display del ítem
+                const totalSpan = document.querySelector(`.item-total[data-item-id="${itemId}"]`);
+                if (totalSpan) {
+                    totalSpan.textContent = '$' + itemTotal.toLocaleString('es-CO', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    });
+                }
+                
+                sectionTotal += itemTotal;
+            });
+            
+            console.log(`🔍 DEBUG: Total sección ${sectionId}: $${sectionTotal}`);
+        }
+        
+        // Actualizar todos los elementos que muestran el total de la sección
+        // Buscar en todo el documento, no solo en la sección
+        const sectionTotalSpans = document.querySelectorAll(`.section-total[data-section="${sectionId}"]`);
+        console.log(`🔍 DEBUG: Encontrados ${sectionTotalSpans.length} elementos para actualizar en sección ${sectionId}`);
+        
+        if (sectionTotalSpans.length === 0) {
+            console.warn(`⚠️ WARNING: No se encontraron elementos .section-total[data-section="${sectionId}"]`);
+        }
+        
+        sectionTotalSpans.forEach((span, index) => {
+            const formattedTotal = '$' + sectionTotal.toLocaleString('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+            span.textContent = formattedTotal;
+            console.log(`🔍 DEBUG: Actualizado elemento ${index + 1}: ${formattedTotal}`);
+        });
+        
+        return sectionTotal;
+    }
+    
+    // Calcular resumen del presupuesto
+    function calculateBudgetSummary() {
+        let costoDirecto = 0;
+        
+        console.log('🔍 DEBUG calculateBudgetSummary: Iniciando cálculo...');
+        
+        // Sumar todos los totales de sección (excluyendo administración - sección 21)
+        document.querySelectorAll('.section-total[data-section]').forEach(function(element) {
+            const sectionId = element.getAttribute('data-section');
+            const sectionDiv = document.getElementById('section-' + sectionId);
+            
+            if (sectionDiv) {
+                const sectionHeader = sectionDiv.querySelector('h4');
+                const isAdminSection = sectionHeader && sectionHeader.textContent.includes('ADMINISTRACIÓN');
+                
+                if (!isAdminSection) {
+                    // Leer el valor del total de la sección (limpiar formato colombiano)
+                    // El formato es: $1.234.567 (puntos como separadores de miles)
+                    let sectionTotalText = element.textContent.replace('$', '').trim();
+                    // Remover puntos (separadores de miles en formato colombiano)
+                    sectionTotalText = sectionTotalText.replace(/\./g, '');
+                    // Remover comas si las hay
+                    sectionTotalText = sectionTotalText.replace(/,/g, '');
+                    const sectionTotal = parseFloat(sectionTotalText) || 0;
+                    
+                    console.log(`🔍 DEBUG calculateBudgetSummary: Sección ${sectionId} - texto: "${element.textContent}", limpio: "${sectionTotalText}", total: ${sectionTotal}`);
+                    costoDirecto += sectionTotal;
+                } else {
+                    console.log(`🔍 DEBUG calculateBudgetSummary: Sección ${sectionId} - ADMINISTRACIÓN, omitida`);
+                }
+            }
+        });
+        
+        console.log(`🔍 DEBUG calculateBudgetSummary: Costo directo total: ${costoDirecto}`);
+        
+        // Obtener el porcentaje de administración del input (si existe) o del proyecto
+        let adminPercentage = parseFloat('{{ administration_percentage|default:12 }}') || 12;
+        const adminPercentageInput = document.querySelector('input[id^="admin-percentage-input-"]');
+        if (adminPercentageInput) {
+            const inputValue = parseFloat(adminPercentageInput.value);
+            if (!isNaN(inputValue)) {
+                adminPercentage = inputValue;
+            }
+        }
+        
+        console.log(`🔍 DEBUG calculateBudgetSummary: Porcentaje de administración: ${adminPercentage}%`);
+        
+        const administracionAutomatica = costoDirecto * (adminPercentage / 100);
+        const totalPresupuesto = costoDirecto + administracionAutomatica;
+        
+        console.log(`🔍 DEBUG calculateBudgetSummary: Administración: ${administracionAutomatica}, Total: ${totalPresupuesto}`);
+        
+        // Actualizar los elementos del resumen
+        const directCostElement = document.getElementById('direct-cost');
+        const adminCostElement = document.getElementById('admin-cost');
+        const totalBudgetElement = document.getElementById('total-budget');
+        
+        if (directCostElement) {
+            directCostElement.textContent = '$' + costoDirecto.toLocaleString('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+        
+        if (adminCostElement) {
+            adminCostElement.textContent = '$' + administracionAutomatica.toLocaleString('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+        
+        // Actualizar el display del porcentaje en el resumen
+        const adminPercentageDisplay = document.getElementById('admin-percentage-display-summary');
+        if (adminPercentageDisplay) {
+            adminPercentageDisplay.textContent = `(${adminPercentage.toFixed(2)}%)`;
+        }
+        
+        // Actualizar el total de administración en la sección 21
+        document.querySelectorAll('.section-total[data-section]').forEach(function(element) {
+            const sectionId = element.getAttribute('data-section');
+            const sectionDiv = document.getElementById('section-' + sectionId);
+            if (sectionDiv) {
+                const sectionHeader = sectionDiv.querySelector('h4');
+                if (sectionHeader && sectionHeader.textContent.includes('ADMINISTRACIÓN')) {
+                    element.textContent = '$' + administracionAutomatica.toLocaleString('es-CO', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    });
+                }
+            }
+        });
+        
+        if (totalBudgetElement) {
+            totalBudgetElement.textContent = '$' + totalPresupuesto.toLocaleString('es-CO', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+        
+        console.log('🔍 DEBUG calculateBudgetSummary: Resumen actualizado correctamente');
+    }
+    
+    // Agregar event listeners
     document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+        // Validar y limpiar el valor cuando el usuario escribe
         input.addEventListener('input', function() {
+            // Limpiar el valor mientras el usuario escribe
+            const cleaned = cleanNumericValue(this.value);
+            if (this.value !== cleaned.toString() && cleaned > 0) {
+                // Solo actualizar si el valor cambió significativamente
+                const cursorPos = this.selectionStart;
+                this.value = cleaned;
+                this.setSelectionRange(cursorPos, cursorPos);
+            }
+            
             const itemId = this.getAttribute('data-item-id');
             calculateItemTotal(itemId);
+            
+            // Recalcular sección
+            const sectionDiv = this.closest('.mb-5[id^="section-"]');
+            if (sectionDiv) {
+                const sectionId = sectionDiv.id.replace('section-', '');
+                calculateSectionTotal(sectionId);
+            }
+            
+            // Recalcular resumen
+            calculateBudgetSummary();
+        });
+        
+        // Validar cuando pierde el foco
+        input.addEventListener('blur', function() {
+            const cleaned = cleanNumericValue(this.value);
+            this.value = cleaned;
+            
+            const itemId = this.getAttribute('data-item-id');
+            calculateItemTotal(itemId);
+            
+            const sectionDiv = this.closest('.mb-5[id^="section-"]');
+            if (sectionDiv) {
+                const sectionId = sectionDiv.id.replace('section-', '');
+                calculateSectionTotal(sectionId);
+            }
+            
+            calculateBudgetSummary();
         });
     });
     
-    // Calcular totales iniciales
-    document.querySelectorAll('.item-total').forEach(span => {
-        const itemId = span.getAttribute('data-item-id');
-        calculateItemTotal(itemId);
+    // Manejar edición de porcentaje de administración
+    const adminPercentageInputs = document.querySelectorAll('input[id^="admin-percentage-input-"]');
+    
+    adminPercentageInputs.forEach(function(input) {
+        const sectionId = input.id.replace('admin-percentage-input-', '');
+        const saveBtn = document.querySelector(`.save-admin-percentage-btn[data-section-id="${sectionId}"]`);
+        const originalValue = parseFloat(input.value) || parseFloat('{{ administration_percentage|default:12 }}') || 12;
+        
+        if (input && saveBtn) {
+            input.addEventListener('input', function() {
+                const newValue = parseFloat(this.value) || originalValue;
+                if (Math.abs(newValue - originalValue) > 0.01) {
+                    saveBtn.style.display = 'inline-block';
+                } else {
+                    saveBtn.style.display = 'none';
+                }
+                
+                const percentage = newValue;
+                
+                const sectionNameElement = document.getElementById('section-name-' + sectionId);
+                if (sectionNameElement) {
+                    sectionNameElement.textContent = `ADMINISTRACIÓN (${Math.round(percentage)}%)`;
+                }
+                
+                const sectionDescElement = document.getElementById('section-desc-percentage-' + sectionId);
+                if (sectionDescElement) {
+                    sectionDescElement.textContent = percentage.toFixed(2);
+                }
+                
+                const sectionAlertElement = document.getElementById('section-alert-percentage-' + sectionId);
+                if (sectionAlertElement) {
+                    sectionAlertElement.textContent = percentage.toFixed(2);
+                }
+                
+                const navBadge = document.querySelector(`a[href="#section-${sectionId}"] .badge`);
+                if (navBadge) {
+                    navBadge.textContent = `${Math.round(percentage)}%`;
+                }
+                
+                calculateBudgetSummary();
+            });
+            
+            saveBtn.addEventListener('click', function() {
+                const percentage = parseFloat(input.value);
+                
+                if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                    alert('Por favor ingrese un porcentaje válido entre 0 y 100');
+                    return;
+                }
+                
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
+                
+                const projectId = {{ project.id }};
+                const formData = new FormData();
+                formData.append('percentage', percentage);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                
+                fetch(`/projects/${projectId}/update-administration-percentage/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const savedPercentage = parseFloat(data.percentage);
+                        input.setAttribute('value', savedPercentage);
+                        saveBtn.style.display = 'none';
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
+                        
+                        const adminPercentageDisplay = document.getElementById('admin-percentage-display-summary');
+                        if (adminPercentageDisplay) {
+                            adminPercentageDisplay.textContent = `(${savedPercentage.toFixed(2)}%)`;
+                        }
+                        
+                        const sectionNameElement = document.getElementById('section-name-' + sectionId);
+                        if (sectionNameElement) {
+                            sectionNameElement.textContent = `ADMINISTRACIÓN (${Math.round(savedPercentage)}%)`;
+                        }
+                        
+                        const sectionDescElement = document.getElementById('section-desc-percentage-' + sectionId);
+                        if (sectionDescElement) {
+                            sectionDescElement.textContent = savedPercentage.toFixed(2);
+                        }
+                        
+                        const sectionAlertElement = document.getElementById('section-alert-percentage-' + sectionId);
+                        if (sectionAlertElement) {
+                            sectionAlertElement.textContent = savedPercentage.toFixed(2);
+                        }
+                        
+                        const badgeElement = document.querySelector(`#section-${sectionId} .badge.bg-success`);
+                        if (badgeElement) {
+                            badgeElement.innerHTML = `<i class="fas fa-percentage me-1"></i> Configurado (${savedPercentage.toFixed(2)}%)`;
+                        }
+                        
+                        const navBadge = document.querySelector(`a[href="#section-${sectionId}"] .badge`);
+                        if (navBadge) {
+                            navBadge.textContent = `${Math.round(savedPercentage)}%`;
+                        }
+                        
+                        calculateBudgetSummary();
+                        
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                        alertDiv.innerHTML = `
+                            <strong>¡Éxito!</strong> ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.querySelector('.card-body').prepend(alertDiv);
+                        
+                        setTimeout(() => {
+                            alertDiv.remove();
+                        }, 3000);
+                    } else {
+                        alert('Error: ' + data.error);
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al guardar el porcentaje. Por favor intente nuevamente.');
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
+                });
+            });
+        }
     });
-});
+    
+    // Función para inicializar todos los valores y cálculos
+    function initializeBudget() {
+        console.log('🔍 DEBUG: ===== INICIANDO INICIALIZACIÓN =====');
+        
+        // Paso 1: Cargar todos los valores de los inputs
+        console.log('🔍 DEBUG: Paso 1 - Cargando valores en inputs...');
+        document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+            const itemId = input.getAttribute('data-item-id');
+            const configuredValue = input.getAttribute('data-configured-value');
+            const currentValue = input.value;
+            
+            console.log(`🔍 DEBUG: Ítem ${itemId} - valor actual: "${currentValue}", valor configurado: "${configuredValue}"`);
+            
+            if (configuredValue && configuredValue !== '0') {
+                // Usar la función cleanNumericValue para limpiar el valor
+                let numValue = cleanNumericValue(configuredValue);
+                
+                console.log(`🔍 DEBUG: Ítem ${itemId} - valor original: "${configuredValue}", valor numérico: ${numValue}`);
+                
+                if (numValue > 0) {
+                    // Si es un entero, mostrarlo sin decimales
+                    if (numValue % 1 === 0) {
+                        input.value = Math.floor(numValue);
+                    } else {
+                        input.value = numValue;
+                    }
+                    console.log(`🔍 DEBUG: ✅ Ítem ${itemId} - valor cargado en input: ${input.value}`);
+                }
+            }
+        });
+        
+        // Paso 2: Calcular todos los totales de ítems
+        console.log('🔍 DEBUG: Paso 2 - Calculando totales de ítems...');
+        document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
+            const itemId = input.getAttribute('data-item-id');
+            calculateItemTotal(itemId);
+        });
+        
+        // Paso 3: Calcular totales de secciones (sin delay adicional)
+        console.log('🔍 DEBUG: Paso 3 - Calculando totales de secciones...');
+        const allSections = document.querySelectorAll('.mb-5[id^="section-"]');
+        console.log(`🔍 DEBUG: Encontradas ${allSections.length} secciones en el DOM`);
+        
+        allSections.forEach(sectionDiv => {
+            const sectionId = sectionDiv.id.replace('section-', '');
+            console.log(`🔍 DEBUG: Procesando sección ${sectionId}...`);
+            
+            // Verificar que existan elementos .section-total antes de calcular
+            const testSpans = document.querySelectorAll(`.section-total[data-section="${sectionId}"]`);
+            console.log(`🔍 DEBUG: Sección ${sectionId} tiene ${testSpans.length} elementos .section-total`);
+            
+            const total = calculateSectionTotal(sectionId);
+            console.log(`🔍 DEBUG: ✅ Sección ${sectionId} total calculado: $${total.toLocaleString('es-CO')}`);
+        });
+        
+        // Paso 4: Calcular resumen final
+        console.log('🔍 DEBUG: Paso 4 - Calculando resumen...');
+        calculateBudgetSummary();
+        
+        console.log('🔍 DEBUG: ===== INICIALIZACIÓN COMPLETA =====');
+    }
+    
+    // Inicializar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initializeBudget, 500);
+        });
+    } else {
+        setTimeout(initializeBudget, 500);
+    }
+})();
 </script>
 {% endblock %}

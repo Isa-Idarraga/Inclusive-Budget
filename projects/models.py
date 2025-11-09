@@ -1,9 +1,8 @@
 from django.db import models
 from django.conf import settings  # Para usar el modelo de usuario personalizado
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from catalog.models import Material, Supplier
 from django.db.models import F
-from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.db.models import Sum, F, DecimalField, ExpressionWrapper
 
@@ -293,6 +292,17 @@ class Project(models.Model):
         verbose_name="Presupuesto gastado",
         default=0,
         validators=[MinValueValidator(0)],
+    )
+
+    # PostgreSQL: NUMERIC(5,2) - Porcentaje de administración (0-100)
+    # Almacena el porcentaje como decimal (ej: 12.00 para 12%, 15.50 para 15.5%)
+    administration_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name="Porcentaje de administración",
+        default=12.00,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje de administración sobre el costo directo (0-100%)"
     )
 
     # PostgreSQL: VARCHAR(20) - Campo de texto para el estado
@@ -760,7 +770,9 @@ class Project(models.Model):
                 )
                 costo_directo = totals['costo_directo'] or Decimal('0')
                 administracion_manual = totals['administracion_manual'] or Decimal('0')
-                administracion_automatica = costo_directo * Decimal('0.12')
+                # Usar el porcentaje de administración del proyecto (default 12%)
+                admin_percentage = self.administration_percentage / Decimal('100')
+                administracion_automatica = costo_directo * admin_percentage
                 total = costo_directo + administracion_automatica + administracion_manual
         else:
                 # Cálculo tradicional
