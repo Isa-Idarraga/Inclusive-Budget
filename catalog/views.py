@@ -69,6 +69,14 @@ def material_create(request):
 @login_required
 def material_update(request, pk):
     material = get_object_or_404(Material, pk=pk)
+    
+    # Contar proyectos que usan este material
+    from projects.models import Project
+    proyectos_con_entradas = Project.objects.filter(entradas__material=material).distinct()
+    proyectos_con_consumos = Project.objects.filter(consumos__material=material).distinct()
+    proyectos_activos = (proyectos_con_entradas | proyectos_con_consumos).distinct()
+    num_proyectos = proyectos_activos.count()
+    
     if request.method == "POST":
         form = MaterialForm(request.POST, request.FILES, instance=material)
         if form.is_valid():
@@ -95,11 +103,18 @@ def material_update(request, pk):
                 obj.unit_cost = price
                 obj.save(update_fields=["unit_cost"])
 
-            messages.success(request, "Material actualizado.")
+            messages.success(request, "Material actualizado correctamente. Los cambios se aplicarán solo a usos futuros.")
             return redirect("material_list")
     else:
         form = MaterialForm(instance=material)
-    return render(request, "catalog/material_form.html", {"form": form, "mode": "update", "material": material})
+    
+    return render(request, "catalog/material_form.html", {
+        "form": form, 
+        "mode": "update", 
+        "material": material,
+        "num_proyectos_activos": num_proyectos,
+        "proyectos_activos": proyectos_activos[:5]  # Mostrar máximo 5 proyectos como ejemplo
+    })
 
 @login_required
 def material_delete(request, pk):
