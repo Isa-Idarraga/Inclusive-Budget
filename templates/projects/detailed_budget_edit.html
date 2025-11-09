@@ -122,11 +122,11 @@
                                             {% endif %}
                                         </div>
                                         <div class="text-end">
-                                            <span class="h5 fw-bold text-inclusive-primary section-total" data-section="{{ section_id }}">
+                                            <span class="h5 fw-bold text-inclusive-primary section-total" data-section="{{ section_id }}" data-initial-value="{% if data.section.is_percentage and data.section.order == 21 %}{{ administracion_automatica|default:0 }}{% else %}{{ data.section_total|default:0 }}{% endif %}">
                                                 {% if data.section.is_percentage and data.section.order == 21 %}
-                                                    ${{ administracion_automatica|floatformat:0|default:"0" }}
+                                                    ${{ administracion_automatica|floatformat:0|default:"0"|intcomma }}
                                                 {% else %}
-                                                    $0
+                                                    ${{ data.section_total|floatformat:0|default:"0"|intcomma }}
                                                 {% endif %}
                                             </span>
                                         </div>
@@ -177,8 +177,8 @@
                                         <div class="text-end mt-3">
                                             <h5 class="fw-bold text-inclusive-primary">
                                                 Total Administración: 
-                                                <span class="section-total" data-section="{{ section_id }}" id="admin-total-{{ section_id }}">
-                                                    ${{ administracion_automatica|floatformat:0|default:"0" }}
+                                                <span class="section-total" data-section="{{ section_id }}" id="admin-total-{{ section_id }}" data-initial-value="{{ administracion_automatica|default:0 }}">
+                                                    ${{ administracion_automatica|floatformat:0|default:"0"|intcomma }}
                                                 </span>
                                             </h5>
                                         </div>
@@ -245,7 +245,7 @@
                                                             Subtotal {% if data.section.is_percentage and data.section.order == 21 %}ADMINISTRACIÓN{% else %}{{ data.section.name }}{% endif %}:
                                                         </td>
                                                         <td class="text-end fw-bold text-inclusive-primary fs-5">
-                                                            <span class="section-total" data-section="{{ section_id }}">$0</span>
+                                                            <span class="section-total" data-section="{{ section_id }}" data-initial-value="{{ data.section_total|default:0 }}">${{ data.section_total|floatformat:0|default:"0"|intcomma }}</span>
                                                         </td>
                                                     </tr>
                                                 </tfoot>
@@ -267,18 +267,18 @@
                                     <div class="row text-center">
                                         <div class="col-md-4">
                                             <h6 class="text-muted">Costo Directo</h6>
-                                            <h4 class="text-success" id="direct-cost">$0</h4>
+                                            <h4 class="text-success" id="direct-cost" data-initial-value="{{ costo_directo|default:0 }}">$0</h4>
                                         </div>
                                         <div class="col-md-4">
                                             <h6 class="text-muted">
                                                 Administración 
                                                 <span id="admin-percentage-display-summary">({{ administration_percentage|floatformat:2 }}%)</span>
                                             </h6>
-                                            <h4 class="text-warning" id="admin-cost">$0</h4>
+                                            <h4 class="text-warning" id="admin-cost" data-initial-value="{{ administracion_automatica|default:0 }}">$0</h4>
                                         </div>
                                         <div class="col-md-4">
                                             <h6 class="text-muted">Total Presupuesto</h6>
-                                            <h3 class="text-primary fw-bold" id="total-budget">$0</h3>
+                                            <h3 class="text-primary fw-bold" id="total-budget" data-initial-value="{{ total_budget|default:0 }}">$0</h3>
                                         </div>
                                     </div>
                                 </div>
@@ -543,8 +543,17 @@
         console.log('🔍 DEBUG calculateBudgetSummary: Iniciando cálculo...');
         
         // Sumar todos los totales de sección (excluyendo administración - sección 21)
+        // Usar un Set para evitar duplicados (hay múltiples elementos .section-total por sección)
+        const processedSections = new Set();
+        
         document.querySelectorAll('.section-total[data-section]').forEach(function(element) {
             const sectionId = element.getAttribute('data-section');
+            
+            // Evitar procesar la misma sección dos veces
+            if (processedSections.has(sectionId)) {
+                return;
+            }
+            
             const sectionDiv = document.getElementById('section-' + sectionId);
             
             if (sectionDiv) {
@@ -563,13 +572,15 @@
                     
                     console.log(`🔍 DEBUG calculateBudgetSummary: Sección ${sectionId} - texto: "${element.textContent}", limpio: "${sectionTotalText}", total: ${sectionTotal}`);
                     costoDirecto += sectionTotal;
+                    processedSections.add(sectionId);
                 } else {
                     console.log(`🔍 DEBUG calculateBudgetSummary: Sección ${sectionId} - ADMINISTRACIÓN, omitida`);
+                    processedSections.add(sectionId);
                 }
             }
         });
         
-        console.log(`🔍 DEBUG calculateBudgetSummary: Costo directo total: ${costoDirecto}`);
+        console.log(`🔍 DEBUG calculateBudgetSummary: Costo directo total calculado: ${costoDirecto}`);
         
         // Obtener el porcentaje de administración del input (si existe) o del proyecto
         let adminPercentage = parseFloat('{{ administration_percentage|default:12 }}') || 12;
@@ -636,6 +647,48 @@
         }
         
         console.log('🔍 DEBUG calculateBudgetSummary: Resumen actualizado correctamente');
+    }
+    
+    // Función para inicializar el resumen con los valores del backend
+    function initializeBudgetSummary() {
+        const directCostElement = document.getElementById('direct-cost');
+        const adminCostElement = document.getElementById('admin-cost');
+        const totalBudgetElement = document.getElementById('total-budget');
+        
+        // Obtener valores iniciales del backend
+        const initialDirectCost = parseFloat(directCostElement?.getAttribute('data-initial-value') || '0') || 0;
+        const initialAdminCost = parseFloat(adminCostElement?.getAttribute('data-initial-value') || '0') || 0;
+        const initialTotalBudget = parseFloat(totalBudgetElement?.getAttribute('data-initial-value') || '0') || 0;
+        
+        console.log(`🔍 DEBUG initializeBudgetSummary: Valores iniciales del backend - Directo: ${initialDirectCost}, Admin: ${initialAdminCost}, Total: ${initialTotalBudget}`);
+        
+        // Solo inicializar si los valores son mayores a 0 (hay datos del proyecto)
+        if (initialDirectCost > 0 || initialAdminCost > 0 || initialTotalBudget > 0) {
+            if (directCostElement) {
+                directCostElement.textContent = '$' + initialDirectCost.toLocaleString('es-CO', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                });
+            }
+            
+            if (adminCostElement) {
+                adminCostElement.textContent = '$' + initialAdminCost.toLocaleString('es-CO', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                });
+            }
+            
+            if (totalBudgetElement) {
+                totalBudgetElement.textContent = '$' + initialTotalBudget.toLocaleString('es-CO', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                });
+            }
+            
+            console.log('🔍 DEBUG initializeBudgetSummary: Resumen inicializado con valores del backend');
+        } else {
+            console.log('🔍 DEBUG initializeBudgetSummary: No hay valores iniciales, se calcularán desde cero');
+        }
     }
     
     // Agregar event listeners
@@ -820,6 +873,10 @@
     function initializeBudget() {
         console.log('🔍 DEBUG: ===== INICIANDO INICIALIZACIÓN =====');
         
+        // Paso 0: Inicializar resumen con valores del backend
+        console.log('🔍 DEBUG: Paso 0 - Inicializando resumen con valores del backend...');
+        initializeBudgetSummary();
+        
         // Paso 1: Cargar todos los valores de los inputs
         console.log('🔍 DEBUG: Paso 1 - Cargando valores en inputs...');
         document.querySelectorAll('input[name^="quantity_"]').forEach(input => {
@@ -854,8 +911,8 @@
             calculateItemTotal(itemId);
         });
         
-        // Paso 3: Calcular totales de secciones (sin delay adicional)
-        console.log('🔍 DEBUG: Paso 3 - Calculando totales de secciones...');
+        // Paso 3: Inicializar totales de secciones con valores del backend
+        console.log('🔍 DEBUG: Paso 3 - Inicializando totales de secciones con valores del backend...');
         const allSections = document.querySelectorAll('.mb-5[id^="section-"]');
         console.log(`🔍 DEBUG: Encontradas ${allSections.length} secciones en el DOM`);
         
@@ -863,16 +920,27 @@
             const sectionId = sectionDiv.id.replace('section-', '');
             console.log(`🔍 DEBUG: Procesando sección ${sectionId}...`);
             
-            // Verificar que existan elementos .section-total antes de calcular
-            const testSpans = document.querySelectorAll(`.section-total[data-section="${sectionId}"]`);
-            console.log(`🔍 DEBUG: Sección ${sectionId} tiene ${testSpans.length} elementos .section-total`);
+            // Inicializar con valores del backend si existen
+            const sectionTotalSpans = document.querySelectorAll(`.section-total[data-section="${sectionId}"]`);
+            sectionTotalSpans.forEach(span => {
+                const initialValue = parseFloat(span.getAttribute('data-initial-value') || '0') || 0;
+                if (initialValue > 0) {
+                    const formattedValue = '$' + initialValue.toLocaleString('es-CO', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    });
+                    span.textContent = formattedValue;
+                    console.log(`🔍 DEBUG: ✅ Sección ${sectionId} inicializada con valor del backend: ${formattedValue}`);
+                }
+            });
             
+            // Luego recalcular para asegurar que esté actualizado
             const total = calculateSectionTotal(sectionId);
-            console.log(`🔍 DEBUG: ✅ Sección ${sectionId} total calculado: $${total.toLocaleString('es-CO')}`);
+            console.log(`🔍 DEBUG: ✅ Sección ${sectionId} total recalculado: $${total.toLocaleString('es-CO')}`);
         });
         
-        // Paso 4: Calcular resumen final
-        console.log('🔍 DEBUG: Paso 4 - Calculando resumen...');
+        // Paso 4: Recalcular resumen final (sobrescribirá los valores iniciales con los calculados)
+        console.log('🔍 DEBUG: Paso 4 - Recalculando resumen con valores actualizados...');
         calculateBudgetSummary();
         
         console.log('🔍 DEBUG: ===== INICIALIZACIÓN COMPLETA =====');

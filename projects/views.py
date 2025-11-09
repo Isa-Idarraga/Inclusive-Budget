@@ -1575,6 +1575,9 @@ def detailed_budget_edit(request, project_id):
             items_by_section[section_id] = []
         items_by_section[section_id].append(item)
     
+    # Importar Decimal antes de usarlo
+    from decimal import Decimal
+    
     sections_data = {}
     for section in all_sections:
         # Obtener ítems de esta sección del diccionario pre-cargado
@@ -1582,6 +1585,8 @@ def detailed_budget_edit(request, project_id):
         
         # Preparar ítems para esta sección
         items_for_section = []
+        section_total = Decimal('0')  # Calcular total de la sección
+        
         for budget_item in section_items:
             # Verificar si este ítem está configurado en el proyecto
             project_item = project_items_dict.get(budget_item.id)
@@ -1592,6 +1597,9 @@ def detailed_budget_edit(request, project_id):
                 quantity_value = float(project_item.quantity)
                 # Convertir precio unitario a float y luego a string sin formato
                 unit_price_value = float(project_item.unit_price)
+                item_total = float(project_item.total_price)
+                section_total += Decimal(str(item_total))
+                
                 items_for_section.append({
                     'budget_item': budget_item,
                     'project_item': project_item,
@@ -1599,7 +1607,7 @@ def detailed_budget_edit(request, project_id):
                     'quantity_str': str(quantity_value).rstrip('0').rstrip('.') if quantity_value % 1 == 0 else str(quantity_value),
                     'unit_price': unit_price_value,
                     'unit_price_str': str(unit_price_value).rstrip('0').rstrip('.') if unit_price_value % 1 == 0 else str(unit_price_value),
-                    'total_price': float(project_item.total_price),
+                    'total_price': item_total,
                     'is_configured': True
                 })
                 print(f"🔍 DEBUG: Ítem configurado {budget_item.description[:30]}: cantidad={project_item.quantity}, cantidad_str={str(quantity_value).rstrip('0').rstrip('.') if quantity_value % 1 == 0 else str(quantity_value)}, precio={project_item.unit_price}")
@@ -1619,7 +1627,8 @@ def detailed_budget_edit(request, project_id):
         
         sections_data[section.id] = {
             'section': section,
-            'items': items_for_section
+            'items': items_for_section,
+            'section_total': float(section_total)  # Total calculado de la sección
         }
     
     print(f"🔍 DEBUG: {len(sections_data)} secciones totales (todas las 23)")
@@ -1633,8 +1642,7 @@ def detailed_budget_edit(request, project_id):
             print(f"    - {item['budget_item'].description[:30]}: cantidad={item['quantity']}, precio={item['unit_price']}, total={item['total_price']}")
     
     # Calcular costo directo y administración para el contexto
-    from decimal import Decimal
-    costo_directo_total = 0
+    costo_directo_total = Decimal('0')
     for section_id, data in sections_data.items():
         if not data['section'].is_percentage:
             for item in data['items']:
