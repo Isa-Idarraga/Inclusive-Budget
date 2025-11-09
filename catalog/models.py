@@ -11,9 +11,25 @@ class Unit(models.Model):
     class Meta:
         unique_together = ("name", "symbol")
         ordering = ["name"]
+        verbose_name = "Unidad de medida"
+        verbose_name_plural = "Unidades de medida"
 
     def __str__(self):
         return f"{self.name} ({self.symbol})"
+
+
+# Categorías de materiales
+class Category(models.Model):
+    name = models.CharField("Nombre", max_length=50, unique=True)
+    code = models.CharField("Código", max_length=20, unique=True, help_text="Código interno en mayúsculas")
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Categoría"
+        verbose_name_plural = "Categorías"
+
+    def __str__(self):
+        return self.name
 
 
 # Materiales
@@ -29,20 +45,12 @@ class Material(models.Model):
 
     name = models.CharField("Nombre", max_length=120)
 
-    # 3) Categoría como lista desplegable
-    CATEGORIES = [
-        ("CEMENTOS", "Cementos"),
-        ("AGREGADOS", "Agregados"),
-        ("ACERO", "Acero"),
-        ("MADERA", "Madera"),
-        ("PINTURAS", "Pinturas"),
-        ("ELECTRICOS", "Eléctricos"),
-        ("HIDRAULICOS", "Hidráulicos"),
-        ("LADRILLOS", "Ladrillos"),
-        ("OTROS", "Otros"),
-    ]
-    category = models.CharField(
-        "Categoría", max_length=20, choices=CATEGORIES, default="OTROS"
+    # Categoría ahora es ForeignKey
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        related_name="materials",
+        verbose_name="Categoría"
     )
 
     stock = models.DecimalField(

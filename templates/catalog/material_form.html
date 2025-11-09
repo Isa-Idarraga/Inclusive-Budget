@@ -30,14 +30,24 @@
               <!-- Categoría -->
               <div class="col-md-6">
                 <label class="form-label" for="{{ form.category.id_for_label }}">Categoría</label>
-                {{ form.category }}
+                <div class="input-group">
+                  {{ form.category }}
+                  <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#categoryModal">
+                    <i class="fas fa-plus"></i> Añadir
+                  </button>
+                </div>
                 {% for e in form.category.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
               </div>
 
               <!-- Unidad -->
               <div class="col-md-6">
                 <label class="form-label" for="{{ form.unit.id_for_label }}">Unidad de medida</label>
-                {{ form.unit }}
+                <div class="input-group">
+                  {{ form.unit }}
+                  <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#unitModal">
+                    <i class="fas fa-plus"></i> Añadir
+                  </button>
+                </div>
                 {% for e in form.unit.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
               </div>
 
@@ -148,6 +158,75 @@
   </div>
 </div>
 
+<!-- Modal para crear Unidad de Medida -->
+<div class="modal fade" id="unitModal" tabindex="-1" aria-labelledby="unitModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unitModalLabel">
+          <i class="fas fa-ruler me-2"></i>
+          Añadir Nueva Unidad de Medida
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="unitForm">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="unitName" class="form-label">Nombre de la unidad</label>
+            <input type="text" class="form-control" id="unitName" placeholder="Ej: Kilogramo, Metro, Litro" required>
+            <div class="form-text">Nombre completo de la unidad de medida</div>
+          </div>
+          <div class="mb-3">
+            <label for="unitSymbol" class="form-label">Símbolo</label>
+            <input type="text" class="form-control" id="unitSymbol" placeholder="Ej: kg, m, L" maxlength="10" required>
+            <div class="form-text">Abreviatura o símbolo (máximo 10 caracteres)</div>
+          </div>
+          <div id="unitError" class="alert alert-danger d-none"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="saveUnit">
+          <i class="fas fa-save me-1"></i> Guardar Unidad
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para crear Categoría -->
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="categoryModalLabel">
+          <i class="fas fa-tags me-2"></i>
+          Añadir Nueva Categoría
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="categoryForm">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="categoryName" class="form-label">Nombre de la categoría</label>
+            <input type="text" class="form-control" id="categoryName" placeholder="Ej: Herramientas, Acabados, Maquinaria" required>
+            <div class="form-text">Nombre descriptivo de la categoría</div>
+          </div>
+          <div id="categoryError" class="alert alert-danger d-none"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="saveCategory">
+          <i class="fas fa-save me-1"></i> Guardar Categoría
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   // Autoformato del SKU
   (function () {
@@ -193,5 +272,135 @@
       preview.classList.remove("d-none");
     });
   })();
+
+  // ============================================
+  // AJAX para crear Unidades de Medida
+  // ============================================
+  document.getElementById('saveUnit').addEventListener('click', function() {
+    const name = document.getElementById('unitName').value.trim();
+    const symbol = document.getElementById('unitSymbol').value.trim();
+    const errorDiv = document.getElementById('unitError');
+    const btn = this;
+    
+    if (!name || !symbol) {
+      errorDiv.textContent = 'Por favor completa todos los campos';
+      errorDiv.classList.remove('d-none');
+      return;
+    }
+    
+    // Deshabilitar botón mientras se procesa
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
+    errorDiv.classList.add('d-none');
+    
+    // Obtener CSRF token
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch("{% url 'unit_create_ajax' %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrftoken
+      },
+      body: new URLSearchParams({
+        'name': name,
+        'symbol': symbol
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Agregar la nueva opción al select
+        const unitSelect = document.getElementById('{{ form.unit.id_for_label }}');
+        const option = new Option(data.unit.name, data.unit.id, true, true);
+        unitSelect.add(option);
+        
+        // Limpiar formulario
+        document.getElementById('unitForm').reset();
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('unitModal'));
+        modal.hide();
+        
+        // Mostrar mensaje de éxito (opcional, puedes usar toast o alert)
+        alert('✓ Unidad creada exitosamente: ' + data.unit.name);
+      } else {
+        errorDiv.textContent = data.error || 'Error al crear la unidad';
+        errorDiv.classList.remove('d-none');
+      }
+    })
+    .catch(error => {
+      errorDiv.textContent = 'Error de conexión: ' + error;
+      errorDiv.classList.remove('d-none');
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Unidad';
+    });
+  });
+
+  // ============================================
+  // AJAX para crear Categorías
+  // ============================================
+  document.getElementById('saveCategory').addEventListener('click', function() {
+    const name = document.getElementById('categoryName').value.trim();
+    const errorDiv = document.getElementById('categoryError');
+    const btn = this;
+    
+    if (!name) {
+      errorDiv.textContent = 'Por favor ingresa un nombre para la categoría';
+      errorDiv.classList.remove('d-none');
+      return;
+    }
+    
+    // Deshabilitar botón mientras se procesa
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
+    errorDiv.classList.add('d-none');
+    
+    // Obtener CSRF token
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch("{% url 'category_create_ajax' %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrftoken
+      },
+      body: new URLSearchParams({
+        'name': name
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Agregar la nueva opción al select
+        const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+        const option = new Option(data.category.name, data.category.id, true, true);
+        categorySelect.add(option);
+        
+        // Limpiar formulario
+        document.getElementById('categoryForm').reset();
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('categoryModal'));
+        modal.hide();
+        
+        // Mostrar mensaje de éxito
+        alert('✓ Categoría creada exitosamente: ' + data.category.name);
+      } else {
+        errorDiv.textContent = data.error || 'Error al crear la categoría';
+        errorDiv.classList.remove('d-none');
+      }
+    })
+    .catch(error => {
+      errorDiv.textContent = 'Error de conexión: ' + error;
+      errorDiv.classList.remove('d-none');
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Categoría';
+    });
+  });
 </script>
 {% endblock %}
