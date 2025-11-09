@@ -208,10 +208,14 @@ def project_list(request):
     - COMERCIAL: Ve todos los proyectos (solo lectura, info básica)
     - CONSTRUCTOR: Ve todos los proyectos (solo edita los suyos)
     - JEFE: Ve y puede editar todos los proyectos
+    
+    FUNCIONALIDAD DE ORDENAMIENTO:
+    - Sin filtro de estado: Agrupa por estado (En Proceso → Futuros → Terminados)
+    - "todos" (Todos los estados): Lista cronológica con ordenamiento toggleable
     """
-    # Obtener parámetros de búsqueda
+    # Obtener parámetros de búsqueda y ordenamiento
     search_query = request.GET.get("search", "")
-    status_filter = request.GET.get("status", "")
+    status_filter = request.GET.get("status", "")  # Vacío por defecto, "todos" para cronológico
     trabajadores_filter = request.GET.get("trabajadores", "")
     creador_filter = request.GET.get("creador", "")
     fecha_desde_filter = request.GET.get("fecha_desde", "")
@@ -219,6 +223,7 @@ def project_list(request):
     ubicacion_filter = request.GET.get("ubicacion", "")
     presupuesto_min_filter = request.GET.get("presupuesto_min", "")
     presupuesto_max_filter = request.GET.get("presupuesto_max", "")
+    order_by = request.GET.get("order", "desc")  # desc = descendente (más reciente primero), asc = ascendente
 
     # TODOS los usuarios ven TODOS los proyectos
     projects = Project.objects.all()
@@ -232,7 +237,8 @@ def project_list(request):
         )
 
     # Filtro por estado
-    if status_filter:
+    # Si status_filter es "todos", no filtramos, solo ordenamos cronológicamente
+    if status_filter and status_filter != "todos":
         projects = projects.filter(estado=status_filter)
 
     # Filtro por número de trabajadores
@@ -291,45 +297,76 @@ def project_list(request):
         except (ValueError, AttributeError) as e:
             print(f"DEBUG: Error en filtro presupuesto máximo: {e}")
 
-    # Separar proyectos por estado
-    projects_en_proceso = projects.filter(estado='en_proceso')
-    projects_terminados = projects.filter(estado='terminado')
-    projects_futuros = projects.filter(estado='futuro')
+    # Determinar cómo organizar los proyectos
+    show_chronological = (status_filter == "todos")
+    
+    if show_chronological:
+        # MODO CRONOLÓGICO: Todos los proyectos ordenados por fecha
+        if order_by == "asc":
+            projects_chronological = projects.order_by('fecha_creacion')  # Más antiguos primero
+        else:
+            projects_chronological = projects.order_by('-fecha_creacion')  # Más recientes primero (default)
+        
+        context = {
+            "show_chronological": True,
+            "projects_chronological": projects_chronological,
+            "order_by": order_by,
+            "search_query": search_query,
+            "status_filter": status_filter,
+            "trabajadores_filter": trabajadores_filter,
+            "creador_filter": creador_filter,
+            "creador_nombre": None,
+            "fecha_desde_filter": fecha_desde_filter,
+            "fecha_hasta_filter": fecha_hasta_filter,
+            "ubicacion_filter": ubicacion_filter,
+            "presupuesto_min_filter": presupuesto_min_filter,
+            "presupuesto_max_filter": presupuesto_max_filter,
+            "creadores": User.objects.filter(
+                id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
+            ).order_by('first_name', 'last_name'),
+        }
+    else:
+        # MODO AGRUPADO POR ESTADO (default)
+        # Separar proyectos por estado sin ordenar por fecha
+        projects_en_proceso = projects.filter(estado='en_proceso')
+        projects_terminados = projects.filter(estado='terminado')
+        projects_futuros = projects.filter(estado='futuro')
 
-    # Obtener lista de creadores para el filtro
-    creadores = User.objects.filter(
-        id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
-    ).order_by('first_name', 'last_name')
+        # Obtener lista de creadores para el filtro
+        creadores = User.objects.filter(
+            id__in=Project.objects.values_list('creado_por_id', flat=True).distinct()
+        ).order_by('first_name', 'last_name')
 
-    # Obtener el nombre del creador seleccionado para mostrarlo en el filtro activo
-    creador_nombre = None
-    if creador_filter:
-        try:
-            creador_id = int(creador_filter)
-            creador_obj = User.objects.filter(id=creador_id).first()
-            if creador_obj:
-                creador_nombre = f"{creador_obj.first_name} {creador_obj.last_name}".strip()
-                if not creador_nombre:  # Si no tiene nombre, usar username
-                    creador_nombre = creador_obj.username
-        except ValueError:
-            pass
+        # Obtener el nombre del creador seleccionado para mostrarlo en el filtro activo
+        creador_nombre = None
+        if creador_filter:
+            try:
+                creador_id = int(creador_filter)
+                creador_obj = User.objects.filter(id=creador_id).first()
+                if creador_obj:
+                    creador_nombre = f"{creador_obj.first_name} {creador_obj.last_name}".strip()
+                    if not creador_nombre:  # Si no tiene nombre, usar username
+                        creador_nombre = creador_obj.username
+            except ValueError:
+                pass
 
-    context = {
-        "projects_en_proceso": projects_en_proceso,
-        "projects_terminados": projects_terminados,
-        "projects_futuros": projects_futuros,
-        "search_query": search_query,
-        "status_filter": status_filter,
-        "trabajadores_filter": trabajadores_filter,
-        "creador_filter": creador_filter,
-        "creador_nombre": creador_nombre,
-        "fecha_desde_filter": fecha_desde_filter,
-        "fecha_hasta_filter": fecha_hasta_filter,
-        "ubicacion_filter": ubicacion_filter,
-        "presupuesto_min_filter": presupuesto_min_filter,
-        "presupuesto_max_filter": presupuesto_max_filter,
-        "creadores": creadores,
-    }
+        context = {
+            "show_chronological": False,
+            "projects_en_proceso": projects_en_proceso,
+            "projects_terminados": projects_terminados,
+            "projects_futuros": projects_futuros,
+            "search_query": search_query,
+            "status_filter": status_filter,
+            "trabajadores_filter": trabajadores_filter,
+            "creador_filter": creador_filter,
+            "creador_nombre": creador_nombre,
+            "fecha_desde_filter": fecha_desde_filter,
+            "fecha_hasta_filter": fecha_hasta_filter,
+            "ubicacion_filter": ubicacion_filter,
+            "presupuesto_min_filter": presupuesto_min_filter,
+            "presupuesto_max_filter": presupuesto_max_filter,
+            "creadores": creadores,
+        }
 
     return render(request, "projects/project_list.html", context)
 

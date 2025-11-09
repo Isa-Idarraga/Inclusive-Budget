@@ -182,12 +182,13 @@
                 
                     <div class="col-md-2">
                         <select name="status" class="form-select filter-select">
-                                        <option value="">Todos los estados</option>
+                            <option value="">Sin filtro</option>
+                            <option value="todos" {% if status_filter == 'todos' %}selected{% endif %}>Todos los estados</option>
                             <option value="futuro" {% if status_filter == 'futuro' %}selected{% endif %}>Futuro</option>
                             <option value="en_proceso" {% if status_filter == 'en_proceso' %}selected{% endif %}>En Proceso</option>
                             <option value="terminado" {% if status_filter == 'terminado' %}selected{% endif %}>Terminado</option>
-                                    </select>
-                                </div>
+                        </select>
+                    </div>
                                 
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-inclusive-primary btn-lg w-100">
@@ -347,6 +348,177 @@
         
         <!-- Espaciador adicional entre filtros y proyectos -->
         <div class="mt-5 mb-4"></div>
+        
+        <!-- ===== MODO CRONOLÓGICO: Todos los estados ===== -->
+        {% if show_chronological %}
+        <div class="mb-6 position-relative animate-fade-in">
+            <!-- Encabezado con control de ordenamiento -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="bg-inclusive-primary text-white px-4 py-3 rounded-4 shadow-inclusive">
+                    <h2 class="h5 fw-bold mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        Todos los Proyectos - Vista Cronológica ({{ projects_chronological.count }})
+                    </h2>
+                </div>
+                
+                <!-- Menú desplegable de ordenamiento -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-inclusive-primary btn-lg dropdown-toggle px-4" 
+                            type="button" 
+                            id="dropdownOrderMenu" 
+                            data-bs-toggle="dropdown" 
+                            aria-expanded="false">
+                        <i class="fas fa-sort me-2"></i>
+                        {% if order_by == 'desc' %}
+                            <i class="fas fa-sort-amount-down me-1"></i>
+                            Más Recientes Primero
+                        {% else %}
+                            <i class="fas fa-sort-amount-up me-1"></i>
+                            Más Antiguos Primero
+                        {% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="dropdownOrderMenu">
+                        <li>
+                            <a class="dropdown-item {% if order_by == 'desc' %}active{% endif %}" 
+                               href="?status=todos&order=desc{% if search_query %}&search={{ search_query }}{% endif %}{% if trabajadores_filter %}&trabajadores={{ trabajadores_filter }}{% endif %}{% if creador_filter %}&creador={{ creador_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}{% if ubicacion_filter %}&ubicacion={{ ubicacion_filter }}{% endif %}{% if presupuesto_min_filter %}&presupuesto_min={{ presupuesto_min_filter }}{% endif %}{% if presupuesto_max_filter %}&presupuesto_max={{ presupuesto_max_filter }}{% endif %}">
+                                <i class="fas fa-sort-amount-down me-2 text-inclusive-primary"></i>
+                                Más Recientes Primero
+                                {% if order_by == 'desc' %}
+                                <i class="fas fa-check ms-2 text-success"></i>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item {% if order_by == 'asc' %}active{% endif %}" 
+                               href="?status=todos&order=asc{% if search_query %}&search={{ search_query }}{% endif %}{% if trabajadores_filter %}&trabajadores={{ trabajadores_filter }}{% endif %}{% if creador_filter %}&creador={{ creador_filter }}{% endif %}{% if fecha_desde_filter %}&fecha_desde={{ fecha_desde_filter }}{% endif %}{% if fecha_hasta_filter %}&fecha_hasta={{ fecha_hasta_filter }}{% endif %}{% if ubicacion_filter %}&ubicacion={{ ubicacion_filter }}{% endif %}{% if presupuesto_min_filter %}&presupuesto_min={{ presupuesto_min_filter }}{% endif %}{% if presupuesto_max_filter %}&presupuesto_max={{ presupuesto_max_filter }}{% endif %}">
+                                <i class="fas fa-sort-amount-up me-2 text-inclusive-primary"></i>
+                                Más Antiguos Primero
+                                {% if order_by == 'asc' %}
+                                <i class="fas fa-check ms-2 text-success"></i>
+                                {% endif %}
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Lista de proyectos cronológica -->
+            <div class="row g-4">
+                {% for project in projects_chronological %}
+                <div class="col-sm-6 col-lg-4 col-xl-3">
+                    <div class="card h-100 shadow-inclusive rounded-4 project-card-hover border-0 animate-fade-in" style="animation-delay: {{ forloop.counter0|add:1 }}00ms;">
+                        {% if user.role == 'JEFE' or user.is_superuser or project.creado_por.id == user.id %}
+                        <a href="{% url 'projects:project_board' project.id %}" class="text-decoration-none">
+                        {% else %}
+                        <a href="{% url 'projects:project_detail' project.id %}" class="text-decoration-none">
+                        {% endif %}
+                            <div class="position-relative overflow-hidden rounded-top-4">
+                                {% if project.imagen_proyecto %}
+                                    <img class="card-img-top" src="{{ project.imagen_proyecto.url }}" alt="{{ project.name }}" style="height: 14rem; object-fit: cover;" />
+                                {% else %}
+                                    <div class="card-img-top bg-inclusive-light d-flex align-items-center justify-content-center" style="height: 14rem;">
+                                        <i class="fas fa-building display-4 text-inclusive-secondary"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="position-absolute top-0 end-0 m-3">
+                                    <div class="d-flex flex-column gap-2 align-items-end">
+                                        <!-- Badge de estado dinámico -->
+                                        {% if project.estado == 'en_proceso' %}
+                                        <span class="badge status-badge-progress rounded-pill px-3 py-2 small fw-semibold">
+                                            <i class="fas fa-clock me-1"></i>En Proceso
+                                        </span>
+                                        {% elif project.estado == 'terminado' %}
+                                        <span class="badge status-badge-complete rounded-pill px-3 py-2 small fw-semibold">
+                                            <i class="fas fa-check me-1"></i>Terminado
+                                        </span>
+                                        {% elif project.estado == 'futuro' %}
+                                        <span class="badge status-badge-future rounded-pill px-3 py-2 small fw-semibold">
+                                            <i class="fas fa-calendar me-1"></i>Futuro
+                                        </span>
+                                        {% endif %}
+                                        
+                                        {% if project.created_by_ai %}
+                                        <span class="badge rounded-pill px-3 py-2 small fw-semibold ai-badge" 
+                                              style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                            <i class="fas fa-robot me-1"></i>IA
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="card-body card-body-inclusive p-4">
+                            <h5 class="card-title h6 fw-bold text-inclusive-dark mb-3">{{ project.name }}</h5>
+                            
+                            <!-- Información detallada -->
+                            <div class="mb-3">
+                                <!-- Fecha de creación DESTACADA -->
+                                <div class="d-flex align-items-center mb-2 p-2 rounded" style="background-color: #f0f7ff;">
+                                    <i class="fas fa-calendar-check text-inclusive-primary me-2"></i>
+                                    <small class="fw-bold text-inclusive-primary">
+                                        Creado: {{ project.fecha_creacion|date:"d/m/Y" }}
+                                    </small>
+                                </div>
+                                
+                                <!-- Ubicación del proyecto -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-map-marker-alt text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        {% if project.location_address %}
+                                            {{ project.location_address|truncatechars:30 }}
+                                        {% else %}
+                                            {{ project.get_ubicacion_proyecto_display|default:"Medellín" }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                
+                                <!-- Creado por -->
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-user-tie text-inclusive-primary me-2 small"></i>
+                                    <small class="text-inclusive-secondary">
+                                        <strong>Por:</strong> {{ project.creado_por.first_name }} {{ project.creado_por.last_name }}
+                                    </small>
+                                </div>
+                                
+                                <!-- Indicador de presupuesto detallado -->
+                                {% if project.has_detailed_budget_items %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calculator text-inclusive-neon me-2 small"></i>
+                                    <small class="text-inclusive-neon fw-semibold">
+                                        <i class="fas fa-check-circle me-1"></i>Presupuesto Detallado
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Presupuesto destacado -->
+                            <div class="text-center p-3 rounded-3 border-2" style="border-color: var(--inclusive-green-primary); background-color: var(--inclusive-gray-light);">
+                                <small class="text-inclusive-secondary d-block mb-1">Presupuesto</small>
+                                <span class="h6 fw-bold text-inclusive-primary mb-0" data-budget="{{ project.presupuesto|default:0 }}">
+                                    {% if project.presupuesto and project.presupuesto > 0 %}
+                                        ${{ project.presupuesto|floatformat:0|default:"0" }}
+                                    {% else %}
+                                        <span class="text-inclusive-bright">Por calcular</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox display-1 text-inclusive-secondary mb-3"></i>
+                        <h4 class="text-inclusive-dark">No hay proyectos para mostrar</h4>
+                        <p class="text-inclusive-secondary">Prueba ajustando los filtros de búsqueda.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <!-- ===== MODO AGRUPADO POR ESTADO (Default) ===== -->
         
         <!-- Sin resultados -->
         {% if search_query or status_filter %}
@@ -768,6 +940,8 @@
         </div>
     </div>
     {% endif %}
+    
+    {% endif %} <!-- Cierre del bloque show_chronological -->
 
     <!-- Botón flotante para crear nuevo proyecto -->
     <div class="position-fixed bottom-0 end-0 p-4">
