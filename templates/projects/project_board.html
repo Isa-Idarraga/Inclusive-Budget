@@ -286,7 +286,22 @@
       <!-- Columna derecha: calendario -->
       <div class="col-12 col-lg-6">
         <div class="p-4 bg-white rounded-4 shadow-sm">
-          <h5 class="mb-3 fw-semibold">Control de Gastos Diario</h5>
+          <!-- Encabezado con botón de ayuda -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0 fw-semibold">Control de Gastos Diario</h5>
+            
+            <!-- Botón para añadir consumos -->
+            <button type="button" 
+                    class="btn btn-primary px-3 py-2 shadow" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#helpConsumoModal"
+                    style="border-radius: 10px; font-weight: 500; transition: all 0.3s ease;"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(76, 175, 80, 0.3)';"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0,0,0,0.1)';">
+              <i class="fas fa-plus-circle me-2"></i>
+              Añadir Consumos
+            </button>
+          </div>
 
           <!-- Leyenda del calendario (RF17C) -->
           <div class="mb-3 p-2 bg-light rounded">
@@ -442,6 +457,142 @@
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-warning" onclick="exportarGastosDia()">
           <i class="fas fa-file-excel me-1"></i>Exportar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Ayuda: Cómo Añadir Consumos -->
+<div class="modal fade" id="helpConsumoModal" tabindex="-1" aria-labelledby="helpConsumoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+      <!-- Encabezado con gradiente -->
+      <div class="modal-header text-white" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); padding: 1.5rem 2rem;">
+        <h5 class="modal-title fw-bold" id="helpConsumoModalLabel">
+          <i class="fas fa-info-circle me-2"></i>
+          ¿Cómo Añadir Consumos de Materiales?
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      
+      <!-- Cuerpo del modal con instrucciones -->
+      <div class="modal-body p-4">
+        <div class="alert alert-success border-0" style="background-color: #e8f5e9;">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fas fa-lightbulb fs-4 me-3 text-success"></i>
+            <h6 class="mb-0 fw-bold text-success">¡Es muy fácil registrar consumos!</h6>
+          </div>
+          <p class="mb-0 small text-muted">Sigue estos simples pasos para registrar el uso de materiales en tu proyecto.</p>
+        </div>
+
+        <!-- Pasos numerados -->
+        <div class="steps-container">
+          <!-- Paso 1 -->
+          <div class="step-item d-flex mb-4 p-3 rounded" style="background-color: #f8f9fa;">
+            <div class="step-number me-3">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" 
+                   style="width: 40px; height: 40px; font-size: 1.2rem;">
+                1
+              </div>
+            </div>
+            <div class="step-content flex-grow-1">
+              <h6 class="fw-bold mb-2">
+                <i class="fas fa-calendar-check text-primary me-2"></i>
+                Selecciona un día en el calendario
+              </h6>
+              <p class="mb-0 text-muted small">
+                En el calendario a la derecha, haz <strong>clic sobre cualquier día</strong> (pasado, presente o futuro) 
+                donde quieras registrar el consumo de materiales.
+              </p>
+            </div>
+          </div>
+
+          <!-- Paso 2 -->
+          <div class="step-item d-flex mb-4 p-3 rounded" style="background-color: #f8f9fa;">
+            <div class="step-number me-3">
+              <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center fw-bold" 
+                   style="width: 40px; height: 40px; font-size: 1.2rem;">
+                2
+              </div>
+            </div>
+            <div class="step-content flex-grow-1">
+              <h6 class="fw-bold mb-2">
+                <i class="fas fa-window-maximize text-success me-2"></i>
+                Se abrirá un menú con opciones
+              </h6>
+              <p class="mb-0 text-muted small">
+                Aparecerá un cuadro de diálogo mostrando información del día seleccionado y las opciones disponibles.
+              </p>
+            </div>
+          </div>
+
+          <!-- Paso 3 -->
+          <div class="step-item d-flex mb-4 p-3 rounded" style="background-color: #f8f9fa;">
+            <div class="step-number me-3">
+              <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center fw-bold" 
+                   style="width: 40px; height: 40px; font-size: 1.2rem;">
+                3
+              </div>
+            </div>
+            <div class="step-content flex-grow-1">
+              <h6 class="fw-bold mb-2">
+                <i class="fas fa-plus-square text-info me-2"></i>
+                Haz clic en "Registrar Consumo"
+              </h6>
+              <p class="mb-0 text-muted small">
+                En el menú que aparece, selecciona la opción <strong>"Registrar Consumo para esta Fecha"</strong> 
+                (botón verde con ícono de más).
+              </p>
+            </div>
+          </div>
+
+          <!-- Paso 4 -->
+          <div class="step-item d-flex p-3 rounded" style="background-color: #f8f9fa;">
+            <div class="step-number me-3">
+              <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center fw-bold" 
+                   style="width: 40px; height: 40px; font-size: 1.2rem;">
+                4
+              </div>
+            </div>
+            <div class="step-content flex-grow-1">
+              <h6 class="fw-bold mb-2">
+                <i class="fas fa-edit text-warning me-2"></i>
+                Completa el formulario de registro
+              </h6>
+              <p class="mb-0 text-muted small">
+                Ingresa los detalles del consumo: material utilizado, cantidad, actividad realizada, 
+                responsable y observaciones. Luego guarda el registro.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nota importante -->
+        <div class="alert alert-info border-0 mt-4 mb-0" style="background-color: #e3f2fd;">
+          <div class="d-flex align-items-start">
+            <i class="fas fa-exclamation-circle fs-5 me-3 text-info mt-1"></i>
+            <div>
+              <h6 class="fw-bold mb-2 text-info">
+                <i class="fas fa-star me-1"></i>
+                Nota Importante
+              </h6>
+              <ul class="mb-0 small text-muted ps-3">
+                <li>Puedes registrar consumos para <strong>cualquier día</strong> (pasado, presente o futuro)</li>
+                <li>Los días con consumos registrados aparecerán con un <span class="badge bg-success">✓</span> verde</li>
+                <li>Los días sin registros mostrarán un <span class="badge bg-secondary">⚠</span> gris</li>
+                <li>Puedes editar o eliminar consumos desde el menú del día</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div class="modal-footer bg-light" style="padding: 1rem 2rem;">
+        <button type="button" class="btn btn-primary btn-lg px-4" data-bs-dismiss="modal" style="border-radius: 10px;">
+          <i class="fas fa-check-circle me-2"></i>
+          ¡Entendido!
         </button>
       </div>
     </div>
