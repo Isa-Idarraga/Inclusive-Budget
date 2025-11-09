@@ -33,10 +33,10 @@ class MaterialForm(forms.ModelForm):
     )
     supplier_price = forms.IntegerField(
         label="Precio con proveedor (COP)",
-        min_value=0,
+        min_value=1,
         required=True,
         widget=forms.NumberInput(
-            attrs={"class": "form-control", "step": "1", "min": "0", "inputmode": "numeric"}
+            attrs={"class": "form-control", "step": "1", "min": "1", "inputmode": "numeric"}
         ),
     )
 
@@ -72,7 +72,7 @@ class MaterialForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "step": "0.001",
-                    "min": "0",
+                    "min": "0.001",
                     "inputmode": "decimal",
                 }
             ),
@@ -105,6 +105,14 @@ class MaterialForm(forms.ModelForm):
         if price <= 0:
             raise forms.ValidationError("El precio debe ser mayor a cero.")
         return price
+    
+    def clean_presentation_qty(self):
+        qty = self.cleaned_data.get("presentation_qty")
+        if qty is None:
+            raise forms.ValidationError("Este campo es obligatorio.")
+        if qty <= 0:
+            raise forms.ValidationError("La cantidad debe ser mayor a cero.")
+        return qty
     
     def clean_supplier_name(self):
         name = (self.cleaned_data.get("supplier_name") or "").strip()
@@ -145,7 +153,7 @@ class MaterialSupplierForm(forms.ModelForm):
             "price": forms.NumberInput(
                 attrs={
                     "class": "form-control",
-                    "min": "0",
+                    "min": "1",
                     "step": "1",
                     "inputmode": "numeric",
                 }
