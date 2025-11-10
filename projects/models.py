@@ -29,12 +29,42 @@ class Role(models.Model):
 
 
 class Worker(models.Model):
+    BLOOD_TYPE_CHOICES = [
+        ('A+', 'A+'),
+        ('A-', 'A-'),
+        ('B+', 'B+'),
+        ('B-', 'B-'),
+        ('AB+', 'AB+'),
+        ('AB-', 'AB-'),
+        ('O+', 'O+'),
+        ('O-', 'O-'),
+    ]
+
     name = models.CharField(max_length=200, verbose_name="Nombre del trabajador")
     phone = models.CharField(max_length=20, verbose_name="Teléfono")
     cedula = models.CharField(max_length=20, verbose_name="Cédula")
     direccion = models.CharField(max_length=200, verbose_name="Dirección")
     role = models.ForeignKey(
         Role, on_delete=models.SET_NULL, null=True, verbose_name="Rol"
+    )
+    eps = models.CharField(max_length=100, verbose_name="EPS", default="Por asignar")
+    arl = models.CharField(max_length=100, verbose_name="ARL", default="Por asignar")
+    blood_type = models.CharField(
+        max_length=3, 
+        choices=BLOOD_TYPE_CHOICES, 
+        verbose_name="Tipo de Sangre",
+        null=True,
+        blank=True
+    )
+    emergency_contact_name = models.CharField(
+        max_length=200, 
+        verbose_name="Nombre del Acudiente",
+        default="Por asignar"
+    )
+    emergency_contact_phone = models.CharField(
+        max_length=20, 
+        verbose_name="Teléfono del Acudiente",
+        default="Por asignar"
     )
 
     class Meta:
@@ -43,6 +73,24 @@ class Worker(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        import re
+
+        # Validar formato de teléfono del acudiente y del trabajador
+        phone_pattern = re.compile(r'^\+?1?\d{9,15}$')
+        if not phone_pattern.match(self.emergency_contact_phone):
+            raise ValidationError({
+                'emergency_contact_phone': 'El número de teléfono debe contener solo números y tener entre 9 y 15 dígitos.'
+            })
+
+        if not phone_pattern.match(self.phone):
+            raise ValidationError({
+                'phone': 'El número de teléfono debe contener solo números y tener entre 9 y 15 dígitos.'
+            })
+
+        super().clean()
 
 
 class UnitPrice(models.Model):
