@@ -319,13 +319,25 @@ class Project(models.Model):
 
     @property
     def presupuesto_gastado_calculado(self):
-    
+        from django.db.models import OuterRef, Subquery
+        from django.db.models.functions import Coalesce
+        from catalog.models import MaterialSupplier
+
+        supplier_price = MaterialSupplier.objects.filter(
+            material_id=OuterRef("material_id"),
+            supplier_id=OuterRef("proveedor_id")
+        ).values("price")[:1]
+
         total = (
             EntradaMaterial.objects
             .filter(proyecto=self)
             .annotate(
+                precio_unitario=Coalesce(
+                    Subquery(supplier_price),
+                    F("material__unit_cost")
+                ),
                 costo=ExpressionWrapper(
-                    F("cantidad") * F("material__unit_cost"),
+                    F("cantidad") * F("precio_unitario"),
                     output_field=DecimalField(max_digits=15, decimal_places=2)
                 )
             )

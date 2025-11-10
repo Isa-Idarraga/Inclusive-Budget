@@ -6,6 +6,28 @@ class EntradaMaterialForm(forms.ModelForm):
     class Meta:
         model = EntradaMaterial
         fields = ["material", "cantidad", "lote", "proveedor", "fecha_ingreso"]
+        widgets = {
+            "material": forms.Select(attrs={
+                "class": "form-select form-select-inclusive d-none",
+                "data-material-select": "true"
+            }),
+            "cantidad": forms.NumberInput(attrs={
+                "class": "form-control form-control-inclusive",
+                "step": "1",
+                "min": "1"
+            }),
+            "lote": forms.TextInput(attrs={
+                "class": "form-control form-control-inclusive",
+                "placeholder": "Ingresa el número o referencia del lote"
+            }),
+            "proveedor": forms.Select(attrs={
+                "class": "form-select form-select-inclusive"
+            }),
+            "fecha_ingreso": forms.DateInput(attrs={
+                "class": "form-control form-control-inclusive",
+                "type": "date"
+            }),
+        }
 
     material = forms.ModelChoiceField(
         queryset=Material.objects.all(),
@@ -24,6 +46,37 @@ class EntradaMaterialForm(forms.ModelForm):
         }),
         label="Fecha de ingreso"
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Añadir clases consistentes a los campos generados de forma dinámica.
+        self.fields["material"].widget.attrs.setdefault(
+            "class", "form-select form-select-inclusive d-none"
+        )
+        self.fields["cantidad"].widget.attrs.setdefault("placeholder", "Ej: 10")
+        self.fields["lote"].widget.attrs.setdefault(
+            "placeholder", "Ingresa el número o referencia del lote"
+        )
+
+        # Filtrar proveedores según el material seleccionado.
+        material_value = self.data.get("material") or self.initial.get("material")
+        if not material_value and getattr(self.instance, "material_id", None):
+            material_value = self.instance.material_id
+
+        material_id = None
+        if hasattr(material_value, "pk"):
+            material_id = material_value.pk
+        elif material_value:
+            material_id = material_value
+
+        if material_id:
+            proveedores = Supplier.objects.filter(
+                material_prices__material_id=material_id
+            ).distinct().order_by("name")
+        else:
+            proveedores = Supplier.objects.none()
+
+        self.fields["proveedor"].queryset = proveedores
 
 
 # Formulario para registrar consumo diario de materiales (RF17A)

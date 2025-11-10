@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Max, Sum, F, Count
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
 from django.db.models import Q, Max, Sum, F, DecimalField, ExpressionWrapper
+from catalog.models import Material, Supplier, MaterialSupplier
 from django.utils import timezone
 from zoneinfo import ZoneInfo
 import openpyxl
@@ -22,7 +23,7 @@ from users.decorators import role_required, project_owner_or_jefe_required
 from users.models import User
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, F, ExpressionWrapper, FloatField
 from django.shortcuts import render, get_object_or_404
@@ -200,6 +201,74 @@ def registrar_entrada_material(request, project_id):
                 pass
 
     return render(request, "projects/registrar_entrada_material.html", {"form": form, "project": project})
+
+
+@login_required
+def search_materials(request):
+    """Devuelve materiales filtrados por nombre o código para el buscador dinámico."""
+    term = request.GET.get("q", "").strip()
+
+    if len(term) < 2:
+        return JsonResponse({
+            "results": [],
+            "count": 0,
+            "requires_more": True,
+        })
+
+    materials = (
+        Material.objects.filter(
+            Q(name__icontains=term) | Q(sku__icontains=term)
+        )
+        .select_related("unit")
+        .order_by("name")[:20]
+    )
+
+    results = [
+        {
+            "id": material.id,
+            "sku": material.sku,
+            "name": material.name,
+            "unit": material.unit.symbol,
+            "unit_name": material.unit.name,
+        }
+        for material in materials
+    ]
+
+    return JsonResponse({
+        "results": results,
+        "count": len(results),
+        "query": term,
+    })
+
+
+@login_required
+def material_suppliers(request):
+    """Lista proveedores disponibles para un material específico."""
+    material_id = request.GET.get("material_id")
+
+    if not material_id:
+        return JsonResponse({"results": [], "message": "material_id requerido"}, status=400)
+
+    suppliers = (
+        MaterialSupplier.objects.filter(material_id=material_id)
+        .select_related("supplier")
+        .order_by("supplier__name")
+    )
+
+    results = [
+        {
+            "id": item.supplier.id,
+            "name": item.supplier.name,
+            "price": float(item.price) if item.price is not None else None,
+            "preferred": item.preferred,
+        }
+        for item in suppliers
+    ]
+
+    return JsonResponse({
+        "results": results,
+        "count": len(results),
+    })
 
 @role_required(User.CONSTRUCTOR, User.JEFE)
 def project_list(request):
@@ -447,6 +516,19 @@ def project_board(request, project_id):
     # Entradas de materiales del proyecto
     entradas_raw = project.entradas.all().order_by('material__name', '-fecha_ingreso')
 
+    # Pre-cargar precios por proveedor para evitar consultas repetidas
+    material_ids = {entrada.material_id for entrada in entradas_raw}
+    supplier_ids = {entrada.proveedor_id for entrada in entradas_raw if entrada.proveedor_id}
+    supplier_price_map = {}
+    if material_ids and supplier_ids:
+        supplier_price_map = {
+            (mp.material_id, mp.supplier_id): mp.price
+            for mp in MaterialSupplier.objects.filter(
+                material_id__in=material_ids,
+                supplier_id__in=supplier_ids
+            )
+        }
+
     # Importar el modelo de consumos
     from .models import ConsumoMaterial, ProyectoMaterial
 
@@ -458,7 +540,8 @@ def project_board(request, project_id):
         'cantidad_total': 0,
         'stock_proyecto': 0,
         'consumos': [],
-        'cantidad_consumida': 0
+        'cantidad_consumida': 0,
+        'costo_total': Decimal('0')
     })
 
     for entrada in entradas_raw:
@@ -480,6 +563,21 @@ def project_board(request, project_id):
 
         materiales_agrupados[material_id]['entradas'].append(entrada)
         materiales_agrupados[material_id]['cantidad_total'] += entrada.cantidad
+
+        # Determinar precio por unidad
+        unit_price = None
+        if entrada.proveedor_id:
+            unit_price = supplier_price_map.get((entrada.material_id, entrada.proveedor_id))
+        if unit_price is None and entrada.material.unit_cost is not None:
+            unit_price = entrada.material.unit_cost
+
+        entrada.unit_price_display = unit_price
+        if unit_price is not None:
+            total_price = unit_price * entrada.cantidad
+            entrada.total_price_display = total_price
+            materiales_agrupados[material_id]['costo_total'] += total_price
+        else:
+            entrada.total_price_display = None
 
     # Calcular el stock correcto para cada material después de sumar todas las entradas
     for material_id, data in materiales_agrupados.items():
