@@ -24,6 +24,7 @@ urlpatterns = [
     # Nuevas URLs para trabajadores y roles
     path('workers/create/', views.worker_create, name='worker_create'),
     path('workers/', views.worker_list, name='worker_list'),
+    path('workers/<int:worker_id>/edit/', views.worker_edit, name='worker_edit'),
     path('roles/create/', views.role_create, name='role_create'),
     path('roles/', views.role_list, name='role_list'),
     path('roles/<int:role_id>/update/', views.role_update, name='role_update'),
@@ -89,4 +90,6 @@ urlpatterns = [
     path('etapas/<int:etapa_id>/consumos/', views.detalle_etapa_consumos, name='detalle_etapa_consumos'),
     path('projects/<int:project_id>/exportar_avance_etapas_excel/', views.exportar_avance_etapas_excel, name='exportar_avance_etapas_excel'),
     
+    # URL para duplicar proyecto
+    path('<int:project_id>/duplicate/', views.project_duplicate, name='project_duplicate'),
 ]

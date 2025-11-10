@@ -1,6 +1,31 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+    .password-field-container {
+        position: relative;
+    }
+    .password-field-container input {
+        padding-right: 40px;
+    }
+    .toggle-password {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #6c757d;
+        z-index: 10;
+        padding: 10px;
+        user-select: none;
+    }
+    .toggle-password:hover {
+        color: #5a6268;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="row justify-content-center">
@@ -93,7 +118,12 @@
                                 <label for="{{ form.current_password.id_for_label }}" class="form-label">
                                     <strong>Contraseña actual</strong>
                                 </label>
-                                {{ form.current_password }}
+                                <div class="password-field-container">
+                                    {{ form.current_password }}
+                                    <span class="toggle-password" role="button" tabindex="0" data-target="current-password">
+                                        <i class="fas fa-eye"></i>
+                                    </span>
+                                </div>
                                 <small class="form-text text-muted">{{ form.current_password.help_text }}</small>
                                 {% if form.current_password.errors %}
                                 <div class="text-danger">{{ form.current_password.errors }}</div>
@@ -106,7 +136,12 @@
                                 <label for="{{ form.new_password.id_for_label }}" class="form-label">
                                     <strong>Nueva contraseña</strong>
                                 </label>
-                                {{ form.new_password }}
+                                <div class="password-field-container">
+                                    {{ form.new_password }}
+                                    <span class="toggle-password" role="button" tabindex="0" data-target="new-password">
+                                        <i class="fas fa-eye"></i>
+                                    </span>
+                                </div>
                                 <small class="form-text text-muted">{{ form.new_password.help_text }}</small>
                                 {% if form.new_password.errors %}
                                 <div class="text-danger">{{ form.new_password.errors }}</div>
@@ -117,7 +152,12 @@
                                 <label for="{{ form.confirm_password.id_for_label }}" class="form-label">
                                     <strong>Confirmar nueva contraseña</strong>
                                 </label>
-                                {{ form.confirm_password }}
+                                <div class="password-field-container">
+                                    {{ form.confirm_password }}
+                                    <span class="toggle-password" role="button" tabindex="0" data-target="confirm-password">
+                                        <i class="fas fa-eye"></i>
+                                    </span>
+                                </div>
                                 {% if form.confirm_password.errors %}
                                 <div class="text-danger">{{ form.confirm_password.errors }}</div>
                                 {% endif %}
@@ -190,14 +230,58 @@
     </div>
 </div>
 
-<!-- Script para confirmar cambio de contraseña -->
+{% endblock %}
+
+{% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('load', function() {
+    // Configurar los campos de contraseña
+    const passwordFields = [
+        {id: 'current-password', buttonSelector: '[data-target="current-password"]'},
+        {id: 'new-password', buttonSelector: '[data-target="new-password"]'},
+        {id: 'confirm-password', buttonSelector: '[data-target="confirm-password"]'}
+    ];
+
+    passwordFields.forEach(field => {
+        const passwordField = document.getElementById(field.id);
+        const toggleButton = document.querySelector(field.buttonSelector);
+        
+        if (passwordField && toggleButton) {
+            // Asegurarse de que el campo comience como tipo password
+            passwordField.type = 'password';
+            
+            // Función para alternar la visibilidad
+            function toggleVisibility(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                if (passwordField.type === 'password') {
+                    passwordField.type = 'text';
+                    toggleButton.querySelector('i').className = 'fas fa-eye-slash';
+                } else {
+                    passwordField.type = 'password';
+                    toggleButton.querySelector('i').className = 'fas fa-eye';
+                }
+            }
+            
+            // Agregar event listeners
+            toggleButton.addEventListener('click', toggleVisibility);
+            toggleButton.addEventListener('touchend', toggleVisibility);
+            
+            // Permitir alternar con la tecla Enter
+            toggleButton.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    toggleVisibility(e);
+                }
+            });
+        }
+    });
+
+    // Confirmación al cambiar la contraseña
     const form = document.querySelector('form');
-    const newPasswordField = document.querySelector('#{{ form.new_password.id_for_label }}');
+    const newPasswordField = document.getElementById('new-password');
     
     form.addEventListener('submit', function(e) {
-        // Solo mostrar confirmación si se está cambiando la contraseña
         if (newPasswordField && newPasswordField.value.trim() !== '') {
             if (!confirm('⚠️ Al cambiar tu contraseña, cerraremos tu sesión por seguridad.\n\n¿Estás seguro de que deseas continuar?')) {
                 e.preventDefault();

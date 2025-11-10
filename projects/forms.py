@@ -246,7 +246,34 @@ class RoleForm(forms.ModelForm):
 class WorkerForm(forms.ModelForm):
     class Meta:
         model = Worker
-        fields = ["name", "phone", "cedula", "direccion", "role"]
+        fields = [
+            "name", 
+            "phone", 
+            "cedula", 
+            "direccion", 
+            "role",
+            "eps",
+            "arl",
+            "blood_type",
+            "emergency_contact_name",
+            "emergency_contact_phone"
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: +573101234567'}),
+            'cedula': forms.TextInput(attrs={'class': 'form-control'}),
+            'direccion': forms.TextInput(attrs={'class': 'form-control'}),
+            'role': forms.Select(attrs={'class': 'form-select'}),
+            'eps': forms.TextInput(attrs={'class': 'form-control', 'required': 'required'}),
+            'arl': forms.TextInput(attrs={'class': 'form-control', 'required': 'required'}),
+            'blood_type': forms.Select(attrs={'class': 'form-select'}),
+            'emergency_contact_name': forms.TextInput(attrs={'class': 'form-control', 'required': 'required'}),
+            'emergency_contact_phone': forms.TextInput(attrs={
+                'class': 'form-control', 
+                'required': 'required',
+                'placeholder': 'Ej: +573101234567'
+            }),
+        }
 
 
 class ProjectForm(forms.ModelForm):
