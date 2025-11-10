@@ -2,13 +2,483 @@
 
 {% block content %}
 <div class="container py-4">
-  <h2 class="mb-4">Registrar entrada de materiales en {{ project.name }}</h2>
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h2 class="mb-1">Registrar compra para {{ project.name }}</h2>
+      <p class="text-muted mb-0">Busca el material, selecciona al proveedor y completa los datos de ingreso.</p>
+    </div>
+    <a href="{% url 'projects:project_board' project.id %}" class="btn btn-outline-secondary btn-sm">Volver al tablero</a>
+  </div>
 
-  <form method="post" class="card p-4 shadow-sm">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Guardar entrada</button>
-    <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary">Cancelar</a>
-  </form>
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <form method="post" class="card border-0 shadow-sm">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="card-body">
+          <div class="mb-4">
+            <label for="material-search" class="form-label fw-semibold">Material</label>
+            <div class="input-group material-search-group">
+              <span class="input-group-text bg-white text-muted">Buscar</span>
+              <input
+                type="text"
+                id="material-search"
+                class="form-control form-control-inclusive"
+                placeholder="Escribe al menos 2 letras del nombre o código"
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-text">Puedes buscar por nombre, código o combinación de ambos.</div>
+
+            <div class="position-relative mt-2">
+              <div
+                id="material-results"
+                class="list-group list-group-flush d-none shadow-sm position-absolute start-0 top-100 w-100 material-results"
+              ></div>
+            </div>
+
+            <div id="material-no-results" class="alert alert-warning mt-3 d-none" role="alert"></div>
+            <div id="material-selected" class="alert alert-info mt-3 d-none" role="status"></div>
+
+            {% if form.material.errors %}
+              <div class="text-danger small mt-2">{{ form.material.errors|join:" " }}</div>
+            {% endif %}
+
+            <div class="d-none">
+              {{ form.material }}
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="{{ form.cantidad.id_for_label }}" class="form-label fw-semibold">Cantidad</label>
+              {{ form.cantidad }}
+              <div class="form-text">Ingresa el número de unidades recibidas.</div>
+              {% if form.cantidad.errors %}
+                <div class="text-danger small mt-2">{{ form.cantidad.errors|join:" " }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label for="{{ form.lote.id_for_label }}" class="form-label fw-semibold">Lote</label>
+              {{ form.lote }}
+              <div class="form-text">Identifica el número o referencia del lote asociado a la compra.</div>
+              {% if form.lote.errors %}
+                <div class="text-danger small mt-2">{{ form.lote.errors|join:" " }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label for="{{ form.proveedor.id_for_label }}" class="form-label fw-semibold">Proveedor</label>
+              {{ form.proveedor }}
+              <div id="proveedor-help" class="form-text">Selecciona un material para ver proveedores disponibles.</div>
+              <div id="proveedor-alert" class="alert alert-warning mt-2 d-none" role="alert"></div>
+              {% if form.proveedor.errors %}
+                <div class="text-danger small mt-2">{{ form.proveedor.errors|join:" " }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label for="{{ form.fecha_ingreso.id_for_label }}" class="form-label fw-semibold">Fecha de ingreso</label>
+              {{ form.fecha_ingreso }}
+              <div class="form-text">Fecha en la que la compra ingresa al proyecto.</div>
+              {% if form.fecha_ingreso.errors %}
+                <div class="text-danger small mt-2">{{ form.fecha_ingreso.errors|join:" " }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer bg-light d-flex justify-content-end gap-2">
+          <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-outline-secondary">Cancelar</a>
+          <button type="submit" class="btn btn-success">Guardar entrada</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 sticky-top" style="top: 1.5rem;">
+        <div class="card-body">
+          <h5 class="card-title d-flex align-items-center gap-2">
+            <span class="badge bg-success text-white">Resumen</span>
+            <span class="text-muted fw-normal">Compra actual</span>
+          </h5>
+          <p class="text-muted small mb-3">Repasa los datos antes de guardar para evitar errores de registro.</p>
+
+          <dl class="row g-2 small mb-0">
+            <dt class="col-5 text-muted">Material</dt>
+            <dd class="col-7" id="summary-material">Sin seleccionar</dd>
+
+            <dt class="col-5 text-muted">Unidad</dt>
+            <dd class="col-7" id="summary-unit">—</dd>
+
+            <dt class="col-5 text-muted">Cantidad</dt>
+            <dd class="col-7" id="summary-quantity">—</dd>
+
+            <dt class="col-5 text-muted">Lote</dt>
+            <dd class="col-7" id="summary-lote">—</dd>
+
+            <dt class="col-5 text-muted">Proveedor</dt>
+            <dd class="col-7" id="summary-provider">—</dd>
+
+            <dt class="col-5 text-muted">Precio de lista</dt>
+            <dd class="col-7" id="summary-price">—</dd>
+
+            <dt class="col-5 text-muted">Fecha ingreso</dt>
+            <dd class="col-7" id="summary-date">—</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<style>
+  .material-search-group .input-group-text {
+    border-right: 0;
+  }
+
+  .material-search-group .form-control {
+    border-left: 0;
+  }
+
+  .material-results {
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 1000;
+  }
+
+  .material-results .list-group-item {
+    border-width: 1px 1px 0 1px;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .material-results .list-group-item:last-child {
+    border-bottom-width: 1px;
+    border-radius: 0 0 0.375rem 0.375rem;
+  }
+
+  .material-results .list-group-item:first-child {
+    border-radius: 0.375rem 0.375rem 0 0;
+  }
+
+  .material-results .list-group-item:hover {
+    background-color: rgba(25, 135, 84, 0.08);
+    transform: translateX(2px);
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('material-search');
+    const resultsContainer = document.getElementById('material-results');
+    const hiddenSelect = document.getElementById('id_material');
+    const selectedAlert = document.getElementById('material-selected');
+    const noResultsAlert = document.getElementById('material-no-results');
+    const searchUrl = "{% url 'projects:search_materials' %}";
+    const suppliersUrl = "{% url 'projects:material_suppliers' %}";
+    const providerSelect = document.getElementById('id_proveedor');
+    const providerHelp = document.getElementById('proveedor-help');
+    const providerAlert = document.getElementById('proveedor-alert');
+    const quantityInput = document.getElementById('{{ form.cantidad.id_for_label }}');
+    const loteInput = document.getElementById('{{ form.lote.id_for_label }}');
+    const dateInput = document.getElementById('{{ form.fecha_ingreso.id_for_label }}');
+
+    const summaryMaterial = document.getElementById('summary-material');
+    const summaryUnit = document.getElementById('summary-unit');
+    const summaryQuantity = document.getElementById('summary-quantity');
+    const summaryLote = document.getElementById('summary-lote');
+    const summaryProvider = document.getElementById('summary-provider');
+    const summaryPrice = document.getElementById('summary-price');
+    const summaryDate = document.getElementById('summary-date');
+
+    let debounceTimer = null;
+    let lastQuery = '';
+    let currentMaterialId = hiddenSelect.value || null;
+    let currentUnitSymbol = '—';
+    let suppliersRequestToken = 0;
+
+    const copFormatter = new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      maximumFractionDigits: 0
+    });
+
+    function updateMaterialSummary(material) {
+      summaryMaterial.textContent = material.label;
+      summaryUnit.textContent = material.unit || '—';
+      currentUnitSymbol = material.unit || '—';
+      selectedAlert.textContent = `${material.label} ${material.unit ? '(' + material.unit + ')' : ''}`.trim();
+      selectedAlert.classList.remove('d-none');
+      searchInput.value = material.label;
+    }
+
+    function resetMaterialSummary() {
+      summaryMaterial.textContent = 'Sin seleccionar';
+      summaryUnit.textContent = '—';
+      currentUnitSymbol = '—';
+      selectedAlert.classList.add('d-none');
+      selectedAlert.textContent = '';
+    }
+
+    function resetProviders() {
+      if (!providerSelect) {
+        return;
+      }
+      providerSelect.innerHTML = '<option value="">Selecciona un proveedor</option>';
+      providerSelect.value = '';
+      providerSelect.setAttribute('disabled', 'disabled');
+      providerHelp.textContent = 'Selecciona un material para ver proveedores disponibles.';
+      providerAlert.classList.add('d-none');
+      providerAlert.textContent = '';
+      summaryProvider.textContent = '—';
+      summaryPrice.textContent = '—';
+    }
+
+    function populateProviders(suppliers, selectedId) {
+      providerSelect.innerHTML = '<option value="">Selecciona un proveedor</option>';
+
+      suppliers.forEach(function (supplier) {
+        let label = supplier.name;
+        if (supplier.price !== null && !Number.isNaN(supplier.price)) {
+          label += ` — ${copFormatter.format(supplier.price)}`;
+        }
+        if (supplier.preferred) {
+          label += ' • Preferido';
+        }
+
+        const option = new Option(label, supplier.id, false, false);
+        option.dataset.name = supplier.name;
+        option.dataset.price = supplier.price !== null ? supplier.price : '';
+        option.dataset.preferred = supplier.preferred ? '1' : '';
+        providerSelect.add(option);
+      });
+
+      if (selectedId) {
+        providerSelect.value = String(selectedId);
+      }
+
+      if (suppliers.length > 0) {
+        providerSelect.removeAttribute('disabled');
+        providerHelp.textContent = 'Selecciona el proveedor asociado al material.';
+        providerAlert.classList.add('d-none');
+        providerAlert.textContent = '';
+      } else {
+        providerSelect.setAttribute('disabled', 'disabled');
+        providerHelp.textContent = 'No hay proveedores registrados para este material.';
+        providerAlert.textContent = 'Agrega proveedores desde el catálogo o selecciona otro material.';
+        providerAlert.classList.remove('d-none');
+      }
+
+      updateProviderSummary();
+    }
+
+    function updateProviderSummary() {
+      if (!providerSelect || !providerSelect.value) {
+        summaryProvider.textContent = '—';
+        summaryPrice.textContent = '—';
+        return;
+      }
+
+      const option = providerSelect.options[providerSelect.selectedIndex];
+      const name = option.dataset.name || option.text;
+      const price = option.dataset.price;
+      const preferred = option.dataset.preferred;
+
+      summaryProvider.textContent = preferred ? `${name} (Preferido)` : name;
+      summaryPrice.textContent = price ? copFormatter.format(price) : '—';
+    }
+
+    function loadSuppliers(materialId, selectedProviderId) {
+      if (!providerSelect) {
+        return;
+      }
+
+      suppliersRequestToken += 1;
+      const requestId = suppliersRequestToken;
+
+      providerSelect.setAttribute('disabled', 'disabled');
+      providerHelp.textContent = 'Cargando proveedores…';
+      providerAlert.classList.add('d-none');
+      providerAlert.textContent = '';
+
+      fetch(`${suppliersUrl}?material_id=${materialId}`)
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error('Respuesta no válida');
+          }
+          return response.json();
+        })
+        .then(function (data) {
+          if (requestId !== suppliersRequestToken) {
+            return;
+          }
+          populateProviders(data.results || [], selectedProviderId);
+        })
+        .catch(function () {
+          if (requestId !== suppliersRequestToken) {
+            return;
+          }
+          providerSelect.setAttribute('disabled', 'disabled');
+          providerHelp.textContent = 'No fue posible cargar los proveedores.';
+          providerAlert.textContent = 'Intenta nuevamente o revisa tu conexión.';
+          providerAlert.classList.remove('d-none');
+        });
+    }
+
+    function hideResults() {
+      resultsContainer.classList.add('d-none');
+      resultsContainer.innerHTML = '';
+    }
+
+    function clearSearchSelection() {
+      hiddenSelect.value = '';
+      resetMaterialSummary();
+      currentMaterialId = null;
+      hideResults();
+      resetProviders();
+    }
+
+    function ensureOption(materialId, label) {
+      const existingOption = Array.from(hiddenSelect.options).find(function (option) {
+        return option.value === String(materialId);
+      });
+
+      if (existingOption) {
+        hiddenSelect.value = existingOption.value;
+        return existingOption;
+      }
+
+      const option = new Option(label, materialId, true, true);
+      hiddenSelect.add(option);
+      hiddenSelect.value = option.value;
+      return option;
+    }
+
+    function renderResults(items) {
+      if (!items.length) {
+        hideResults();
+        noResultsAlert.textContent = `No hay coincidencias para "${lastQuery}".`;
+        noResultsAlert.classList.remove('d-none');
+        return;
+      }
+
+      noResultsAlert.classList.add('d-none');
+      resultsContainer.innerHTML = '';
+      resultsContainer.classList.remove('d-none');
+
+      items.forEach(function (material) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'list-group-item list-group-item-action';
+        button.dataset.materialId = material.id;
+        button.innerHTML = `
+          <div class="fw-semibold">${material.sku} <span class="text-muted">(${material.unit})</span></div>
+          <div class="small text-muted">${material.name}</div>
+        `;
+
+        button.addEventListener('click', function () {
+          const label = `${material.sku} — ${material.name}`;
+          ensureOption(material.id, label);
+          updateMaterialSummary({ label, unit: material.unit });
+          currentMaterialId = material.id;
+          hideResults();
+          loadSuppliers(material.id, null);
+        });
+
+        resultsContainer.appendChild(button);
+      });
+    }
+
+    function fetchMaterials(term) {
+      const queryAtDispatch = term;
+      fetch(`${searchUrl}?q=${encodeURIComponent(term)}`)
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (lastQuery !== queryAtDispatch) {
+            return;
+          }
+          renderResults(data.results || []);
+        })
+        .catch(function () {
+          hideResults();
+          noResultsAlert.textContent = 'No fue posible buscar materiales ahora mismo.';
+          noResultsAlert.classList.remove('d-none');
+        });
+    }
+
+    searchInput.addEventListener('input', function (event) {
+      const term = event.target.value.trim();
+
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+
+      if (term.length < 2) {
+        lastQuery = '';
+        hideResults();
+        if (term === '') {
+          clearSearchSelection();
+          noResultsAlert.classList.add('d-none');
+        }
+        return;
+      }
+
+      lastQuery = term;
+      debounceTimer = setTimeout(function () {
+        fetchMaterials(term);
+      }, 250);
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!resultsContainer.contains(event.target) && event.target !== searchInput) {
+        hideResults();
+      }
+    });
+
+    if (providerSelect) {
+      providerSelect.addEventListener('change', updateProviderSummary);
+    }
+
+    if (quantityInput) {
+      quantityInput.addEventListener('input', function () {
+        summaryQuantity.textContent = quantityInput.value ? `${quantityInput.value} ${currentUnitSymbol !== '—' ? currentUnitSymbol : ''}`.trim() : '—';
+      });
+    }
+
+    if (loteInput) {
+      loteInput.addEventListener('input', function () {
+        summaryLote.textContent = loteInput.value || '—';
+      });
+    }
+
+    if (dateInput) {
+      dateInput.addEventListener('input', function () {
+        summaryDate.textContent = dateInput.value || '—';
+      });
+    }
+
+    const initialValue = hiddenSelect.value;
+    if (initialValue) {
+      const option = hiddenSelect.options[hiddenSelect.selectedIndex];
+      if (option) {
+        updateMaterialSummary({ label: option.textContent.trim(), unit: null });
+      }
+      loadSuppliers(initialValue, providerSelect ? providerSelect.value : null);
+    } else {
+      resetMaterialSummary();
+      resetProviders();
+    }
+
+    if (providerSelect && providerSelect.value) {
+      providerSelect.removeAttribute('disabled');
+      updateProviderSummary();
+    }
+
+    summaryQuantity.textContent = quantityInput && quantityInput.value ? `${quantityInput.value} ${currentUnitSymbol !== '—' ? currentUnitSymbol : ''}`.trim() : '—';
+    summaryLote.textContent = loteInput && loteInput.value ? loteInput.value : '—';
+    summaryDate.textContent = dateInput && dateInput.value ? dateInput.value : '—';
+  });
+</script>
 {% endblock %}

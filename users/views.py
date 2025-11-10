@@ -12,14 +12,17 @@ from .password_manager import PasswordManager
 # Formulario personalizado para crear/editar usuarios
 class UserManagementForm(forms.ModelForm):
     password = forms.CharField(
-        widget=forms.PasswordInput(),
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'id': 'password-field'
+        }),
         required=False,
         help_text="Deja en blanco para mantener la contraseña actual (solo al editar)"
     )
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'is_staff']
+        fields = ['username', 'email', 'first_name', 'last_name', 'role', 'is_active']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
@@ -32,19 +35,28 @@ class UserManagementForm(forms.ModelForm):
 # Formulario para editar el perfil propio del usuario
 class UserProfileForm(forms.ModelForm):
     current_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'id': 'current-password'
+        }),
         required=False,
         label="Contraseña actual",
         help_text="Requerida solo si deseas cambiar tu contraseña"
     )
     new_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'id': 'new-password'
+        }),
         required=False,
         label="Nueva contraseña",
         help_text="Deja en blanco si no deseas cambiar tu contraseña"
     )
     confirm_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'id': 'confirm-password'
+        }),
         required=False,
         label="Confirmar nueva contraseña"
     )

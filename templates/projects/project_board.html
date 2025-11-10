@@ -153,6 +153,14 @@
                         <span class="badge bg-success fs-6">{{ item.stock_proyecto|floatformat:0 }}</span>
                       </div>
                     </div>
+                    {% if item.costo_total %}
+                      <div class="mt-2 text-center">
+                        <small class="text-muted d-block">Inversión acumulada</small>
+                        <span class="badge" style="background-color: #e0f2ff; color: #0b5394; font-size: 1rem;">
+                          ${{ item.costo_total|floatformat:0|intcomma }}
+                        </span>
+                      </div>
+                    {% endif %}
                   </div>
 
                   <!-- Detalle de compras (colapsable) -->
@@ -167,6 +175,14 @@
                               <strong>Cantidad:</strong> {{ entrada.cantidad }}<br>
                               {% if entrada.proveedor %}
                                 <strong>Proveedor:</strong> {{ entrada.proveedor.name }}<br>
+                              {% endif %}
+                              {% if entrada.unit_price_display is not None %}
+                                <strong>Precio unitario:</strong>
+                                <span class="badge" style="background-color: #fde2e4; color: #912f40;">${{ entrada.unit_price_display|floatformat:0|intcomma }}</span><br>
+                              {% endif %}
+                              {% if entrada.total_price_display is not None %}
+                                <strong>Total compra:</strong>
+                                <span class="badge" style="background-color: #dfe7fd; color: #364fc7;">${{ entrada.total_price_display|floatformat:0|intcomma }}</span><br>
                               {% endif %}
                               <strong>Fecha:</strong> {{ entrada.fecha_ingreso|date:"d M Y" }}
                             </div>

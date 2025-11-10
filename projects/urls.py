@@ -24,6 +24,7 @@ urlpatterns = [
     # Nuevas URLs para trabajadores y roles
     path('workers/create/', views.worker_create, name='worker_create'),
     path('workers/', views.worker_list, name='worker_list'),
+    path('workers/<int:worker_id>/edit/', views.worker_edit, name='worker_edit'),
     path('roles/create/', views.role_create, name='role_create'),
     path('roles/', views.role_list, name='role_list'),
     path('roles/<int:role_id>/update/', views.role_update, name='role_update'),
@@ -31,6 +32,8 @@ urlpatterns = [
     path('<int:project_id>/tablero/', views.project_board, name='project_board'),
     path('roles/<int:role_id>/delete/', views.role_delete, name='role_delete'),
     path("proyectos/<int:project_id>/registrar_entrada_material/", views.registrar_entrada_material, name="registrar_entrada_material"),
+    path('materials/search/', views.search_materials, name='search_materials'),
+    path('materials/suppliers/', views.material_suppliers, name='material_suppliers'),
     path('entrada/<int:entrada_id>/editar/', views.editar_entrada_material, name='editar_entrada_material'),
     path('entrada/<int:entrada_id>/borrar/', views.borrar_entrada_material, name='borrar_entrada_material'),
 
@@ -87,4 +90,6 @@ urlpatterns = [
     path('etapas/<int:etapa_id>/consumos/', views.detalle_etapa_consumos, name='detalle_etapa_consumos'),
     path('projects/<int:project_id>/exportar_avance_etapas_excel/', views.exportar_avance_etapas_excel, name='exportar_avance_etapas_excel'),
     
+    # URL para duplicar proyecto
+    path('<int:project_id>/duplicate/', views.project_duplicate, name='project_duplicate'),
 ]

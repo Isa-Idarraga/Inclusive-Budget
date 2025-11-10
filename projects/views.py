@@ -2,10 +2,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse, Http404
+import io
 from django.core.paginator import Paginator
 from django.db.models import Q, Max, Sum, F, Count
 from .models import Project, Worker, Role, BudgetSection, BudgetItem, ProjectBudgetItem
 from django.db.models import Q, Max, Sum, F, DecimalField, ExpressionWrapper
+from catalog.models import Material, Supplier, MaterialSupplier
 from django.utils import timezone
 from zoneinfo import ZoneInfo
 import openpyxl
@@ -22,7 +24,7 @@ from users.decorators import role_required, project_owner_or_jefe_required
 from users.models import User
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, F, ExpressionWrapper, FloatField
 from django.shortcuts import render, get_object_or_404
@@ -200,6 +202,74 @@ def registrar_entrada_material(request, project_id):
                 pass
 
     return render(request, "projects/registrar_entrada_material.html", {"form": form, "project": project})
+
+
+@login_required
+def search_materials(request):
+    """Devuelve materiales filtrados por nombre o código para el buscador dinámico."""
+    term = request.GET.get("q", "").strip()
+
+    if len(term) < 2:
+        return JsonResponse({
+            "results": [],
+            "count": 0,
+            "requires_more": True,
+        })
+
+    materials = (
+        Material.objects.filter(
+            Q(name__icontains=term) | Q(sku__icontains=term)
+        )
+        .select_related("unit")
+        .order_by("name")[:20]
+    )
+
+    results = [
+        {
+            "id": material.id,
+            "sku": material.sku,
+            "name": material.name,
+            "unit": material.unit.symbol,
+            "unit_name": material.unit.name,
+        }
+        for material in materials
+    ]
+
+    return JsonResponse({
+        "results": results,
+        "count": len(results),
+        "query": term,
+    })
+
+
+@login_required
+def material_suppliers(request):
+    """Lista proveedores disponibles para un material específico."""
+    material_id = request.GET.get("material_id")
+
+    if not material_id:
+        return JsonResponse({"results": [], "message": "material_id requerido"}, status=400)
+
+    suppliers = (
+        MaterialSupplier.objects.filter(material_id=material_id)
+        .select_related("supplier")
+        .order_by("supplier__name")
+    )
+
+    results = [
+        {
+            "id": item.supplier.id,
+            "name": item.supplier.name,
+            "price": float(item.price) if item.price is not None else None,
+            "preferred": item.preferred,
+        }
+        for item in suppliers
+    ]
+
+    return JsonResponse({
+        "results": results,
+        "count": len(results),
+    })
 
 @role_required(User.CONSTRUCTOR, User.JEFE)
 def project_list(request):
@@ -447,6 +517,19 @@ def project_board(request, project_id):
     # Entradas de materiales del proyecto
     entradas_raw = project.entradas.all().order_by('material__name', '-fecha_ingreso')
 
+    # Pre-cargar precios por proveedor para evitar consultas repetidas
+    material_ids = {entrada.material_id for entrada in entradas_raw}
+    supplier_ids = {entrada.proveedor_id for entrada in entradas_raw if entrada.proveedor_id}
+    supplier_price_map = {}
+    if material_ids and supplier_ids:
+        supplier_price_map = {
+            (mp.material_id, mp.supplier_id): mp.price
+            for mp in MaterialSupplier.objects.filter(
+                material_id__in=material_ids,
+                supplier_id__in=supplier_ids
+            )
+        }
+
     # Importar el modelo de consumos
     from .models import ConsumoMaterial, ProyectoMaterial
 
@@ -458,7 +541,8 @@ def project_board(request, project_id):
         'cantidad_total': 0,
         'stock_proyecto': 0,
         'consumos': [],
-        'cantidad_consumida': 0
+        'cantidad_consumida': 0,
+        'costo_total': Decimal('0')
     })
 
     for entrada in entradas_raw:
@@ -480,6 +564,21 @@ def project_board(request, project_id):
 
         materiales_agrupados[material_id]['entradas'].append(entrada)
         materiales_agrupados[material_id]['cantidad_total'] += entrada.cantidad
+
+        # Determinar precio por unidad
+        unit_price = None
+        if entrada.proveedor_id:
+            unit_price = supplier_price_map.get((entrada.material_id, entrada.proveedor_id))
+        if unit_price is None and entrada.material.unit_cost is not None:
+            unit_price = entrada.material.unit_cost
+
+        entrada.unit_price_display = unit_price
+        if unit_price is not None:
+            total_price = unit_price * entrada.cantidad
+            entrada.total_price_display = total_price
+            materiales_agrupados[material_id]['costo_total'] += total_price
+        else:
+            entrada.total_price_display = None
 
     # Calcular el stock correcto para cada material después de sumar todas las entradas
     for material_id, data in materiales_agrupados.items():
@@ -616,8 +715,23 @@ def project_detail(request, project_id):
 def detalle_etapa_consumos(request, etapa_id):
     etapa = get_object_or_404(BudgetSection, id=etapa_id)
 
-    # ← Corrección aquí: "registrado_por" en vez de "responsable"
-    consumos = etapa.consumos_materiales.select_related("material", "registrado_por").all()
+    # Obtener consumos relacionados con la etapa, pero limitar por proyecto cuando sea posible
+    consumos_qs = etapa.consumos_materiales.select_related("material", "registrado_por").all()
+
+    # Si se proporciona ?project=<id> en la URL, lo usamos para filtrar (viene desde project_detail)
+    project_filter = request.GET.get('project')
+    if project_filter:
+        try:
+            pid = int(project_filter)
+            consumos_qs = consumos_qs.filter(proyecto_id=pid)
+        except (ValueError, TypeError):
+            # Ignorar filtro inválido
+            pass
+    # Si la etapa pertenece a un proyecto concreto, filtrar por ese proyecto
+    elif getattr(etapa, 'project_id', None):
+        consumos_qs = consumos_qs.filter(proyecto_id=etapa.project_id)
+
+    consumos = consumos_qs
 
     consumos_con_totales = []
     for c in consumos:
@@ -725,6 +839,30 @@ def project_update(request, project_id):
         },
     )
 
+
+@project_owner_or_jefe_required
+def project_duplicate(request, project_id):
+    """
+    Vista para duplicar un proyecto existente
+    """
+    project = get_object_or_404(Project, id=project_id)
+    
+    if request.method == "POST":
+        try:
+            from .utils import duplicate_project
+            new_project = duplicate_project(project)
+            messages.success(
+                request,
+                f'✅ Proyecto duplicado exitosamente como "{new_project.name}"'
+            )
+            return redirect('projects:project_detail', project_id=new_project.id)
+        except Exception as e:
+            messages.error(request, f'❌ Error al duplicar el proyecto: {str(e)}')
+            return redirect('projects:project_detail', project_id=project_id)
+    
+    return render(request, 'projects/project_duplicate_confirm.html', {
+        'project': project
+    })
 
 @project_owner_or_jefe_required
 def project_delete(request, project_id):
@@ -963,8 +1101,112 @@ def worker_list(request):
     Vista para listar todos los trabajadores
     PostgreSQL: SELECT * FROM projects_worker
     """
-    workers = Worker.objects.all()
+    workers = Worker.objects.all().select_related('role')
+    
+    # Si se solicita exportar a Excel
+    if 'export' in request.GET:
+        # Crear un nuevo libro de trabajo de Excel
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Lista de Trabajadores"
+
+        # Definir estilos
+        header_fill = PatternFill(start_color='198754', end_color='198754', fill_type='solid')
+        header_font = Font(color='FFFFFF', bold=True)
+        header_alignment = Alignment(horizontal='center', vertical='center')
+        border = Border(
+            left=Side(border_style='thin'),
+            right=Side(border_style='thin'),
+            top=Side(border_style='thin'),
+            bottom=Side(border_style='thin')
+        )
+
+        # Encabezados
+        headers = ['Nombre', 'Teléfono', 'Cédula', 'Dirección', 'Rol', 'EPS', 'ARL', 'Tipo de Sangre', 'Acudiente', 'Teléfono Acudiente']
+        ws.append(headers)
+
+        # Aplicar estilos a los encabezados
+        for cell in ws[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+            cell.border = border
+
+        # Datos de trabajadores
+        for worker in workers:
+            ws.append([
+                worker.name,
+                worker.phone,
+                worker.cedula,
+                worker.direccion,
+                worker.role.name if worker.role else '—',
+                worker.eps,
+                worker.arl,
+                worker.blood_type or 'No especificado',
+                worker.emergency_contact_name or 'No especificado',
+                worker.emergency_contact_phone or 'No especificado'
+            ])
+
+        # Aplicar bordes y alineación a todas las celdas
+        data_alignment = Alignment(horizontal='left', vertical='center')
+        for row in ws.iter_rows(min_row=2):
+            for cell in row:
+                cell.border = border
+                cell.alignment = data_alignment
+
+        # Ajustar anchos de columna
+        for column in ws.columns:
+            max_length = 0
+            column = list(column)
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2)
+            ws.column_dimensions[get_column_letter(column[0].column)].width = adjusted_width
+
+        # Crear un buffer de bytes para guardar el archivo
+        excel_file = io.BytesIO()
+        
+        # Guardar el libro de trabajo en el buffer
+        wb.save(excel_file)
+        
+        # Preparar el buffer para lectura
+        excel_file.seek(0)
+        
+        # Crear la respuesta HTTP con el archivo Excel
+        response = HttpResponse(
+            excel_file.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="lista_trabajadores.xlsx"'
+        return response
+
     return render(request, "projects/worker_list.html", {"workers": workers})
+
+@login_required
+def worker_edit(request, worker_id):
+    """
+    Vista para editar un trabajador existente
+    """
+    worker = get_object_or_404(Worker, id=worker_id)
+    
+    if request.method == "POST":
+        form = WorkerForm(request.POST, instance=worker)
+        if form.is_valid():
+            worker = form.save()
+            messages.success(request, f'Trabajador "{worker.name}" actualizado exitosamente.')
+            return redirect('projects:worker_list')
+    else:
+        form = WorkerForm(instance=worker)
+    
+    return render(request, 'projects/worker_form.html', {
+        'form': form,
+        'worker': worker,
+        'is_edit': True
+    })
 
 
 @login_required
