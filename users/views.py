@@ -3,10 +3,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
 from django.contrib import messages
 from django.urls import reverse
+from django.http import HttpResponse
 from .models import User
 from django import forms
 from .decorators import role_required
 from .password_manager import PasswordManager
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
+from datetime import datetime
 
 
 # Formulario personalizado para crear/editar usuarios
@@ -139,6 +143,116 @@ def user_list(request):
     return render(request, 'users/user_list.html', {
         'users_with_passwords': users_with_passwords
     })
+
+
+@role_required(User.JEFE)
+def export_users_excel(request):
+    """Exportar lista de usuarios a Excel - Solo JEFE"""
+    
+    # Crear el libro de trabajo
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Usuarios"
+    
+    # Estilos para el encabezado
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    
+    # Definir encabezados
+    headers = [
+        "ID Usuario",
+        "Nombre de Usuario",
+        "Nombre Completo",
+        "Email",
+        "Rol",
+        "Contraseña",
+        "Fecha de Creación",
+        "Estado",
+        "Último Acceso"
+    ]
+    
+    # Escribir encabezados con estilo
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.value = header
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+    
+    # Obtener todos los usuarios
+    users = User.objects.all().order_by('-date_joined')
+    
+    # Obtener todas las contraseñas almacenadas
+    all_passwords = PasswordManager.get_all_passwords()
+    
+    # Escribir datos de usuarios
+    for row_num, user in enumerate(users, 2):
+        # ID Usuario
+        ws.cell(row=row_num, column=1, value=user.id)
+        
+        # Nombre de Usuario
+        ws.cell(row=row_num, column=2, value=user.username)
+        
+        # Nombre Completo
+        full_name = user.get_full_name() or "-"
+        ws.cell(row=row_num, column=3, value=full_name)
+        
+        # Email
+        ws.cell(row=row_num, column=4, value=user.email or "-")
+        
+        # Rol
+        ws.cell(row=row_num, column=5, value=user.get_role_display())
+        
+        # Contraseña (solo para COMERCIAL y CONSTRUCTOR)
+        if user.role in ['COMERCIAL', 'CONSTRUCTOR']:
+            password = all_passwords.get(user.username, {}).get('password', 'No disponible')
+            ws.cell(row=row_num, column=6, value=password)
+        else:
+            ws.cell(row=row_num, column=6, value="Oculta (JEFE)")
+        
+        # Fecha de Creación
+        fecha_creacion = user.date_joined.strftime("%d/%m/%Y %H:%M") if user.date_joined else "-"
+        ws.cell(row=row_num, column=7, value=fecha_creacion)
+        
+        # Estado (Activo/Inactivo)
+        estado = "Activo" if user.is_active else "Inactivo"
+        ws.cell(row=row_num, column=8, value=estado)
+        
+        # Último Acceso
+        ultimo_acceso = user.last_login.strftime("%d/%m/%Y %H:%M") if user.last_login else "Nunca"
+        ws.cell(row=row_num, column=9, value=ultimo_acceso)
+    
+    # Ajustar ancho de columnas
+    column_widths = {
+        'A': 12,  # ID Usuario
+        'B': 20,  # Nombre de Usuario
+        'C': 25,  # Nombre Completo
+        'D': 30,  # Email
+        'E': 20,  # Rol
+        'F': 20,  # Contraseña
+        'G': 20,  # Fecha de Creación
+        'H': 15,  # Estado
+        'I': 20,  # Último Acceso
+    }
+    
+    for col, width in column_widths.items():
+        ws.column_dimensions[col].width = width
+    
+    # Preparar respuesta HTTP con el archivo Excel
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
+    # Nombre del archivo con fecha actual
+    fecha_actual = datetime.now().strftime("%Y-%m-%d")
+    filename = f"Usuarios_{fecha_actual}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    # Guardar el libro en la respuesta
+    wb.save(response)
+    
+    return response
 
 
 @role_required(User.JEFE)
