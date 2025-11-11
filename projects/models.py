@@ -1,9 +1,8 @@
 from django.db import models
 from django.conf import settings  # Para usar el modelo de usuario personalizado
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from catalog.models import Material, Supplier
 from django.db.models import F
-from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.db.models import Sum, F, DecimalField, ExpressionWrapper
 
@@ -30,12 +29,42 @@ class Role(models.Model):
 
 
 class Worker(models.Model):
+    BLOOD_TYPE_CHOICES = [
+        ('A+', 'A+'),
+        ('A-', 'A-'),
+        ('B+', 'B+'),
+        ('B-', 'B-'),
+        ('AB+', 'AB+'),
+        ('AB-', 'AB-'),
+        ('O+', 'O+'),
+        ('O-', 'O-'),
+    ]
+
     name = models.CharField(max_length=200, verbose_name="Nombre del trabajador")
     phone = models.CharField(max_length=20, verbose_name="Teléfono")
     cedula = models.CharField(max_length=20, verbose_name="Cédula")
     direccion = models.CharField(max_length=200, verbose_name="Dirección")
     role = models.ForeignKey(
         Role, on_delete=models.SET_NULL, null=True, verbose_name="Rol"
+    )
+    eps = models.CharField(max_length=100, verbose_name="EPS", default="Por asignar")
+    arl = models.CharField(max_length=100, verbose_name="ARL", default="Por asignar")
+    blood_type = models.CharField(
+        max_length=3, 
+        choices=BLOOD_TYPE_CHOICES, 
+        verbose_name="Tipo de Sangre",
+        null=True,
+        blank=True
+    )
+    emergency_contact_name = models.CharField(
+        max_length=200, 
+        verbose_name="Nombre del Acudiente",
+        default="Por asignar"
+    )
+    emergency_contact_phone = models.CharField(
+        max_length=20, 
+        verbose_name="Teléfono del Acudiente",
+        default="Por asignar"
     )
 
     class Meta:
@@ -44,6 +73,24 @@ class Worker(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        import re
+
+        # Validar formato de teléfono del acudiente y del trabajador
+        phone_pattern = re.compile(r'^\+?1?\d{9,15}$')
+        if not phone_pattern.match(self.emergency_contact_phone):
+            raise ValidationError({
+                'emergency_contact_phone': 'El número de teléfono debe contener solo números y tener entre 9 y 15 dígitos.'
+            })
+
+        if not phone_pattern.match(self.phone):
+            raise ValidationError({
+                'phone': 'El número de teléfono debe contener solo números y tener entre 9 y 15 dígitos.'
+            })
+
+        super().clean()
 
 
 class UnitPrice(models.Model):
@@ -295,6 +342,17 @@ class Project(models.Model):
         validators=[MinValueValidator(0)],
     )
 
+    # PostgreSQL: NUMERIC(5,2) - Porcentaje de administración (0-100)
+    # Almacena el porcentaje como decimal (ej: 12.00 para 12%, 15.50 para 15.5%)
+    administration_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name="Porcentaje de administración",
+        default=12.00,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje de administración sobre el costo directo (0-100%)"
+    )
+
     # PostgreSQL: VARCHAR(20) - Campo de texto para el estado
     estado = models.CharField(
         max_length=20,
@@ -309,13 +367,25 @@ class Project(models.Model):
 
     @property
     def presupuesto_gastado_calculado(self):
-    
+        from django.db.models import OuterRef, Subquery
+        from django.db.models.functions import Coalesce
+        from catalog.models import MaterialSupplier
+
+        supplier_price = MaterialSupplier.objects.filter(
+            material_id=OuterRef("material_id"),
+            supplier_id=OuterRef("proveedor_id")
+        ).values("price")[:1]
+
         total = (
             EntradaMaterial.objects
             .filter(proyecto=self)
             .annotate(
+                precio_unitario=Coalesce(
+                    Subquery(supplier_price),
+                    F("material__unit_cost")
+                ),
                 costo=ExpressionWrapper(
-                    F("cantidad") * F("material__unit_cost"),
+                    F("cantidad") * F("precio_unitario"),
                     output_field=DecimalField(max_digits=15, decimal_places=2)
                 )
             )
@@ -760,7 +830,9 @@ class Project(models.Model):
                 )
                 costo_directo = totals['costo_directo'] or Decimal('0')
                 administracion_manual = totals['administracion_manual'] or Decimal('0')
-                administracion_automatica = costo_directo * Decimal('0.12')
+                # Usar el porcentaje de administración del proyecto (default 12%)
+                admin_percentage = self.administration_percentage / Decimal('100')
+                administracion_automatica = costo_directo * admin_percentage
                 total = costo_directo + administracion_automatica + administracion_manual
         else:
                 # Cálculo tradicional

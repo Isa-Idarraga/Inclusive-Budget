@@ -35,4 +35,7 @@ urlpatterns = [
         views.material_supplier_delete,
         name="material_supplier_delete",
     ),
+    # AJAX para crear unidades y categorías
+    path("ajax/unidad/crear/", views.unit_create_ajax, name="unit_create_ajax"),
+    path("ajax/categoria/crear/", views.category_create_ajax, name="category_create_ajax"),
 ]

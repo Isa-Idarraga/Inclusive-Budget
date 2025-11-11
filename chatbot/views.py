@@ -9,7 +9,7 @@ from django.shortcuts import render
 from .models import Conversation
 from .services.conversation_service import ConversationService
 from .llm import OpenAIAdapter
-from .helpers import get_context_data
+from .services.context_service import get_context_data
 from projects.forms import ProjectForm  
 
 

@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .password-field-container {
+        position: relative;
+    }
+    .password-field-container input {
+        padding-right: 40px;
+    }
+    .toggle-password {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #6c757d;
+        z-index: 10;
+        padding: 10px;
+        user-select: none;
+    }
+    .toggle-password:hover {
+        color: #5a6268;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-user-circle"></i> Mi Perfil
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- Información del usuario -->
+                    <div class="alert alert-info mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong><i class="fas fa-user"></i> Usuario:</strong> {{ user_obj.username }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong><i class="fas fa-id-badge"></i> Rol:</strong> 
+                                {% if user_obj.role == 'JEFE' %}
+                                    <span class="badge bg-success">👑 JEFE</span>
+                                {% elif user_obj.role == 'CONSTRUCTOR' %}
+                                    <span class="badge bg-primary">👷 CONSTRUCTOR</span>
+                                {% elif user_obj.role == 'COMERCIAL' %}
+                                    <span class="badge bg-info">💼 COMERCIAL</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <h5 class="mb-3"><i class="fas fa-info-circle"></i> Información Personal</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.username.id_for_label }}" class="form-label">
+                                    <strong>Usuario</strong>
+                                </label>
+                                {{ form.username }}
+                                <small class="form-text text-muted">El nombre de usuario no se puede cambiar</small>
+                                {% if form.username.errors %}
+                                <div class="text-danger">{{ form.username.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">
+                                    <strong>Correo electrónico</strong>
+                                </label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                <div class="text-danger">{{ form.email.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                                    <strong>Nombre</strong>
+                                </label>
+                                {{ form.first_name }}
+                                {% if form.first_name.errors %}
+                                <div class="text-danger">{{ form.first_name.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                                    <strong>Apellidos</strong>
+                                </label>
+                                {{ form.last_name }}
+                                {% if form.last_name.errors %}
+                                <div class="text-danger">{{ form.last_name.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h5 class="mb-3"><i class="fas fa-key"></i> Cambiar Contraseña (Opcional)</h5>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>Importante:</strong> Por seguridad, si cambias tu contraseña, cerraremos tu sesión automáticamente y deberás iniciar sesión nuevamente con tu nueva contraseña.
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="{{ form.current_password.id_for_label }}" class="form-label">
+                                    <strong>Contraseña actual</strong>
+                                </label>
+                                <div class="password-field-container">
+                                    {{ form.current_password }}
+                                    <span class="toggle-password" role="button" tabindex="0" data-target="current-password">
+                                        <i class="fas fa-eye"></i>
+                                    </span>
+                                </div>
+                                <small class="form-text text-muted">{{ form.current_password.help_text }}</small>
+                                {% if form.current_password.errors %}
+                                <div class="text-danger">{{ form.current_password.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.new_password.id_for_label }}" class="form-label">
+                                    <strong>Nueva contraseña</strong>
+                                </label>
+                                <div class="password-field-container">
+                                    {{ form.new_password }}
+                                    <span class="toggle-password" role="button" tabindex="0" data-target="new-password">
+                                        <i class="fas fa-eye"></i>
+                                    </span>
+                                </div>
+                                <small class="form-text text-muted">{{ form.new_password.help_text }}</small>
+                                {% if form.new_password.errors %}
+                                <div class="text-danger">{{ form.new_password.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.confirm_password.id_for_label }}" class="form-label">
+                                    <strong>Confirmar nueva contraseña</strong>
+                                </label>
+                                <div class="password-field-container">
+                                    {{ form.confirm_password }}
+                                    <span class="toggle-password" role="button" tabindex="0" data-target="confirm-password">
+                                        <i class="fas fa-eye"></i>
+                                    </span>
+                                </div>
+                                {% if form.confirm_password.errors %}
+                                <div class="text-danger">{{ form.confirm_password.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Mostrar errores generales del formulario -->
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'dashboard:home' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver al inicio
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Información adicional del rol -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Permisos de tu Rol</h5>
+                </div>
+                <div class="card-body">
+                    {% if user_obj.role == 'JEFE' %}
+                    <div class="alert alert-success">
+                        <h6><strong>👑 Rol: JEFE</strong></h6>
+                        <ul class="mb-0">
+                            <li>✅ Acceso total a todos los proyectos</li>
+                            <li>✅ Gestión completa de materiales y presupuestos</li>
+                            <li>✅ Administración de trabajadores y roles</li>
+                            <li>✅ Gestión de usuarios del sistema</li>
+                            <li>✅ Dashboard completo con todos los KPIs</li>
+                        </ul>
+                    </div>
+                    {% elif user_obj.role == 'CONSTRUCTOR' %}
+                    <div class="alert alert-primary">
+                        <h6><strong>👷 Rol: CONSTRUCTOR</strong></h6>
+                        <ul class="mb-0">
+                            <li>✅ Ver todos los proyectos</li>
+                            <li>✅ Editar solo tus propios proyectos</li>
+                            <li>✅ Gestión de materiales del catálogo</li>
+                            <li>✅ Acceso al dashboard de constructor</li>
+                            <li>✅ Crear proyectos detallados</li>
+                        </ul>
+                    </div>
+                    {% elif user_obj.role == 'COMERCIAL' %}
+                    <div class="alert alert-info">
+                        <h6><strong>💼 Rol: COMERCIAL</strong></h6>
+                        <ul class="mb-0">
+                            <li>✅ Crear proyectos iniciales</li>
+                            <li>✅ Ver lista de todos los proyectos (solo lectura)</li>
+                            <li>✅ Acceso al ChatBot</li>
+                            <li>✅ Acceso al Manual</li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.addEventListener('load', function() {
+    // Configurar los campos de contraseña
+    const passwordFields = [
+        {id: 'current-password', buttonSelector: '[data-target="current-password"]'},
+        {id: 'new-password', buttonSelector: '[data-target="new-password"]'},
+        {id: 'confirm-password', buttonSelector: '[data-target="confirm-password"]'}
+    ];
+
+    passwordFields.forEach(field => {
+        const passwordField = document.getElementById(field.id);
+        const toggleButton = document.querySelector(field.buttonSelector);
+        
+        if (passwordField && toggleButton) {
+            // Asegurarse de que el campo comience como tipo password
+            passwordField.type = 'password';
+            
+            // Función para alternar la visibilidad
+            function toggleVisibility(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                if (passwordField.type === 'password') {
+                    passwordField.type = 'text';
+                    toggleButton.querySelector('i').className = 'fas fa-eye-slash';
+                } else {
+                    passwordField.type = 'password';
+                    toggleButton.querySelector('i').className = 'fas fa-eye';
+                }
+            }
+            
+            // Agregar event listeners
+            toggleButton.addEventListener('click', toggleVisibility);
+            toggleButton.addEventListener('touchend', toggleVisibility);
+            
+            // Permitir alternar con la tecla Enter
+            toggleButton.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    toggleVisibility(e);
+                }
+            });
+        }
+    });
+
+    // Confirmación al cambiar la contraseña
+    const form = document.querySelector('form');
+    const newPasswordField = document.getElementById('new-password');
+    
+    form.addEventListener('submit', function(e) {
+        if (newPasswordField && newPasswordField.value.trim() !== '') {
+            if (!confirm('⚠️ Al cambiar tu contraseña, cerraremos tu sesión por seguridad.\n\n¿Estás seguro de que deseas continuar?')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-success text-white rounded-top-4">
+                    <h3 class="mb-0">
+                        <i class="fas fa-copy me-2"></i>Duplicar Proyecto
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <h4>¿Deseas crear una copia del proyecto "{{ project.name }}"?</h4>
+                    <p class="text-muted mb-4">
+                        Se creará una copia completa con la siguiente información:
+                        <ul class="list-unstyled ms-4">
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Toda la información básica del proyecto</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Presupuesto detallado y todos sus ítems</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Trabajadores asignados</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Imágenes del proyecto</li>
+                        </ul>
+                    </p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        La copia se creará con estado "Futuro" y fecha de creación actual.
+                    </div>
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'projects:project_detail' project.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-copy me-2"></i>Duplicar Proyecto
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,12 +2,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q, Prefetch
-from .models import Material, Supplier, MaterialSupplier
+from .models import Material, Supplier, MaterialSupplier, Unit, Category
 from .forms import MaterialForm
 from django.db import transaction
-from django.db.models import Q, Prefetch
 from django.contrib import messages
 from .forms import MaterialSupplierForm
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
 @login_required
 def material_list(request):
@@ -68,6 +69,14 @@ def material_create(request):
 @login_required
 def material_update(request, pk):
     material = get_object_or_404(Material, pk=pk)
+    
+    # Contar proyectos que usan este material
+    from projects.models import Project
+    proyectos_con_entradas = Project.objects.filter(entradas__material=material).distinct()
+    proyectos_con_consumos = Project.objects.filter(consumos__material=material).distinct()
+    proyectos_activos = (proyectos_con_entradas | proyectos_con_consumos).distinct()
+    num_proyectos = proyectos_activos.count()
+    
     if request.method == "POST":
         form = MaterialForm(request.POST, request.FILES, instance=material)
         if form.is_valid():
@@ -94,11 +103,18 @@ def material_update(request, pk):
                 obj.unit_cost = price
                 obj.save(update_fields=["unit_cost"])
 
-            messages.success(request, "Material actualizado.")
+            messages.success(request, "Material actualizado correctamente. Los cambios se aplicarán solo a usos futuros.")
             return redirect("material_list")
     else:
         form = MaterialForm(instance=material)
-    return render(request, "catalog/material_form.html", {"form": form, "mode": "update", "material": material})
+    
+    return render(request, "catalog/material_form.html", {
+        "form": form, 
+        "mode": "update", 
+        "material": material,
+        "num_proyectos_activos": num_proyectos,
+        "proyectos_activos": proyectos_activos[:5]  # Mostrar máximo 5 proyectos como ejemplo
+    })
 
 @login_required
 def material_delete(request, pk):
@@ -234,3 +250,93 @@ def material_supplier_delete(request, material_id, link_id):
         "material": material,
         "link": link,
     })
+
+
+# ============================================
+# VISTAS AJAX PARA CREAR UNIDADES Y CATEGORÍAS
+# ============================================
+
+@login_required
+@require_POST
+def unit_create_ajax(request):
+    """
+    Vista AJAX para crear una nueva unidad de medida desde el formulario de material.
+    Retorna JSON con el ID y nombre de la unidad creada.
+    """
+    try:
+        name = request.POST.get('name', '').strip()
+        symbol = request.POST.get('symbol', '').strip()
+        
+        if not name or not symbol:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nombre y símbolo son obligatorios'
+            }, status=400)
+        
+        # Verificar si ya existe
+        if Unit.objects.filter(Q(name__iexact=name) | Q(symbol__iexact=symbol)).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Ya existe una unidad con ese nombre o símbolo'
+            }, status=400)
+        
+        # Crear la unidad
+        unit = Unit.objects.create(name=name, symbol=symbol)
+        
+        return JsonResponse({
+            'success': True,
+            'unit': {
+                'id': unit.id,
+                'name': str(unit)  # "Nombre (Símbolo)"
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
+@require_POST
+def category_create_ajax(request):
+    """
+    Vista AJAX para crear una nueva categoría desde el formulario de material.
+    Retorna JSON con el ID y nombre de la categoría creada.
+    """
+    try:
+        name = request.POST.get('name', '').strip()
+        
+        if not name:
+            return JsonResponse({
+                'success': False,
+                'error': 'El nombre es obligatorio'
+            }, status=400)
+        
+        # Generar código automáticamente (mayúsculas, sin espacios)
+        code = name.upper().replace(' ', '_')[:20]
+        
+        # Verificar si ya existe
+        if Category.objects.filter(Q(name__iexact=name) | Q(code=code)).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'Ya existe una categoría con ese nombre'
+            }, status=400)
+        
+        # Crear la categoría
+        category = Category.objects.create(name=name, code=code)
+        
+        return JsonResponse({
+            'success': True,
+            'category': {
+                'id': category.id,
+                'name': category.name
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

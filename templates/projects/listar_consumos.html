@@ -40,10 +40,34 @@
                         {% endfor %}
                     </select>
                 </div>
+
+                <!-- ✅ NUEVO: Etapa del Presupuesto (RF17B) -->
+                <div class="col-md-3">
+                    <label class="form-label">
+                        <i class="fas fa-layer-group text-primary me-2"></i>Etapa del Presupuesto
+                    </label>
+
+                    {% if filter_form and filter_form.etapa_presupuesto %}
+                        {{ filter_form.etapa_presupuesto }}
+                    {% elif filter_form and filter_form.etapa %}
+                        {{ filter_form.etapa }}
+                    {% else %}
+                        <select name="etapa" class="form-select">
+                            <option value="">Todas las etapas</option>
+                            {% for etapa in etapas_disponibles %}
+                                <option value="{{ etapa.id }}" {% if etapa.id|stringformat:"s" == etapa_filtro %}selected{% endif %}>
+                                    {{ etapa.order }}. {{ etapa.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </div>
+
                 <div class="col-md-3">
                     <label class="form-label">Actividad</label>
                     <input type="text" name="actividad" class="form-control" placeholder="Buscar actividad..." value="{{ actividad }}">
                 </div>
+
                 <div class="col-12">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-search me-2"></i>Filtrar
@@ -73,6 +97,7 @@
                                 <th>Fecha</th>
                                 <th>Material</th>
                                 <th>Cantidad</th>
+                                <th>Etapa</th>
                                 <th>Componente/Actividad</th>
                                 <th>Responsable</th>
                                 <th>Registrado por</th>
@@ -87,21 +112,36 @@
                                     {{ consumo.fecha_consumo|date:"d/m/Y" }}
                                 </td>
                                 <td>
-                                    <strong>{{ consumo.material.name }}</strong>
-                                    <br>
+                                    <strong>{{ consumo.material.name }}</strong><br>
                                     <small class="text-muted">{{ consumo.material.sku }}</small>
                                 </td>
+
+                                <!-- ✅ CANTIDAD CON FORMATO -->
                                 <td>
                                     <span class="badge bg-info">
-                                        {{ consumo.cantidad_consumida }} {{ consumo.material.unit.symbol }}
+                                        {% if consumo.cantidad_consumida|floatformat:0 == consumo.cantidad_consumida|floatformat:1 %}
+                                            {{ consumo.cantidad_consumida|floatformat:0 }}
+                                        {% else %}
+                                            {{ consumo.cantidad_consumida|floatformat:2 }}
+                                        {% endif %}
+                                        {{ consumo.material.unit.symbol }}
                                     </span>
+                                </td>
+
+                                <td>
+                                    {% if consumo.etapa_presupuesto %}
+                                        <span class="badge bg-secondary">
+                                            {{ consumo.etapa_presupuesto.order }}. {{ consumo.etapa_presupuesto.name }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
                                 </td>
                                 <td>{{ consumo.componente_actividad }}</td>
                                 <td>{{ consumo.responsable }}</td>
                                 <td>
                                     <small class="text-muted">
-                                        {{ consumo.registrado_por.username }}
-                                        <br>
+                                        {{ consumo.registrado_por.username }}<br>
                                         {{ consumo.fecha_registro|date:"d/m/Y H:i" }}
                                     </small>
                                 </td>
@@ -131,7 +171,14 @@
                                                     <p>¿Estás seguro de eliminar este consumo?</p>
                                                     <ul>
                                                         <li><strong>Material:</strong> {{ consumo.material.name }}</li>
-                                                        <li><strong>Cantidad:</strong> {{ consumo.cantidad_consumida }} {{ consumo.material.unit.symbol }}</li>
+                                                        <li><strong>Cantidad:</strong>
+                                                            {% if consumo.cantidad_consumida|floatformat:0 == consumo.cantidad_consumida|floatformat:1 %}
+                                                                {{ consumo.cantidad_consumida|floatformat:0 }}
+                                                            {% else %}
+                                                                {{ consumo.cantidad_consumida|floatformat:2 }}
+                                                            {% endif %}
+                                                            {{ consumo.material.unit.symbol }}
+                                                        </li>
                                                         <li><strong>Fecha:</strong> {{ consumo.fecha_consumo|date:"d/m/Y" }}</li>
                                                     </ul>
                                                     <p class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i>El stock se restaurará automáticamente.</p>
@@ -150,7 +197,7 @@
                             </tr>
                             {% if consumo.observaciones %}
                             <tr class="table-light">
-                                <td colspan="7">
+                                <td colspan="8">
                                     <small class="text-muted">
                                         <i class="fas fa-comment me-2"></i><strong>Observaciones:</strong> {{ consumo.observaciones }}
                                     </small>
@@ -174,4 +221,3 @@
     </div>
 </div>
 {% endblock %}
-

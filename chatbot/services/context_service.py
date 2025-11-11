@@ -1,9 +1,15 @@
-# chatbot/utils.py
+# chatbot/services/context_service.py
 from projects.models import Project, Worker
 from catalog.models import Material
 
+
 def get_context_data():
-    """Obtiene datos del contexto del sistema para el LLM"""
+    """
+    Obtiene datos del contexto del sistema para el LLM
+    
+    Returns:
+        dict: Diccionario con proyectos, materiales y trabajadores
+    """
     try:
         proyectos = list(Project.objects.values(
             "id", "name", "presupuesto", "presupuesto_gastado"
@@ -23,7 +29,7 @@ def get_context_data():
             "trabajadores": trabajadores,
         }
     except Exception as e:
-        print(f"Error cargando contexto: {e}")
+        print(f"⚠️ Error cargando contexto: {e}")
         return {
             "proyectos": [],
             "materiales": [],
