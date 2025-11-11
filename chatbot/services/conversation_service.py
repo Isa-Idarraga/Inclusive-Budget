@@ -144,17 +144,57 @@ Puedes ayudar con:
 - Consultar información sobre proyectos, materiales y trabajadores
 - Responder preguntas técnicas sobre construcción
 
+Cuando te pidan información sobre materiales, trabajadores o proyectos, responde de forma clara y estructurada usando los datos que te proporciono.
+
 Sé claro, profesional y conciso."""
 
+        # ✅ MEJORAR EL CONTEXTO CON DATOS REALES
         if context_data:
-            prompt += f"\n\nDatos del sistema disponibles:"
-            if "proyectos" in context_data and context_data["proyectos"]:
-                prompt += f"\n- Proyectos: {len(context_data['proyectos'])} registrados"
-            if "materiales" in context_data and context_data["materiales"]:
-                prompt += f"\n- Materiales: {len(context_data['materiales'])} disponibles"
-            if "trabajadores" in context_data and context_data["trabajadores"]:
-                prompt += f"\n- Trabajadores: {len(context_data['trabajadores'])} activos"
+            proyectos = context_data.get("proyectos", [])
+            materiales = context_data.get("materiales", [])
+            trabajadores = context_data.get("trabajadores", [])
+            
+            if proyectos:
+                prompt += f"\n\n📁 **PROYECTOS REGISTRADOS** ({len(proyectos)}):"
+                for p in proyectos[:5]:  # Mostrar máximo 5
+                    estado_emoji = "🟢" if p.get('estado') == 'activo' else "🔵" if p.get('estado') == 'futuro' else "⚪"
+                    prompt += f"\n{estado_emoji} {p['name']} (Presupuesto: ${p.get('presupuesto', 0):,.0f} COP, Gastado: ${p.get('presupuesto_gastado', 0):,.0f} COP)"
+            
+            if materiales:
+                prompt += f"\n\n🧱 **MATERIALES DISPONIBLES EN INVENTARIO** ({len(materiales)}):"
+                # Agrupar por categoría
+                categorias = {}
+                for m in materiales:
+                    cat = m.get('category', 'Sin categoría')
+                    if cat not in categorias:
+                        categorias[cat] = []
+                    categorias[cat].append(m)
+                
+                for cat, items in list(categorias.items())[:5]:  # Máximo 5 categorías
+                    prompt += f"\n\n**{cat}** ({len(items)} materiales):"
+                    for item in items[:5]:  # Máximo 5 por categoría
+                        stock_status = "✅" if item.get('stock', 0) > 0 else "⚠️"
+                        prompt += f"\n  {stock_status} {item['name']}"
+                        # ✅ CORREGIDO: cerrar correctamente el f-string
+                        prompt += f" (Stock: {item.get('stock', 0)} {item.get('unit__symbol', 'u')}, Costo: ${item.get('unit_cost', 0):,.0f} COP/u)"
+            
+            if trabajadores:
+                prompt += f"\n\n👷 **TRABAJADORES EN EL SISTEMA** ({len(trabajadores)}):"
+                # Agrupar por rol
+                roles = {}
+                for t in trabajadores:
+                    rol = t.get('role', 'Sin rol')
+                    if rol not in roles:
+                        roles[rol] = []
+                    roles[rol].append(t)
+                
+                for rol, personas in list(roles.items())[:8]:  # Máximo 8 roles
+                    prompt += f"\n\n**{rol}** ({len(personas)} {'persona' if len(personas) == 1 else 'personas'}):"
+                    for persona in personas[:5]:  # Máximo 5 por rol
+                        prompt += f"\n  • {persona['name']}"
         
+        prompt += "\n\n⚠️ IMPORTANTE: Cuando te pregunten por materiales, trabajadores o proyectos, usa EXACTAMENTE esta información del sistema. No inventes datos."
+    
         return prompt
     
     def detect_intent(self, message: str) -> str:
@@ -165,12 +205,20 @@ Sé claro, profesional y conciso."""
         if any(cmd in msg_lower for cmd in ["cancelar", "parar", "salir", "detener"]):
             return "cancel"
         
-        # Iniciar flujo manual
-        if any(cmd in msg_lower for cmd in ["nuevo presupuesto", "crear presupuesto", "iniciar presupuesto", "presupuesto manual"]):
+        # ✅ MEJORAR: Detectar comandos de INICIO de flujo (más específicos)
+        # Iniciar flujo manual (requiere palabras clave explícitas)
+        if any(cmd in msg_lower for cmd in ["nuevo presupuesto", "crear presupuesto", "iniciar presupuesto", "presupuesto manual", "empezar presupuesto"]):
             return "start_manual"
         
-        # Iniciar flujo IA
-        if any(cmd in msg_lower for cmd in ["ia", "inteligente", "presupuesto ia", "presupuesto con ia", "presupuesto inteligente", "con ia"]):
-            return "start_ai"
+        # Iniciar flujo IA (requiere palabras clave explícitas)
+        # ✅ EVITAR falsos positivos: NO activar si solo menciona "materiales" o "información"
+        if any(cmd in msg_lower for cmd in ["presupuesto ia", "presupuesto con ia", "presupuesto inteligente"]):
+            # ⚠️ Verificar que NO sea una consulta simple
+            if not any(word in msg_lower for word in ["información", "dame", "cuéntame", "qué", "cuáles", "listar", "mostrar", "ver"]):
+                return "start_ai"
+        
+        # ✅ DETECTAR CONSULTAS (no inicia flujo)
+        if any(word in msg_lower for word in ["qué", "cuáles", "cuántos", "información", "dame", "dime", "muestra", "lista", "ver"]):
+            return "chat"  # Es una consulta, no iniciar flujo
         
         return "chat"

@@ -9,7 +9,7 @@ from django.shortcuts import render
 from .models import Conversation
 from .services.conversation_service import ConversationService
 from .llm import OpenAIAdapter
-from .services.context_service import get_context_data
+from .services.context_service import get_context_data  # ✅ USAR ESTE
 from projects.forms import ProjectForm  
 
 
@@ -97,7 +97,7 @@ def process_user_message(conversation: Conversation, user_message: str) -> dict:
     Procesa el mensaje del usuario y retorna la respuesta como diccionario
     """
     service = ConversationService(
-        llm_client=OpenAIAdapter(api_key=openai_api_key),
+        llm_client=llm_client,  # ✅ USAR LA VARIABLE GLOBAL
         form_class=ProjectForm
     )
     
@@ -116,8 +116,6 @@ def process_user_message(conversation: Conversation, user_message: str) -> dict:
         
         # Si el flujo se completó
         if result.get("completed"):
-            # ✅ YA NO PREGUNTAR "¿Deseas guardar?"
-            # El proyecto se crea automáticamente
             return {"message": result["message"], "completed": True}
         
         return {"message": result["message"]}
@@ -134,12 +132,8 @@ def process_user_message(conversation: Conversation, user_message: str) -> dict:
     if intent == "cancel":
         return {"message": "No hay ningún proceso activo para cancelar."}
     
-    # Chat normal con contexto
-    context_data = {
-        "proyectos": [],
-        "materiales": [],
-        "trabajadores": []
-    }
+    # ✅ CARGAR CONTEXTO REAL (en lugar de dict vacío)
+    context_data = get_context_data()
     
     message = service.handle_normal_chat(conversation, user_message, context_data)
     return {"message": message}
