@@ -41,20 +41,14 @@
         </div>
         {% endif %}
 
-        <!-- Acceso a Proyecto Detallado: CONSTRUCTOR y JEFE -->
-        {% if user.role == 'CONSTRUCTOR' or user.role == 'JEFE' or user.is_superuser %}
-        <a class="nav-link {% if current == 'detailed_project_create' %}active{% endif %}"
-           href="{% url 'projects:detailed_project_create' %}">
-           <i class="fas fa-plus-circle"></i> Proyecto Detallado
-        </a>
-        {% endif %}
+       
 
         {% if user.role == 'CONSTRUCTOR' or user.role == 'JEFE' or user.is_superuser %}
         <a class="nav-link {% if current == 'material_list' %}active{% endif %}"
            href="{% url 'material_list' %}">Materiales</a>
         {% endif %}
 
-        {% if user.is_authenticated %}
+        {% if user.role == 'CONSTRUCTOR' or user.role == 'JEFE' or user.is_superuser %}
         <a class="nav-link {% if current == 'project_list' %}active{% endif %}"
            href="{% url 'projects:project_list' %}">Lista de proyectos</a>
         {% endif %}
