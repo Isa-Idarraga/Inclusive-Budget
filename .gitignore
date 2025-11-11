@@ -28,4 +28,4 @@ Thumbs.db
 dashboard_tests.log
 
 # Archivo de contraseñas (no incluir en git por seguridad)
-users/user_passwords.json
+# users/user_passwords.json
