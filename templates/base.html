@@ -85,6 +85,17 @@
           <li><a class="dropdown-item" href="{% url 'projects:role_create' %}"><i class="fas fa-user-tag"></i> Crear rol</a></li>
         </ul>
       </div>
+      
+      <!-- Menú de Usuarios del Sistema: SOLO para JEFE -->
+      <div class="nav-item dropdown d-inline-block">
+        <a class="nav-link dropdown-toggle" href="#" id="usuariosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fas fa-user-shield"></i> Usuarios del Sistema
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="usuariosDropdown">
+          <li><a class="dropdown-item" href="{% url 'users:user_list' %}"><i class="fas fa-users-cog"></i> Gestión de Usuarios</a></li>
+          <li><a class="dropdown-item" href="{% url 'users:user_create' %}"><i class="fas fa-user-plus"></i> Crear Usuario</a></li>
+        </ul>
+      </div>
       {% endif %}
     </nav>
   </header>

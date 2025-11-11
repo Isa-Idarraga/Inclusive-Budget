@@ -18,6 +18,7 @@ urlpatterns = [
 
     # Gestión de usuarios (Solo JEFE)
     path("manage/", views.user_list, name="user_list"),
+    path("manage/export-excel/", views.export_users_excel, name="export_users_excel"),
     path("manage/create/", views.user_create, name="user_create"),
     path("manage/<int:user_id>/edit/", views.user_update, name="user_update"),
     path("manage/<int:user_id>/delete/", views.user_delete, name="user_delete"),
